@@ -372,9 +372,16 @@ async function performRealAnalysis(
     console.log('   deunggibu_data keys:', Object.keys(updateData.deunggibu_data));
     console.log('   Has deunggibu:', !!updateData.deunggibu_data.deunggibu);
     console.log('   Has valuation:', !!updateData.deunggibu_data.valuation);
+    console.log('   Valuation data:', JSON.stringify(updateData.deunggibu_data.valuation));
     if (updateData.deunggibu_data.deunggibu) {
       console.log('   Deunggibu address:', updateData.deunggibu_data.deunggibu.address);
       console.log('   Deunggibu building:', updateData.deunggibu_data.deunggibu.buildingName);
+    }
+
+    // CRITICAL: Verify valuation is actually in the object before save
+    if (!updateData.deunggibu_data.valuation || !updateData.deunggibu_data.valuation.valueMid) {
+      console.error('❌ WARNING: Valuation is missing or invalid before database save!');
+      console.error('   This will cause property value to show as N/A in the report');
     }
 
     const { data: updateResult, error: resultsError } = await supabase
