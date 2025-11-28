@@ -20,28 +20,44 @@ export class OCRService {
     // Support both file path (local dev) and JSON string (Vercel deployment)
     const credentialsEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
+    console.log('🔐 Initializing Google Document AI client...');
+    console.log(`   Project ID: ${this.projectId}`);
+    console.log(`   Processor ID: ${this.processorId}`);
+    console.log(`   Credentials env var exists: ${!!credentialsEnv}`);
+    console.log(`   Credentials env var length: ${credentialsEnv?.length || 0}`);
+
     let clientConfig: any = {};
 
-    if (credentialsEnv) {
-      // Check if it's a JSON string or file path
-      if (credentialsEnv.startsWith('{')) {
-        // It's a JSON string - parse and use as credentials object
-        try {
-          clientConfig.credentials = JSON.parse(credentialsEnv);
-        } catch (error) {
-          console.error('Failed to parse GOOGLE_APPLICATION_CREDENTIALS as JSON:', error);
-          throw new Error('Invalid GOOGLE_APPLICATION_CREDENTIALS JSON format');
-        }
-      } else {
-        // It's a file path
-        clientConfig.keyFilename = credentialsEnv;
+    if (!credentialsEnv || credentialsEnv.trim() === '') {
+      // No credentials provided - this will fail in production
+      console.error('❌ GOOGLE_APPLICATION_CREDENTIALS is not set!');
+      throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable is required');
+    }
+
+    // Trim whitespace that might be added by Vercel
+    const trimmedCreds = credentialsEnv.trim();
+
+    // Check if it's a JSON string or file path
+    if (trimmedCreds.startsWith('{') || trimmedCreds.startsWith('{\n')) {
+      // It's a JSON string - parse and use as credentials object
+      console.log('   Using JSON credentials from environment variable');
+      try {
+        clientConfig.credentials = JSON.parse(trimmedCreds);
+        console.log('   ✓ Credentials parsed successfully');
+        console.log(`   ✓ Service account email: ${clientConfig.credentials.client_email}`);
+      } catch (error) {
+        console.error('❌ Failed to parse GOOGLE_APPLICATION_CREDENTIALS as JSON:', error);
+        console.error('   First 100 chars:', trimmedCreds.substring(0, 100));
+        throw new Error('Invalid GOOGLE_APPLICATION_CREDENTIALS JSON format');
       }
     } else {
-      // Fallback to local credentials file
-      clientConfig.keyFilename = './credentials/google-documentai.json';
+      // It's a file path
+      console.log('   Using credentials from file path:', trimmedCreds);
+      clientConfig.keyFilename = trimmedCreds;
     }
 
     this.client = new DocumentProcessorServiceClient(clientConfig);
+    console.log('   ✓ Document AI client initialized');
   }
 
   /**
