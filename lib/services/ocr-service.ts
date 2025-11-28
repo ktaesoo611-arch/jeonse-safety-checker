@@ -17,11 +17,62 @@ export class OCRService {
     this.processorId = process.env.DOCUMENT_AI_PROCESSOR_ID || 'OCR_PROCESSOR';
 
     // Document AI requires service account credentials (API keys are not supported)
-    const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './credentials/google-documentai.json';
+    // Support both file path (local dev) and JSON string (Vercel deployment)
+    const credentialsEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-    this.client = new DocumentProcessorServiceClient({
-      keyFilename: credentialsPath
-    });
+    let clientConfig: any = {};
+
+    if (credentialsEnv) {
+      // Check if it's a JSON string or file path
+      if (credentialsEnv.startsWith('{')) {
+        // It's a JSON string - parse and use as credentials object
+        try {
+          clientConfig.credentials = JSON.parse(credentialsEnv);
+        } catch (error) {
+          console.error('Failed to parse GOOGLE_APPLICATION_CREDENTIALS as JSON:', error);
+          throw new Error('Invalid GOOGLE_APPLICATION_CREDENTIALS JSON format');
+        }
+      } else {
+        // It's a file path
+        clientConfig.keyFilename = credentialsEnv;
+      }
+    } else {
+      // Fallback to local credentials file
+      clientConfig.keyFilename = './credentials/google-documentai.json';
+    }
+
+    this.client = new DocumentProcessorServiceClient(clientConfig);
+  }
+
+  /**
+   * Extract full structured document data from PDF using Document AI
+   * Returns the complete Document AI response including tables, text, and layout
+   */
+  async extractStructuredDocument(buffer: Buffer): Promise<any> {
+    try {
+      console.log('Using Google Document AI for structured extraction...');
+
+      const name = `projects/${this.projectId}/locations/${this.location}/processors/${this.processorId}`;
+
+      const [result] = await this.client.processDocument({
+        name,
+        rawDocument: {
+          content: buffer.toString('base64'),
+          mimeType: 'application/pdf',
+        },
+        imagelessMode: true,
+      });
+
+      console.log('Document AI extraction successful');
+      console.log(`- Text: ${result.document?.text?.length || 0} chars`);
+      console.log(`- Pages: ${result.document?.pages?.length || 0}`);
+      console.log(`- Tables: ${result.document?.pages?.reduce((sum, p) => sum + (p.tables?.length || 0), 0) || 0}`);
+
+      return result.document;
+    } catch (error) {
+      console.error('Document AI structured extraction failed:', error);
+      throw error;
+    }
   }
 
   /**
@@ -63,13 +114,23 @@ export class OCRService {
       const name = `projects/${this.projectId}/locations/${this.location}/processors/${this.processorId}`;
 
       // Process the PDF document
-      const [result] = await this.client.processDocument({
+      // Use imageless mode to support documents up to 30 pages (instead of 15-page limit)
+      const requestConfig = {
         name,
         rawDocument: {
           content: buffer.toString('base64'),
           mimeType: 'application/pdf',
         },
-      });
+        imagelessMode: true, // Enable imageless mode for 30-page limit (instead of 15)
+      };
+
+      console.log('=== Document AI Request Debug ===');
+      console.log('Processor name:', name);
+      console.log('Buffer size:', buffer.length, 'bytes');
+      console.log('imagelessMode:', requestConfig.imagelessMode);
+      console.log('=================================');
+
+      const [result] = await this.client.processDocument(requestConfig);
 
       const fullText = result.document?.text || '';
 
