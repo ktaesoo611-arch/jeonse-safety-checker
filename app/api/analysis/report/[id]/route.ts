@@ -168,11 +168,11 @@ export async function GET(
 
         // Component Scores
         scores: {
-          ltvScore: riskAnalysis.ltvScore || 0,
-          debtScore: riskAnalysis.debtScore || 0,
-          legalScore: riskAnalysis.legalScore || 0,
-          marketScore: riskAnalysis.marketScore || 0,
-          buildingScore: riskAnalysis.buildingScore || 0,
+          ltvScore: riskAnalysis.scores?.ltvScore || riskAnalysis.ltvScore || 0,
+          debtScore: riskAnalysis.scores?.debtScore || riskAnalysis.debtScore || 0,
+          legalScore: riskAnalysis.scores?.legalScore || riskAnalysis.legalScore || 0,
+          marketScore: riskAnalysis.scores?.marketScore || riskAnalysis.marketScore || 0,
+          buildingScore: riskAnalysis.scores?.buildingScore || riskAnalysis.buildingScore || 0,
         },
 
         // Key Metrics
