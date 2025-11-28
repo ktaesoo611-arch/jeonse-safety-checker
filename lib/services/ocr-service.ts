@@ -176,5 +176,16 @@ export class OCRService {
   }
 }
 
-// Export singleton instance
-export const ocrService = new OCRService();
+// Export singleton instance with lazy initialization
+let _instance: OCRService | null = null;
+
+export const ocrService = new Proxy({} as OCRService, {
+  get(target, prop) {
+    // Lazy initialize on first access
+    if (!_instance) {
+      console.log('⚡ Lazy-initializing OCR service singleton...');
+      _instance = new OCRService();
+    }
+    return (_instance as any)[prop];
+  }
+});
