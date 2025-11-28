@@ -350,13 +350,16 @@ async function performRealAnalysis(
     await new Promise(resolve => setTimeout(resolve, 2500));
 
     // Step 11: Finally add the analysis results (shows 100% progress)
+    // Serialize deunggibu data to ensure it saves properly
+    const serializedDeunggibuData = deunggibuData ? JSON.parse(JSON.stringify(deunggibuData)) : null;
+
     const updateData = {
       safety_score: riskAnalysis.overallScore,
       risk_level: riskAnalysis.riskLevel,
       risks: riskAnalysis.risks,
       deunggibu_data: {
         ...riskAnalysis,
-        deunggibu: deunggibuData,
+        deunggibu: serializedDeunggibuData,
         valuation
       }
     };
@@ -367,6 +370,12 @@ async function performRealAnalysis(
     console.log('   Risk Level:', updateData.risk_level);
     console.log('   Has deunggibu_data:', !!updateData.deunggibu_data);
     console.log('   deunggibu_data keys:', Object.keys(updateData.deunggibu_data));
+    console.log('   Has deunggibu:', !!updateData.deunggibu_data.deunggibu);
+    console.log('   Has valuation:', !!updateData.deunggibu_data.valuation);
+    if (updateData.deunggibu_data.deunggibu) {
+      console.log('   Deunggibu address:', updateData.deunggibu_data.deunggibu.address);
+      console.log('   Deunggibu building:', updateData.deunggibu_data.deunggibu.buildingName);
+    }
 
     const { data: updateResult, error: resultsError } = await supabase
       .from('analysis_results')
