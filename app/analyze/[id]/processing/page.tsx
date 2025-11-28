@@ -30,6 +30,7 @@ export default function ProcessingPage() {
 
         if (data.status === 'completed') {
           setProgress(100);
+          setCurrentStep(steps.length - 1);
           setTimeout(() => {
             router.push(`/analyze/${analysisId}/report`);
           }, 1000);
@@ -37,9 +38,16 @@ export default function ProcessingPage() {
           setStatus('failed');
           alert('An error occurred during analysis');
         } else {
-          // Use server progress if available
-          if (data.progress) {
+          // Use server progress if available, always trust server
+          if (typeof data.progress === 'number') {
             setProgress(data.progress);
+
+            // Update current step based on progress
+            const stepIndex = Math.min(
+              Math.floor((data.progress / 100) * steps.length),
+              steps.length - 1
+            );
+            setCurrentStep(stepIndex);
           }
         }
       } catch (error) {
@@ -50,41 +58,11 @@ export default function ProcessingPage() {
     // Initial check
     checkStatus();
 
-    // Poll every 2 seconds
-    const interval = setInterval(checkStatus, 2000);
+    // Poll every 1 second for smoother updates
+    const interval = setInterval(checkStatus, 1000);
 
     return () => clearInterval(interval);
   }, [analysisId, router]);
-
-  useEffect(() => {
-    // Simulate processing steps for visual feedback
-    const totalDuration = steps.reduce((sum, step) => sum + step.duration, 0);
-    let elapsed = 0;
-
-    const interval = setInterval(() => {
-      elapsed += 100;
-      const simulatedProgress = Math.min((elapsed / totalDuration) * 100, 95);
-
-      // Only update if server progress is lower
-      setProgress(prev => Math.max(prev, simulatedProgress));
-
-      // Update current step
-      let cumulativeDuration = 0;
-      for (let i = 0; i < steps.length; i++) {
-        cumulativeDuration += steps[i].duration;
-        if (elapsed < cumulativeDuration) {
-          setCurrentStep(i);
-          break;
-        }
-      }
-
-      if (elapsed >= totalDuration) {
-        clearInterval(interval);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-900 via-emerald-900 to-teal-950">

@@ -96,16 +96,35 @@ export async function GET(
       response.risks = analysis.risks;
     }
 
-    // Calculate progress percentage
+    // Calculate progress percentage with smoother transitions
     let progress = 0;
     if (analysis.status === 'pending') {
       progress = 0;
     } else if (analysis.status === 'processing') {
       const totalDocs = documents?.length || 0;
       const parsedDocs = documents?.filter((d: any) => d.parsed_data).length || 0;
-      progress = totalDocs > 0 ? (parsedDocs / totalDocs) * 50 + 25 : 25;
+
+      // Progress breakdown:
+      // 0-25%: Initial setup
+      // 25-75%: Document parsing (based on parsed docs)
+      // 75-100%: Risk analysis (simulated based on time)
+      if (totalDocs > 0 && parsedDocs > 0) {
+        // Documents are being parsed: 25-75%
+        progress = 25 + (parsedDocs / totalDocs) * 50;
+      } else {
+        // Initial processing: 25%
+        progress = 25;
+      }
     } else if (analysis.status === 'completed') {
-      progress = 100;
+      // Check if we have analysis results
+      const hasResults = analysis.safety_score !== null || analysis.deunggibu_data !== null;
+
+      if (hasResults) {
+        progress = 100;
+      } else {
+        // Transitioning to completion: 85%
+        progress = 85;
+      }
     } else if (analysis.status === 'failed') {
       progress = 0;
     }

@@ -87,7 +87,7 @@ export default function UploadPage() {
       <header className="bg-white border-b border-gray-100">
         <div className="container mx-auto px-6 py-4 max-w-7xl">
           <Link href="/" className="text-2xl font-bold text-gray-900 tracking-tight hover:text-emerald-700 transition-colors">
-            Pre-sale safety check
+            Jeonse Safety Check
           </Link>
         </div>
       </header>
@@ -220,7 +220,7 @@ export default function UploadPage() {
               <span className="flex-shrink-0 w-8 h-8 bg-emerald-100/20 backdrop-blur-sm rounded-full flex items-center justify-center font-bold text-emerald-100">2</span>
               <div>
                 <p className="font-semibold text-emerald-100 mb-1">Select building register</p>
-                <p className="text-emerald-50/80">Click 부동산 → 건물 등기사항증명서</p>
+                <p className="text-emerald-50/80">Click 부동산 on main page</p>
               </div>
             </li>
             <li className="flex gap-4 items-start">
@@ -233,8 +233,8 @@ export default function UploadPage() {
             <li className="flex gap-4 items-start">
               <span className="flex-shrink-0 w-8 h-8 bg-emerald-100/20 backdrop-blur-sm rounded-full flex items-center justify-center font-bold text-emerald-100">4</span>
               <div>
-                <p className="font-semibold text-emerald-100 mb-1">Issue and download</p>
-                <p className="text-emerald-50/80">Pay ₩1,000 and download the PDF document</p>
+                <p className="font-semibold text-emerald-100 mb-1">Issue with summary (IMPORTANT!)</p>
+                <p className="text-emerald-50/80">Pay ₩700, and <span className="font-bold text-yellow-200">MUST check 등기사항요약 checkbox</span> before downloading PDF</p>
               </div>
             </li>
           </ol>

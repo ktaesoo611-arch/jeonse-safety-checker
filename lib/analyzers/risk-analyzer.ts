@@ -85,7 +85,6 @@ export interface RiskAnalysisResult {
 interface MortgageRanking {
   rank: number;
   type: string;
-  creditor: string;
   amount: number;
   registrationDate: string;
   priority: 'senior' | 'junior' | 'subordinate';
@@ -105,11 +104,15 @@ export class RiskAnalyzer {
   ): RiskAnalysisResult {
 
     // Calculate component scores
-    // NOTE: Use totalEstimatedPrincipal (실제 채권액 추정치) for LTV calculations
+    // NOTE: Use totalEstimatedPrincipal (실제 채권액 추정치) for mortgage debt
     // 채권최고액 is typically 120% of actual principal - we use estimated principal for risk assessment
-    // This provides a more accurate debt burden calculation
+    // IMPORTANT: Include both mortgage debt AND existing jeonse rights in LTV calculation
+    const totalMortgageDebt = deunggibu.totalEstimatedPrincipal;
+    const totalJeonseLeaseDebt = deunggibu.jeonseRights.reduce((sum, j) => sum + j.amount, 0);
+    const totalExistingDebt = totalMortgageDebt + totalJeonseLeaseDebt;
+
     const ltvRatio = this.calculateLTV(
-      deunggibu.totalEstimatedPrincipal,
+      totalExistingDebt,  // Include both mortgages AND jeonse rights
       proposedJeonse,
       propertyValue
     );
@@ -164,8 +167,8 @@ export class RiskAnalyzer {
     const debtRanking = this.rankDebts(deunggibu, proposedJeonse);
 
     // Calculate breakdown
-    // NOTE: Use totalEstimatedPrincipal for debt calculations (actual loan amount)
-    const totalDebt = deunggibu.totalEstimatedPrincipal;
+    // Reuse total debt calculation from above (already includes mortgages + jeonse rights)
+    const totalDebt = totalExistingDebt;
     const totalExposure = totalDebt + proposedJeonse;
     const availableEquity = propertyValue - totalExposure;
 
@@ -240,23 +243,55 @@ export class RiskAnalyzer {
    * Score debt burden (0-100)
    */
   private scoreDebtBurden(deunggibu: DeunggibuData, propertyValue: number): number {
-    // NOTE: Use totalEstimatedPrincipal for debt burden calculations (actual loan amount)
-    const debtRatio = deunggibu.totalEstimatedPrincipal / propertyValue;
+    // NOTE: Calculate total debt including mortgages AND jeonse/lease rights
+    const totalMortgageDebt = deunggibu.totalEstimatedPrincipal;
+    const totalJeonseLeaseDebt = deunggibu.jeonseRights.reduce((sum, j) => sum + j.amount, 0);
+    const totalDebt = totalMortgageDebt + totalJeonseLeaseDebt;
+    const debtRatio = totalDebt / propertyValue;
 
-    // Number of creditors matters
+    // Number of creditors matters - count both mortgages and jeonse rights
     const creditorCount = deunggibu.mortgages.length + deunggibu.jeonseRights.length;
     const creditorPenalty = Math.min(creditorCount * 5, 20); // Max 20 point penalty
 
+    console.log('DEBUG scoreDebtBurden:', {
+      totalMortgageDebt,
+      totalJeonseLeaseDebt,
+      totalDebt,
+      propertyValue,
+      debtRatio: (debtRatio * 100).toFixed(2) + '%',
+      mortgagesCount: deunggibu.mortgages.length,
+      jeonseRightsCount: deunggibu.jeonseRights.length,
+      creditorCount,
+      creditorPenalty
+    });
+
     // Base score from debt ratio
     let score = 100;
+    let debtRatioPenalty = 0;
 
-    if (debtRatio > 0.70) score -= 50;
-    else if (debtRatio > 0.60) score -= 30;
-    else if (debtRatio > 0.50) score -= 15;
-    else if (debtRatio > 0.40) score -= 5;
+    if (debtRatio > 0.70) {
+      debtRatioPenalty = 50;
+      score -= 50;
+    } else if (debtRatio > 0.60) {
+      debtRatioPenalty = 30;
+      score -= 30;
+    } else if (debtRatio > 0.50) {
+      debtRatioPenalty = 15;
+      score -= 15;
+    } else if (debtRatio > 0.40) {
+      debtRatioPenalty = 5;
+      score -= 5;
+    }
 
     // Apply creditor penalty
     score -= creditorPenalty;
+
+    console.log('DEBUG scoreDebtBurden result:', {
+      debtRatioPenalty,
+      creditorPenalty,
+      finalScore: score,
+      calculation: `100 - ${debtRatioPenalty} - ${creditorPenalty} = ${score}`
+    });
 
     return Math.max(0, score);
   }
@@ -278,6 +313,7 @@ export class RiskAnalyzer {
     if (deunggibu.hasProvisionalDisposition) score -= 30; // 가처분
 
     // Moderate issues
+    if (deunggibu.ownership.length > 1) score -= 25; // 공동소유 (Shared ownership)
     if (deunggibu.hasEasement) score -= 20; // 지역권
     if (deunggibu.hasAdvanceNotice) score -= 15; // 예고등기
     if (deunggibu.hasUnregisteredLandRights) score -= 10; // 대지권미등기
@@ -290,17 +326,51 @@ export class RiskAnalyzer {
 
   /**
    * Score market conditions (0-100)
+   *
+   * Uses statistical confidence (0-1) from linear regression R² + data quality:
+   * - High confidence (>0.7): Strong statistical trend, amplify impact
+   * - Medium confidence (0.4-0.7): Moderate trend, normal impact
+   * - Low confidence (<0.4): Weak/noisy data, reduce impact + add uncertainty penalty
+   *
+   * Confidence thresholds align with R² thresholds from trend calculation:
+   * - R² > 0.7 = excellent trend reliability (2% threshold)
+   * - R² > 0.4 = good trend reliability (3% threshold)
+   * - R² < 0.4 = poor trend reliability (5% threshold)
    */
   private scoreMarketConditions(valuation: PropertyValuation): number {
     let score = 70; // Base score
 
-    // Trend bonus/penalty
-    if (valuation.marketTrend === 'rising') score += 20;
-    if (valuation.marketTrend === 'falling') score -= 30;
+    // Determine confidence level based on statistical thresholds
+    const confidence = valuation.confidence;
+    const isHighConfidence = confidence >= 0.7;
+    const isMediumConfidence = confidence >= 0.4 && confidence < 0.7;
+    const isLowConfidence = confidence < 0.4;
 
-    // Confidence bonus
-    if (valuation.confidence > 0.8) score += 10;
-    if (valuation.confidence < 0.5) score -= 10;
+    // Apply trend with confidence-based magnitude
+    if (valuation.marketTrend === 'rising') {
+      // High confidence in rising market = less risk (bigger bonus)
+      if (isHighConfidence) {
+        score += 25; // Strong statistical evidence of growth
+      } else if (isMediumConfidence) {
+        score += 15; // Moderate evidence of growth
+      } else {
+        score += 8; // Weak evidence, small bonus
+      }
+    } else if (valuation.marketTrend === 'falling') {
+      // High confidence in falling market = more risk (bigger penalty)
+      if (isHighConfidence) {
+        score -= 35; // Strong statistical evidence of decline
+      } else if (isMediumConfidence) {
+        score -= 25; // Moderate evidence of decline
+      } else {
+        score -= 15; // Weak evidence, smaller penalty
+      }
+    }
+
+    // Low confidence overall is risky (unreliable data = uncertainty risk)
+    if (isLowConfidence) {
+      score -= 10; // Penalty for data uncertainty
+    }
 
     return Math.max(0, Math.min(100, score));
   }
@@ -309,13 +379,18 @@ export class RiskAnalyzer {
    * Score building condition (0-100)
    */
   private scoreBuildingCondition(buildingAge: number): number {
-    if (buildingAge < 5) return 100;   // New building
-    if (buildingAge < 10) return 90;   // Recent
-    if (buildingAge < 15) return 80;   // Good
-    if (buildingAge < 20) return 70;   // Acceptable
-    if (buildingAge < 25) return 60;   // Aging
-    if (buildingAge < 30) return 50;   // Old
-    return 40; // Very old
+    let score = 0;
+
+    // Base score from building age
+    if (buildingAge < 5) score = 100;   // New building
+    else if (buildingAge < 10) score = 90;   // Recent
+    else if (buildingAge < 15) score = 80;   // Good
+    else if (buildingAge < 20) score = 70;   // Acceptable
+    else if (buildingAge < 25) score = 60;   // Aging
+    else if (buildingAge < 30) score = 50;   // Old
+    else score = 40; // Very old
+
+    return Math.max(0, Math.min(100, score));
   }
 
   /**
@@ -546,8 +621,11 @@ export class RiskAnalyzer {
     }
 
     // Debt burden
-    // NOTE: Use totalEstimatedPrincipal for debt calculations (actual loan amount)
-    const totalDebt = deunggibu.totalEstimatedPrincipal;
+    // NOTE: Use totalEstimatedPrincipal for mortgages (actual loan amount)
+    // IMPORTANT: Include jeonse rights and lease rights in total debt calculation
+    const totalMortgageDebt = deunggibu.totalEstimatedPrincipal;
+    const totalJeonseLeaseDebt = deunggibu.jeonseRights.reduce((sum, j) => sum + j.amount, 0);
+    const totalDebt = totalMortgageDebt + totalJeonseLeaseDebt;
     const debtRatio = totalDebt / propertyValue;
 
     if (debtRatio > 0.60) {
@@ -568,7 +646,7 @@ export class RiskAnalyzer {
         type: 'senior_mortgage',
         severity: 'HIGH',
         title: 'Bank Mortgage Has Priority Over Your Jeonse',
-        description: `${seniorMortgage.creditor} has ₩${(seniorMortgage.estimatedPrincipal / 100000000).toFixed(1)}억 senior mortgage. In foreclosure, they get paid first. You do NOT qualify for 소액보증금 priority.`,
+        description: `Senior mortgage of ₩${(seniorMortgage.estimatedPrincipal / 100000000).toFixed(1)}억 exists. In foreclosure, they get paid first. You do NOT qualify for 소액보증금 priority.`,
         impact: -30,
         category: 'priority'
       });
@@ -590,11 +668,35 @@ export class RiskAnalyzer {
     // Multiple creditors
     const creditorCount = deunggibu.mortgages.length + deunggibu.jeonseRights.length;
     if (creditorCount >= 3) {
+      // Build description based on what types of debts exist
+      // Note: jeonseRights includes both 전세권 (jeonse) and 임차권 (lease/tenancy rights)
+      const types: string[] = [];
+
+      if (deunggibu.mortgages.length > 0) {
+        types.push(`${deunggibu.mortgages.length} mortgage${deunggibu.mortgages.length > 1 ? 's' : ''}`);
+      }
+
+      if (deunggibu.jeonseRights.length > 0) {
+        // Check if there are different types of rights
+        const jeonseCount = deunggibu.jeonseRights.filter(r => r.type === '전세권설정').length;
+        const leaseCount = deunggibu.jeonseRights.filter(r => r.type === '임차권등기' || r.type === '임차권설정').length;
+
+        if (jeonseCount > 0 && leaseCount > 0) {
+          types.push(`${jeonseCount} jeonse + ${leaseCount} lease`);
+        } else if (jeonseCount > 0) {
+          types.push(`${jeonseCount} jeonse`);
+        } else if (leaseCount > 0) {
+          types.push(`${leaseCount} lease`);
+        }
+      }
+
+      const debtTypes = types.join(' + ');
+
       risks.push({
         type: 'multiple_creditors',
         severity: 'MEDIUM',
         title: 'Multiple Existing Creditors',
-        description: `Property has ${creditorCount} creditors (mortgages + jeonse). Complex repayment priority in foreclosure.`,
+        description: `Property has ${creditorCount} creditors (${debtTypes}). Complex repayment priority in foreclosure.`,
         impact: -15,
         category: 'debt'
       });
@@ -620,6 +722,60 @@ export class RiskAnalyzer {
         title: '가등기 (Provisional Registration)',
         description: 'Someone has future claim to this property. Could affect your rights.',
         impact: -35,
+        category: 'legal'
+      });
+    }
+
+    // Shared ownership (공동소유)
+    if (deunggibu.ownership.length > 1) {
+      const ownerNames = deunggibu.ownership.map(o => `${o.ownerName} (${o.ownershipPercentage}%)`).join(', ');
+      risks.push({
+        type: 'shared_ownership',
+        severity: 'MEDIUM',
+        title: 'Shared Ownership (공동소유)',
+        description: `Property is co-owned by multiple people: ${ownerNames}. All co-owners must agree to any transaction. If one owner has debt problems, their share could be seized or auctioned, affecting your jeonse rights.`,
+        impact: -25,
+        category: 'legal'
+      });
+    }
+
+    // Existing jeonse/lease rights (전세권, 임차권)
+    if (deunggibu.jeonseRights.length > 0) {
+      const totalAmount = deunggibu.jeonseRights.reduce((sum, j) => sum + j.amount, 0);
+
+      // Separate by type for better labeling
+      const jeonseRights = deunggibu.jeonseRights.filter(j => j.type === '전세권');
+      const leaseRights = deunggibu.jeonseRights.filter(j => j.type === '임차권설정' || j.type === '임차권등기' || j.type === '임차권등기명령');
+
+      // Build list without tenant names
+      const rightsList = deunggibu.jeonseRights.map((j, idx) => {
+        let typeLabel = '전세권';
+        if (j.type === '임차권설정') typeLabel = '임차권';
+        else if (j.type === '임차권등기' || j.type === '임차권등기명령') typeLabel = '임차권등기';
+
+        return `#${idx + 1}: ₩${(j.amount / 100000000).toFixed(1)}억 (${typeLabel})`;
+      }).join(', ');
+
+      // Determine title and type based on what types exist
+      let title = '';
+      let riskType = '';
+      if (jeonseRights.length > 0 && leaseRights.length > 0) {
+        title = `Existing Jeonse & Lease Rights (${jeonseRights.length} 전세권, ${leaseRights.length} 임차권)`;
+        riskType = 'existing_jeonse_lease';
+      } else if (leaseRights.length > 0) {
+        title = `Existing Lease Rights (${leaseRights.length} 임차권)`;
+        riskType = 'existing_lease';
+      } else {
+        title = `Existing Jeonse Rights (${jeonseRights.length} 전세권)`;
+        riskType = 'existing_jeonse';
+      }
+
+      risks.push({
+        type: riskType,
+        severity: deunggibu.jeonseRights.length >= 2 ? 'HIGH' : 'MEDIUM',
+        title,
+        description: `Property has ${deunggibu.jeonseRights.length} registered tenant claim(s) with total deposits of ₩${(totalAmount / 100000000).toFixed(1)}억. ${rightsList}. These claims have priority and will compete with you for repayment in case of foreclosure.`,
+        impact: deunggibu.jeonseRights.length >= 2 ? -30 : -20,
         category: 'legal'
       });
     }
@@ -755,39 +911,67 @@ export class RiskAnalyzer {
 
   /**
    * Rank all debts by priority
+   * Includes: mortgages (근저당권), existing jeonse rights (전세권), and proposed jeonse
    */
   private rankDebts(deunggibu: DeunggibuData, proposedJeonse: number): MortgageRanking[] {
     const ranking: MortgageRanking[] = [];
 
-    // Add mortgages
-    deunggibu.mortgages.forEach((mortgage, index) => {
+    // Add mortgages (temporarily without rank)
+    deunggibu.mortgages.forEach((mortgage) => {
       ranking.push({
-        rank: index + 1,
+        rank: 0, // Will be assigned after sorting
         type: '근저당권 (Mortgage)',
-        creditor: mortgage.creditor,
         amount: mortgage.estimatedPrincipal,
         registrationDate: mortgage.registrationDate,
-        priority: index === 0 ? 'senior' : index === 1 ? 'junior' : 'subordinate'
+        priority: 'subordinate' // Will be recalculated after sorting
       });
     });
 
-    // Add existing jeonse rights
+    // Add existing jeonse rights (전세권) and lease rights (임차권)
     deunggibu.jeonseRights.forEach((jeonse) => {
+      // Determine the display label based on the type
+      let typeLabel = '전세권 (Jeonse Right)'; // default
+
+      if (jeonse.type === '임차권등기' || jeonse.type === '임차권등기명령') {
+        typeLabel = '임차권등기 (Registered Lease Right)';
+      } else if (jeonse.type === '임차권설정') {
+        typeLabel = '임차권 (Lease Right)';
+      } else if (jeonse.type === '전세권') {
+        typeLabel = '전세권 (Jeonse Right)';
+      }
+
       ranking.push({
-        rank: ranking.length + 1,
-        type: '전세권 (Jeonse Right)',
-        creditor: jeonse.rightHolder,
-        amount: jeonse.deposit,
+        rank: 0, // Will be assigned after sorting
+        type: typeLabel,
+        amount: jeonse.amount,
         registrationDate: jeonse.registrationDate,
-        priority: 'subordinate'
+        priority: 'subordinate' // Will be recalculated after sorting
       });
     });
 
-    // Add proposed jeonse (will be registered after payment)
+    // Sort by registration date (earliest first = highest priority)
+    ranking.sort((a, b) => {
+      // Handle special case where date might be invalid
+      if (!a.registrationDate || !b.registrationDate) return 0;
+      return a.registrationDate.localeCompare(b.registrationDate);
+    });
+
+    // Assign ranks and priority labels based on sorted order
+    ranking.forEach((item, index) => {
+      item.rank = index + 1;
+      if (index === 0) {
+        item.priority = 'senior';
+      } else if (index === 1) {
+        item.priority = 'junior';
+      } else {
+        item.priority = 'subordinate';
+      }
+    });
+
+    // Add proposed jeonse (will be registered after payment, so it's last)
     ranking.push({
       rank: ranking.length + 1,
       type: '전세 (Your Jeonse) - PROPOSED',
-      creditor: 'You',
       amount: proposedJeonse,
       registrationDate: '미등록 (To be registered)',
       priority: 'subordinate'

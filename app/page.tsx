@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { useScrollAnimation } from '@/lib/hooks/useScrollAnimation';
+import Header from '@/components/Header';
 
 export default function LandingPage() {
   const problemsSection = useScrollAnimation({ threshold: 0.2 });
@@ -12,21 +13,10 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-100/50 z-50">
-        <div className="container mx-auto px-6 py-4 max-w-7xl">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-              Pre-sale safety check
-            </h1>
-            <div className="flex gap-4">
-              <Link href="/analyze">
-                <Button className="shadow-lg shadow-emerald-900/10">Start your analysis</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Header with Auth */}
+      <div className="fixed top-0 w-full z-50">
+        <Header />
+      </div>
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-teal-900 via-emerald-900 to-teal-950 pt-32 pb-24 overflow-hidden">
@@ -95,7 +85,7 @@ export default function LandingPage() {
               </div>
               <div className="flex flex-col items-center gap-2">
                 <div className="w-12 h-12 rounded-full bg-emerald-100/10 backdrop-blur-sm border border-emerald-100/20 flex items-center justify-center mb-2">
-                  <span className="text-2xl">🇬🇧</span>
+                  <span className="text-2xl">🇺🇸</span>
                 </div>
                 <div className="text-white font-medium">English</div>
                 <div className="text-emerald-200/70 text-sm">Full translation</div>
@@ -173,8 +163,8 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto space-y-8">
             <StepCard
               number="1"
-              title="Enter property address"
-              description="Input the address of the property you're considering for jeonse."
+              title="Find your apartment"
+              description="Select the district, neighborhood, and apartment name from the dropdown menus."
               time="30 sec"
             />
             <StepCard
@@ -281,6 +271,119 @@ export default function LandingPage() {
                 Start analysis now →
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Coverage Information */}
+      <section className="bg-gradient-to-b from-white to-gray-50 py-24">
+        <div className="container mx-auto px-6 max-w-6xl">
+          <div className="text-center mb-16">
+            <div className="inline-block mb-4 px-4 py-1.5 bg-emerald-100 rounded-full">
+              <span className="text-emerald-700 text-sm font-semibold">Service Coverage</span>
+            </div>
+            <h3 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight" style={{ letterSpacing: '-0.03em' }}>
+              Available Now
+            </h3>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Currently serving Seoul apartments during beta testing
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-16">
+            <div className="group bg-white rounded-2xl p-8 shadow-sm shadow-gray-900/5 border-2 border-emerald-500 hover:shadow-xl hover:shadow-emerald-900/10 transition-all">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center">
+                  <span className="text-white text-2xl">🏢</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="text-xl font-bold text-gray-900 tracking-tight">Property Type</h4>
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">LIVE</span>
+                  </div>
+                  <p className="text-gray-600 text-lg mb-1">Apartments</p>
+                  <p className="text-gray-500 text-sm">아파트</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="group bg-white rounded-2xl p-8 shadow-sm shadow-gray-900/5 border-2 border-emerald-500 hover:shadow-xl hover:shadow-emerald-900/10 transition-all">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center">
+                  <span className="text-white text-2xl">📍</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="text-xl font-bold text-gray-900 tracking-tight">Location</h4>
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">LIVE</span>
+                  </div>
+                  <p className="text-gray-600 text-lg mb-1">Seoul</p>
+                  <p className="text-gray-500 text-sm">서울특별시</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <div className="inline-block mb-4 px-4 py-1.5 bg-gray-100 rounded-full">
+                <span className="text-gray-600 text-sm font-semibold">Coming Soon</span>
+              </div>
+              <h4 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Expanding Coverage</h4>
+              <p className="text-gray-600">More property types and regions in the near future</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl p-8 shadow-sm shadow-gray-900/5 border border-gray-200 hover:shadow-lg transition-all">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <span className="text-gray-400 text-2xl">🏘️</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-bold text-gray-900 mb-2 tracking-tight">Additional Property Types</h4>
+                    <ul className="space-y-1.5 text-gray-600">
+                      <li className="flex items-center gap-2">
+                        <span className="text-gray-400">•</span>
+                        <span>Villa (연립)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-gray-400">•</span>
+                        <span>Multi-family (다세대)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-gray-400">•</span>
+                        <span>Officetel (오피스텔)</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-8 shadow-sm shadow-gray-900/5 border border-gray-200 hover:shadow-lg transition-all">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <span className="text-gray-400 text-2xl">🗺️</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-bold text-gray-900 mb-2 tracking-tight">More Regions</h4>
+                    <ul className="space-y-1.5 text-gray-600">
+                      <li className="flex items-center gap-2">
+                        <span className="text-gray-400">•</span>
+                        <span>Gyeonggi Province (경기도)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-gray-400">•</span>
+                        <span>Incheon (인천)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-gray-400">•</span>
+                        <span>Other major cities</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

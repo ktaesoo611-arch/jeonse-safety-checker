@@ -28,7 +28,7 @@ export interface ValuationResult {
   valueLow: number;
   valueMid: number;
   valueHigh: number;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: number; // 0-1 range (statistical confidence based on R² and data quality)
   recentSales: Array<{
     date: string;
     price: number;
@@ -57,12 +57,12 @@ export interface OwnershipInfo {
 export interface MortgageInfo {
   priority: number;
   type: string; // 근저당권, 전세권, etc.
-  creditor: string;
   maxSecuredAmount: number; // 채권최고액
   estimatedPrincipal: number; // Estimated actual loan (채권최고액 / 1.2)
   registrationDate: string;
   status: 'active' | 'cancelled';
   seniority?: 'senior' | 'junior' | 'subordinate'; // Debt seniority level
+  creditor?: string; // Extracted but not displayed (for internal use only)
 }
 
 export interface LienInfo {
@@ -85,6 +85,7 @@ export interface DeunggibuData {
   // Property info
   address: string;
   buildingName?: string;
+  buildingYear?: number;
   area: number;
   landArea?: number;
 
@@ -174,8 +175,86 @@ export interface AnalysisResult {
   riskLevel: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   risks: RiskFinding[];
 
+  // Payment
+  paymentId?: string;
+  paymentStatus?: PaymentStatus;
+
   // Status
   status: 'pending' | 'processing' | 'completed' | 'failed';
   createdAt: string;
   completedAt?: string;
+}
+
+// Payment Types
+export type PaymentStatus = 'pending' | 'approved' | 'canceled' | 'failed' | 'refunded';
+
+export type PaymentMethod = '카드' | '가상계좌' | '간편결제' | '계좌이체' | '휴대폰';
+
+export interface PaymentData {
+  id: string;
+  analysisId?: string;
+
+  // Toss Payments fields
+  paymentKey?: string;
+  orderId: string;
+  orderName: string;
+
+  // Payment details
+  amount: number;
+  currency: string;
+  method?: PaymentMethod;
+
+  // Customer info
+  customerEmail?: string;
+  customerName?: string;
+  customerPhone?: string;
+
+  // Status
+  status: PaymentStatus;
+
+  // Toss response data
+  approvedAt?: string;
+  receiptUrl?: string;
+  cardInfo?: Record<string, any>;
+  virtualAccountInfo?: Record<string, any>;
+  transferInfo?: Record<string, any>;
+  mobilePhoneInfo?: Record<string, any>;
+
+  // Error info
+  tossFailureCode?: string;
+  tossFailureMessage?: string;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePaymentRequest {
+  analysisId: string;
+  amount: number;
+  orderName: string;
+  customerEmail?: string;
+  customerName?: string;
+}
+
+export interface TossPaymentResponse {
+  paymentKey: string;
+  orderId: string;
+  status: string;
+  totalAmount: number;
+  balanceAmount: number;
+  suppliedAmount: number;
+  vat: number;
+  method: string;
+  version: string;
+  approvedAt: string;
+  requestedAt: string;
+  receiptUrl?: string;
+  card?: Record<string, any>;
+  virtualAccount?: Record<string, any>;
+  transfer?: Record<string, any>;
+  mobilePhone?: Record<string, any>;
+  failure?: {
+    code: string;
+    message: string;
+  };
 }

@@ -14,10 +14,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { promises as fs } from 'fs';
 import { ocrService } from '@/lib/services/ocr-service';
 import { DeunggibuParser } from '@/lib/analyzers/deunggibu-parser';
+import { BuildingLedgerParser } from '@/lib/analyzers/building-ledger-parser';
 import { RiskAnalyzer } from '@/lib/analyzers/risk-analyzer';
 import { MolitAPI, getDistrictCode } from '@/lib/apis/molit';
+import { parseFromTables } from '@/lib/analyzers/table-parser';
+import { LLMParser } from '@/lib/services/llm-parser';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -82,7 +86,7 @@ async function fetchPropertyValuation(
         lawdCd,
         nameVariant,
         area,
-        6
+        12 // Increased from 6 to 12 months for better coverage (handles trading gaps + fuzzy matching)
       );
 
       if (result.length > 0) {
@@ -148,25 +152,53 @@ async function performRealAnalysis(
   try {
     console.log('Starting OCR extraction...');
 
-    // Step 1: Extract text from PDF using OCR
-    const ocrText = await ocrService.extractTextFromPDF(buffer);
+    // Step 1: Extract STRUCTURED document from PDF using Document AI
+    console.log('🔍 Extracting structured document data (text + tables)...');
+    const document = await ocrService.extractStructuredDocument(buffer);
 
-    if (!ocrText || ocrText.length < 50) {
+    if (!document || !document.text || document.text.length < 50) {
       console.warn('OCR returned minimal text, falling back to mock analysis');
       return generateMockRiskAnalysis(analysisId, proposedJeonse, address);
     }
 
-    console.log(`OCR extracted ${ocrText.length} characters`);
+    console.log(`✅ Document AI extraction complete: ${document.text.length} characters`);
 
-    // Step 2: Parse deunggibu data from OCR text
-    const parser = new DeunggibuParser();
-    const deunggibuData = parser.parse(ocrText);
+    // Step 2: TRY LLM-BASED PARSING FIRST (most accurate, handles OCR corruption)
+    let deunggibuData: any;
+    let parsingMethod: string;
+
+    try {
+      console.log('🤖 Attempting LLM-based parsing with Claude...');
+      const llmParser = new LLMParser();
+      deunggibuData = await llmParser.parseDeunggibu(document.text || '');
+
+      console.log(`✅ Using LLM-based parsing (confidence: ${(deunggibuData.confidence * 100).toFixed(1)}%)`);
+      console.log(`   - Mortgages found: ${deunggibuData.mortgages.length}`);
+      console.log(`   - Jeonse rights found: ${deunggibuData.jeonseRights.length}`);
+      console.log(`   - Liens found: ${deunggibuData.liens.length}`);
+
+      parsingMethod = 'llm';
+    } catch (llmError) {
+      // Fall back to regex-based text parsing if LLM fails
+      console.error('⚠️  LLM parsing failed, falling back to regex text parsing:', llmError);
+      parsingMethod = 'text';
+
+      const parser = new DeunggibuParser();
+      deunggibuData = parser.parse(document.text || '');
+      deunggibuData.parsingMethod = 'text';
+      deunggibuData.confidence = 0.7; // Lower confidence for regex parsing
+    }
+
+    const ocrText = document.text;
 
     console.log('Parsed deunggibu data:', {
+      parsingMethod: deunggibuData.parsingMethod,
       mortgages: deunggibuData.mortgages.length,
-      liens: deunggibuData.liens.length,
+      jeonseRights: deunggibuData.jeonseRights?.length || 0,
+      liens: deunggibuData.liens?.length || 0,
       totalMortgageAmount: deunggibuData.totalMortgageAmount,
-      totalEstimatedPrincipal: deunggibuData.totalEstimatedPrincipal
+      totalEstimatedPrincipal: deunggibuData.totalEstimatedPrincipal,
+      confidence: deunggibuData.confidence ? `${(deunggibuData.confidence * 100).toFixed(1)}%` : 'N/A'
     });
 
     // Step 2.5: Fetch user-provided building name from properties table
@@ -180,6 +212,7 @@ async function performRealAnalysis(
     console.log('Analysis data:', { property_id: analysis?.property_id, error: analysisError });
 
     let userProvidedBuildingName: string | undefined;
+    let userProvidedAddress: string | undefined;
     if (analysis?.property_id) {
       const { data: property, error: propertyError } = await supabase
         .from('properties')
@@ -194,19 +227,28 @@ async function performRealAnalysis(
       });
 
       userProvidedBuildingName = property?.building_name;
-      console.log('User-provided building name from Step 1:', userProvidedBuildingName);
+      userProvidedAddress = property?.address;
+      console.log('User-provided from Step 1:', {
+        buildingName: userProvidedBuildingName,
+        address: userProvidedAddress
+      });
     } else {
       console.log('No property_id found in analysis');
     }
 
     // Step 3: Fetch property value from MOLIT API
     console.log('Fetching property valuation from MOLIT API...');
-    // Use user-provided building name if available, fallback to OCR-extracted name
+    // Use user-provided data if available, fallback to OCR-extracted data
     const buildingNameForValuation = userProvidedBuildingName || deunggibuData.buildingName;
-    console.log('Building name for MOLIT API:', buildingNameForValuation);
+    const addressForValuation = userProvidedAddress || deunggibuData.address;
+    console.log('Data for MOLIT API:', {
+      buildingName: buildingNameForValuation,
+      address: addressForValuation,
+      area: deunggibuData.area
+    });
 
     const molitValuation = await fetchPropertyValuation(
-      deunggibuData.address,
+      addressForValuation,
       buildingNameForValuation,
       deunggibuData.area
     );
@@ -246,8 +288,20 @@ async function performRealAnalysis(
 
     // Step 6: Run risk analysis
     const riskAnalyzer = new RiskAnalyzer();
-    const buildingAge = 10; // TODO: Extract from building register
 
+    // Calculate building age from extracted year
+    const currentYear = new Date().getFullYear();
+    const buildingAge = deunggibuData.buildingYear
+      ? currentYear - deunggibuData.buildingYear
+      : 10; // Fallback to 10 if extraction fails
+
+    console.log('Building year info:', {
+      extractedYear: deunggibuData.buildingYear,
+      currentYear,
+      calculatedAge: buildingAge
+    });
+
+    // Step 5: Perform risk analysis
     const riskAnalysis = riskAnalyzer.analyze(
       estimatedValue,
       proposedJeonse,
@@ -268,7 +322,7 @@ async function performRealAnalysis(
       debtRankingCount: riskAnalysis.debtRanking?.length
     });
 
-    // Step 7: Update database with results
+    // Step 7: Update database with parsed document (shows 75% progress)
     await supabase
       .from('uploaded_documents')
       .update({
@@ -280,21 +334,63 @@ async function performRealAnalysis(
       })
       .eq('analysis_id', analysisId);
 
+    // Step 8: Delay to ensure frontend sees 75% state (2+ polls needed)
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    // Step 9: Mark as completed WITHOUT results yet (shows 85% progress)
     await supabase
       .from('analysis_results')
       .update({
         status: 'completed',
-        safety_score: riskAnalysis.overallScore,
-        risk_level: riskAnalysis.riskLevel,
-        risks: riskAnalysis.risks,
-        deunggibu_data: {
-          ...riskAnalysis,
-          deunggibu: deunggibuData,
-          valuation
-        },
         completed_at: new Date().toISOString()
       })
       .eq('id', analysisId);
+
+    // Step 10: Another delay for frontend to catch 85% state (2+ polls needed)
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    // Step 11: Finally add the analysis results (shows 100% progress)
+    const updateData = {
+      safety_score: riskAnalysis.overallScore,
+      risk_level: riskAnalysis.riskLevel,
+      risks: riskAnalysis.risks,
+      deunggibu_data: {
+        ...riskAnalysis,
+        deunggibu: deunggibuData,
+        valuation
+      }
+    };
+
+    console.log('📝 Attempting to save analysis results...');
+    console.log('   Analysis ID:', analysisId);
+    console.log('   Safety Score:', updateData.safety_score);
+    console.log('   Risk Level:', updateData.risk_level);
+    console.log('   Has deunggibu_data:', !!updateData.deunggibu_data);
+    console.log('   deunggibu_data keys:', Object.keys(updateData.deunggibu_data));
+
+    const { data: updateResult, error: resultsError } = await supabase
+      .from('analysis_results')
+      .update(updateData)
+      .eq('id', analysisId)
+      .select();
+
+    if (resultsError) {
+      console.error('❌ CRITICAL: Failed to save analysis results to database:', resultsError);
+      console.error('   Error code:', resultsError.code);
+      console.error('   Error message:', resultsError.message);
+      console.error('   Error details:', resultsError.details);
+      throw new Error(`Failed to save analysis results: ${resultsError.message}`);
+    }
+
+    if (!updateResult || updateResult.length === 0) {
+      console.error('❌ CRITICAL: Update returned no rows!');
+      console.error('   This means no analysis with ID', analysisId, 'was found');
+      throw new Error('Failed to save analysis results: No rows updated');
+    }
+
+    console.log('✅ Analysis results saved successfully');
+    console.log('   Updated rows:', updateResult.length);
+    console.log('   Verification - deunggibu_data is:', updateResult[0].deunggibu_data ? 'present' : 'NULL');
 
     return { success: true, ocrText, deunggibuData, riskAnalysis };
 
@@ -491,18 +587,64 @@ async function generateMockRiskAnalysis(
     ]
   };
 
-  // Update analysis record with completed status and risk analysis
+  // First, update document with mock parsed data to trigger 75% progress
+  const { data: document } = await supabase
+    .from('uploaded_documents')
+    .select('*')
+    .eq('analysis_id', analysisId)
+    .single();
+
+  if (document) {
+    await supabase
+      .from('uploaded_documents')
+      .update({
+        parsed_data: {
+          mockData: true,
+          mortgageAmount: mockMortgageAmount,
+          extractedAt: new Date().toISOString()
+        }
+      })
+      .eq('id', document.id);
+  }
+
+  console.log('[MOCK] Document parsed, frontend should see 75% progress');
+
+  // Delay to let frontend see 75% progress from document parsing (2+ polls)
+  await new Promise(resolve => setTimeout(resolve, 2500));
+
+  console.log('[MOCK] Setting status to completed (85% progress)');
+
+  // Mark as completed (without results - shows 85% progress)
   await supabase
     .from('analysis_results')
     .update({
       status: 'completed',
-      safety_score: overallScore,
-      risk_level: riskLevel,
-      risks: risks,
-      deunggibu_data: riskAnalysis,
       completed_at: new Date().toISOString()
     })
     .eq('id', analysisId);
+
+  // Add delay for smoother progress bar transitions (2+ polls for 85%)
+  await new Promise(resolve => setTimeout(resolve, 2500));
+
+  console.log('[MOCK] Adding results (100% progress)');
+
+  // Now add the analysis results (shows 100% progress)
+  const { error: resultsError } = await supabase
+    .from('analysis_results')
+    .update({
+      safety_score: overallScore,
+      risk_level: riskLevel,
+      risks: risks,
+      deunggibu_data: riskAnalysis
+    })
+    .eq('id', analysisId);
+
+  if (resultsError) {
+    console.error('❌ CRITICAL [MOCK]: Failed to save analysis results to database:', resultsError);
+    throw new Error(`Failed to save mock analysis results: ${resultsError.message}`);
+  } else {
+    console.log('✅ [MOCK] Analysis results saved successfully');
+  }
 
   return { success: true, mock: true };
 }
@@ -594,17 +736,33 @@ export async function POST(request: NextRequest) {
         uploadedAt: document.created_at,
         fileSize: buffer.length,
         status: result.success ? 'parsed' : 'failed',
-        usedMock: result.mock || false,
-        note: result.mock ? 'Used mock analysis (OCR unavailable or failed)' : 'Real OCR and parsing completed',
+        usedMock: 'mock' in result ? result.mock : false,
+        note: ('mock' in result && result.mock) ? 'Used mock analysis (OCR unavailable or failed)' : 'Real OCR and parsing completed',
       };
 
     } else if (document.document_type === 'building_ledger') {
-      // Parse 건축물대장 (simplified for now)
+      // Parse 건축물대장
+      console.log('Parsing building ledger document...');
+
+      const fileBuffer = await fs.readFile(document.file_path);
+      const ocrText = await ocrService.extractTextFromPDF(fileBuffer);
+      const buildingParser = new BuildingLedgerParser();
+      const buildingData = buildingParser.parse(ocrText);
+
+      console.log('Building ledger parsed:', {
+        hasViolation: buildingData.hasViolation,
+        violationCount: buildingData.violationHistory.length,
+        address: buildingData.address
+      });
+
       parsedData = {
         documentType: 'building_ledger',
         fileName: document.original_filename,
         uploadedAt: document.created_at,
-        note: 'Building ledger parsing not yet implemented',
+        buildingData: buildingData,
+        hasViolation: buildingData.hasViolation,
+        violationSummary: buildingParser.summarizeViolations(buildingData),
+        status: 'parsed',
       };
     } else {
       return NextResponse.json(

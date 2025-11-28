@@ -64,9 +64,15 @@ export class MolitAPI {
   async getRecentTransactionsForApartment(
     lawdCd: string,
     apartmentName: string,
-    area: number,
+    area: number | undefined,
     monthsBack: number = 6
   ): Promise<MolitTransaction[]> {
+    console.log(`\n🔍 MOLIT API Query Details:`);
+    console.log(`   lawdCd: "${lawdCd}"`);
+    console.log(`   apartmentName: "${apartmentName}"`);
+    console.log(`   area: ${area}`);
+    console.log(`   monthsBack: ${monthsBack}`);
+
     const transactions: MolitTransaction[] = [];
     const today = new Date();
 
@@ -80,13 +86,54 @@ export class MolitAPI {
       const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
 
       try {
+        console.log(`\n📅 Fetching ${yearMonth}...`);
         const monthData = await this.getApartmentTransactions(lawdCd, yearMonth);
+        console.log(`   → Got ${monthData.length} total transactions for this district+month`);
 
         // Filter for specific apartment and area
-        const filtered = monthData.filter(t =>
-          t.apartmentName === apartmentName &&
-          Math.abs(t.exclusiveArea - area) < 2 // Within 2㎡
-        );
+        // Handle building phases: "텐즈힐" should match "텐즈힐(1단지)", "텐즈힐(2단지)", etc.
+        // Handle suffix variations: "두산아파트" should match "두산", "두산APT", etc.
+        const filtered = monthData.filter(t => {
+          // Normalize names for comparison (remove common suffixes)
+          const normalizeAptName = (name: string): string => {
+            return name
+              .replace(/아파트$/g, '')  // Remove "아파트" suffix
+              .replace(/APT$/gi, '')    // Remove "APT" suffix
+              .replace(/\s+/g, '')      // Remove spaces
+              .trim();
+          };
+
+          const normalizedQuery = normalizeAptName(apartmentName);
+          const normalizedTarget = normalizeAptName(t.apartmentName);
+
+          // Check name match with multiple strategies:
+          const nameMatches =
+            t.apartmentName === apartmentName ||                    // Exact match
+            normalizedTarget === normalizedQuery ||                 // Normalized match
+            t.apartmentName.startsWith(apartmentName + '(') ||      // Phase match (e.g., "텐즈힐(1단지)")
+            normalizedTarget.startsWith(normalizedQuery + '(');     // Normalized phase match
+
+          if (!nameMatches) {
+            return false;
+          }
+
+          // If area is specified, check area match (within 2㎡)
+          if (area !== undefined) {
+            const areaMatches = Math.abs(t.exclusiveArea - area) < 2;
+            if (!areaMatches) {
+              console.log(`   ⚠️  Name matched "${t.apartmentName}" but area didn't: ${t.exclusiveArea}㎡ vs ${area}㎡`);
+            }
+            return areaMatches;
+          }
+
+          // If no area specified, return all transactions for this building
+          return true;
+        });
+
+        console.log(`   → After filtering: ${filtered.length} transactions match`);
+        if (filtered.length > 0) {
+          console.log(`   ✅ Sample match: ${filtered[0].apartmentName}, ${filtered[0].exclusiveArea}㎡, ₩${(filtered[0].transactionAmount / 100000000).toFixed(2)}억`);
+        }
 
         transactions.push(...filtered);
       } catch (error) {

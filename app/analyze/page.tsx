@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
 import Link from 'next/link';
-import { SEOUL_DISTRICTS, SEOUL_APARTMENTS, searchApartments } from '@/lib/data/address-data';
+import { SEOUL_DISTRICTS, Apartment } from '@/lib/data/address-data';
 
 export default function AnalyzePage() {
   const router = useRouter();
@@ -21,6 +21,8 @@ export default function AnalyzePage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apartmentSearch, setApartmentSearch] = useState('');
+  const [filteredApartments, setFilteredApartments] = useState<Apartment[]>([]);
+  const [debugInfo, setDebugInfo] = useState('');
 
   // Get available dongs for selected district
   const availableDongs = useMemo(() => {
@@ -29,17 +31,31 @@ export default function AnalyzePage() {
     return selectedDistrict?.dongs || [];
   }, [formData.district]);
 
-  // Search apartments based on input, filtered by selected dong
-  const filteredApartments = useMemo(() => {
-    if (!apartmentSearch) {
-      // Show first 20 by default, but filter by dong if selected
-      const filtered = formData.dong
-        ? SEOUL_APARTMENTS.filter(apt => apt.dong === formData.dong)
-        : SEOUL_APARTMENTS;
-      return filtered.slice(0, 20);
-    }
-    // Search with dong/district filter
-    return searchApartments(apartmentSearch, formData.dong, formData.district).slice(0, 20);
+  // Fetch apartments from API when search query or filters change
+  useEffect(() => {
+    const fetchApartments = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (apartmentSearch) params.append('q', apartmentSearch);
+        if (formData.dong) params.append('dong', formData.dong);
+        if (formData.district) params.append('district', formData.district);
+        params.append('limit', '20');
+
+        setDebugInfo(`Fetching... params: ${params.toString()}`);
+        const response = await fetch(`/api/apartments?${params.toString()}`);
+        const data = await response.json();
+        setDebugInfo(`Got ${data.apartments?.length || 0} results. Success: ${data.success}`);
+
+        if (data.success) {
+          setFilteredApartments(data.apartments);
+        }
+      } catch (error) {
+        console.error('Failed to fetch apartments:', error);
+        setFilteredApartments([]);
+      }
+    };
+
+    fetchApartments();
   }, [apartmentSearch, formData.dong, formData.district]);
 
   // Reset dong when district changes
@@ -92,8 +108,8 @@ export default function AnalyzePage() {
       const data = await response.json();
 
       if (response.ok && data.analysisId) {
-        // Redirect to upload page
-        router.push(`/analyze/${data.analysisId}/upload`);
+        // Redirect to payment page
+        router.push(`/analyze/${data.analysisId}/payment`);
       } else {
         alert('Analysis creation failed: ' + (data.error || 'Unknown error'));
       }
@@ -111,7 +127,7 @@ export default function AnalyzePage() {
       <header className="bg-white border-b border-gray-100">
         <div className="container mx-auto px-6 py-4 max-w-7xl">
           <Link href="/" className="text-2xl font-bold text-gray-900 tracking-tight hover:text-emerald-700 transition-colors">
-            Pre-sale safety check
+            Jeonse Safety Check
           </Link>
         </div>
       </header>
@@ -130,7 +146,7 @@ export default function AnalyzePage() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <div className="inline-block px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-sm font-semibold mb-6 border border-emerald-100">
-            Step 1 of 3
+            Step 1 of 4
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight" style={{ letterSpacing: '-0.03em' }}>
             Start your safety analysis
@@ -207,21 +223,36 @@ export default function AnalyzePage() {
               {apartmentSearch && !formData.building && (
                 <div className="absolute z-10 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
                   {filteredApartments.length > 0 ? (
-                    filteredApartments.map((apt, index) => (
+                    <>
+                      {filteredApartments.map((apt, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleApartmentSelect(apt.name)}
+                          className="w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors border-b border-gray-100 last:border-0"
+                        >
+                          <div className="font-semibold text-gray-900">{apt.name}</div>
+                          <div className="text-sm text-gray-500">{apt.nameEn}</div>
+                        </button>
+                      ))}
                       <button
-                        key={index}
                         type="button"
-                        onClick={() => handleApartmentSelect(apt.name)}
-                        className="w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors border-b border-gray-100 last:border-0"
+                        onClick={() => handleApartmentSelect(apartmentSearch)}
+                        className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-t-2 border-gray-200 bg-gray-50"
                       >
-                        <div className="font-semibold text-gray-900">{apt.name}</div>
-                        <div className="text-sm text-gray-500">{apt.nameEn}</div>
+                        <div className="font-semibold text-blue-600">✏️ Use custom name: "{apartmentSearch}"</div>
+                        <div className="text-sm text-gray-500">If your building isn't listed above</div>
                       </button>
-                    ))
+                    </>
                   ) : (
-                    <div className="px-4 py-3 text-gray-500 text-sm">
-                      No matches found. You can type a custom name.
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleApartmentSelect(apartmentSearch)}
+                      className="w-full px-4 py-4 text-left hover:bg-emerald-50 transition-colors"
+                    >
+                      <div className="font-semibold text-emerald-600">✓ Use "{apartmentSearch}"</div>
+                      <div className="text-sm text-gray-500">No matches found - click to use this custom name</div>
+                    </button>
                   )}
                 </div>
               )}
@@ -249,7 +280,7 @@ export default function AnalyzePage() {
                 className="w-full text-lg py-5"
                 loading={loading}
               >
-                Continue to document upload →
+                Continue to payment →
               </Button>
             </div>
           </form>

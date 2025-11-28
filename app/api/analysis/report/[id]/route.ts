@@ -40,12 +40,17 @@ export async function GET(
       );
     }
 
-    // Fetch analysis from database
-    const { data: analysis, error: analysisError } = await supabase
+    // Fetch analysis from database with property details
+    const { data: initialAnalysis, error: analysisError } = await supabase
       .from('analysis_results')
-      .select('*')
+      .select(`
+        *,
+        properties (*)
+      `)
       .eq('id', analysisId)
       .single();
+
+    let analysis = initialAnalysis;
 
     if (analysisError || !analysis) {
       return NextResponse.json(
@@ -66,12 +71,38 @@ export async function GET(
       );
     }
 
-    // Check if risk analysis exists
+    // Check if risk analysis exists - retry if data not yet available (handles DB replication delay)
     if (!analysis.deunggibu_data) {
-      return NextResponse.json(
-        { error: 'Risk analysis data not available' },
-        { status: 500 }
-      );
+      console.warn(`Report API: deunggibu_data not yet available for ${analysisId}, waiting 2s for DB replication...`);
+
+      // Wait for database replication/commit
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Retry query
+      const { data: retryAnalysis, error: retryError } = await supabase
+        .from('analysis_results')
+        .select(`
+          *,
+          properties (*)
+        `)
+        .eq('id', analysisId)
+        .single();
+
+      if (retryError || !retryAnalysis || !retryAnalysis.deunggibu_data) {
+        console.error('Report API Error: Missing deunggibu_data after retry for analysis', analysisId);
+        console.error('Analysis object keys:', retryAnalysis ? Object.keys(retryAnalysis) : 'N/A');
+        console.error('Analysis status:', retryAnalysis?.status);
+        console.error('Analysis safety_score:', retryAnalysis?.safety_score);
+        console.error('Analysis risk_level:', retryAnalysis?.risk_level);
+        return NextResponse.json(
+          { error: 'Risk analysis data not available' },
+          { status: 500 }
+        );
+      }
+
+      // Use the retried data
+      analysis = retryAnalysis;
+      console.log(`✅ Report API: deunggibu_data found after retry for ${analysisId}`);
     }
 
     // Fetch documents for additional context
@@ -92,6 +123,14 @@ export async function GET(
     // Build comprehensive report
     const riskAnalysis = analysis.deunggibu_data;
 
+    // Debug logging
+    console.log('Report API Debug:', {
+      analysisId,
+      hasProperties: !!analysis.properties,
+      propertiesType: Array.isArray(analysis.properties) ? 'array' : typeof analysis.properties,
+      propertiesValue: analysis.properties
+    });
+
     const report = {
       analysisId: analysis.id,
       generatedAt: new Date().toISOString(),
@@ -99,7 +138,8 @@ export async function GET(
 
       // Property Information
       property: {
-        address: analysis.address,
+        address: (Array.isArray(analysis.properties) ? analysis.properties[0]?.address : analysis.properties?.address) || 'N/A',
+        buildingName: (Array.isArray(analysis.properties) ? analysis.properties[0]?.building_name : analysis.properties?.building_name) || null,
         proposedJeonse: analysis.proposed_jeonse,
         estimatedValue: riskAnalysis.valuation?.valueMid || null,
         area: riskAnalysis.deunggibu?.area || null,

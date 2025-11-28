@@ -15,12 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 interface CreateAnalysisRequest {
   address: string;
@@ -33,6 +28,20 @@ interface CreateAnalysisRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please log in to create an analysis.' },
+        { status: 401 }
+      );
+    }
+
     // Parse request body
     const body: CreateAnalysisRequest = await request.json();
 
@@ -104,12 +113,13 @@ export async function POST(request: NextRequest) {
       propertyId = newProperty.id;
     }
 
-    // Create analysis record
+    // Create analysis record (linked to authenticated user)
     const { data: analysis, error: analysisError } = await supabase
       .from('analysis_results')
       .insert([
         {
           property_id: propertyId,
+          user_id: user.id,
           proposed_jeonse: body.proposedJeonse,
           status: 'pending',
           created_at: new Date().toISOString(),

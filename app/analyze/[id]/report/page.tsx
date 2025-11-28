@@ -9,7 +9,6 @@ import Link from 'next/link';
 interface MortgageRanking {
   rank: number;
   type: string;
-  creditor: string;
   amount: number;
   registrationDate: string;
   priority: 'senior' | 'junior' | 'subordinate';
@@ -168,7 +167,7 @@ export default function ReportPage() {
         <div className="container mx-auto px-6 py-4 max-w-7xl">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-2xl font-bold text-gray-900 tracking-tight hover:text-emerald-700 transition-colors">
-              Pre-sale safety check
+              Jeonse Safety Check
             </Link>
             <div className="flex gap-3">
               <Button variant="secondary" onClick={() => window.print()} size="sm">
@@ -235,16 +234,28 @@ export default function ReportPage() {
                   <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity absolute z-50 w-80 p-4 bg-white border border-gray-200 rounded-lg shadow-xl -right-2 top-6 text-xs leading-relaxed">
                     <p className="font-bold text-gray-900 mb-2">How is this calculated?</p>
                     <p className="text-gray-700 mb-3">
-                      {report.property.valuation?.confidence && report.property.valuation.confidence >= 0.6
+                      {report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5
                         ? `Calculated as the average of recent real market transactions from the MOLIT (Ministry of Land, Infrastructure and Transport) database.`
-                        : `Estimated based on the proposed jeonse amount using typical jeonse-to-value ratios, as recent transaction data was not available.`}
+                        : `Estimated based on the proposed jeonse amount using typical jeonse-to-value ratios (70%), as recent transaction data was not available.`}
                     </p>
 
-                    {report.property.valuation?.confidence && report.property.valuation.confidence >= 0.6 && (
+                    {report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5 && (
                       <>
-                        <p className="font-semibold text-gray-900 mb-1">Confidence</p>
+                        <p className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                          Data Confidence
+                          <span
+                            className="cursor-help text-gray-400 hover:text-gray-600"
+                            title="Confidence score (0-100%) calculated from: R² statistical reliability (50% weight), transaction recency (25% weight), transaction volume (15% weight), and time span coverage (10% weight). Higher confidence = more reliable valuation estimate."
+                          >
+                            ⓘ
+                          </span>
+                        </p>
                         <p className="text-gray-700 mb-3">
-                          {(report.property.valuation.confidence * 100).toFixed(0)}% confidence based on real transaction data
+                          {(report.property.valuation.confidence * 100).toFixed(0)}% confidence based on {
+                            report.property.valuation.confidence >= 0.7 ? 'strong statistical trend and multiple recent transactions' :
+                            report.property.valuation.confidence >= 0.4 ? 'moderate statistical trend and several transactions' :
+                            'limited transaction data with weak trend reliability'
+                          }
                         </p>
                       </>
                     )}
@@ -260,11 +271,35 @@ export default function ReportPage() {
 
                     {report.property.valuation?.marketTrend && (
                       <>
-                        <p className="font-semibold text-gray-900 mb-1">Market Trend</p>
+                        <p className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                          Market Trend
+                          <span
+                            className="cursor-help text-gray-400 hover:text-gray-600"
+                            title={
+                              report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5
+                                ? "Statistical trend detection using linear regression on 12 months of MOLIT transaction data. R² measures how well the trend fits actual data (>70% = strong trend, 40-70% = moderate, <40% = weak/noisy). Dynamic thresholds adjust based on statistical confidence to filter out market noise."
+                                : "No recent transaction data available for this property. 'Stable' is a default assumption only - actual market trend is unknown. Use caution when making decisions based on this estimate."
+                            }
+                          >
+                            ⓘ
+                          </span>
+                        </p>
                         <p className="text-gray-700 mb-3 capitalize">
                           {report.property.valuation.marketTrend === 'rising' && '📈 Rising'}
-                          {report.property.valuation.marketTrend === 'stable' && '➡️ Stable'}
+                          {report.property.valuation.marketTrend === 'stable' && (
+                            <>
+                              ➡️ Stable
+                              {report.property.valuation?.confidence === 0.5 && (
+                                <span className="text-amber-600 ml-1" title="Default assumption - no transaction data">⚠️</span>
+                              )}
+                            </>
+                          )}
                           {report.property.valuation.marketTrend === 'falling' && '📉 Falling'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5
+                            ? 'Based on linear regression analysis of past 12 months'
+                            : 'No recent transaction data available - trend unknown'}
                         </p>
                       </>
                     )}
@@ -310,28 +345,28 @@ export default function ReportPage() {
               const descriptions: Record<string, { title: string; description: string; scoring: string }> = {
                 ltvScore: {
                   title: 'Loan-to-Value Ratio Assessment',
-                  description: 'Measures the ratio of total debt (existing mortgages + your jeonse) to the property value. Lower LTV means more equity cushion to protect your deposit.',
-                  scoring: '100 pts: <50% (Excellent) • 80 pts: 50-60% (Good) • 60 pts: 60-70% (Acceptable) • 40 pts: 70-80% (Risky) • 0 pts: >80% (Critical)'
+                  description: 'Calculates total exposure ratio: LTV = (All Existing Debt + Your Jeonse) / Property Value. Existing debt includes mortgages, jeonse rights (전세권), and lease rights (임차권). Lower LTV means more equity cushion to protect your deposit in foreclosure.',
+                  scoring: '100 pts: <50% (Excellent) • 80 pts: 50-60% (Good) • 60 pts: 60-70% (Acceptable) • 40 pts: 70-80% (Risky) • 20 pts: 80-90% (Dangerous) • 0 pts: >90% (Critical)'
                 },
                 debtScore: {
                   title: 'Debt Structure Analysis',
-                  description: 'Evaluates existing debt burden (excluding your jeonse). Calculation: Start at 100pts → Apply debt ratio penalty → Subtract creditor penalty.',
-                  scoring: 'Step 1 - Debt Ratio: >70% (-50pts), 60-70% (-30pts), 50-60% (-15pts), 40-50% (-5pts), <40% (no penalty) | Step 2 - Creditors: -5pts each (max -20pts)'
+                  description: 'Evaluates existing debt burden (excluding your jeonse). Total debt includes mortgages, jeonse rights (전세권), and lease rights (임차권). Calculation: Start at 100pts → Apply debt ratio penalty → Subtract creditor penalty (capped at -20pts).',
+                  scoring: 'Step 1 - Debt Ratio: >70% (-50pts), 60-70% (-30pts), 50-60% (-15pts), 40-50% (-5pts), <40% (no penalty) | Step 2 - Creditor Penalty: -5pts per creditor (mortgages + jeonse/lease rights), capped at -20pts max | Final Score: 100 - penalties (worst case: 100 - 50 - 20 = 30pts minimum)'
                 },
                 legalScore: {
                   title: 'Legal & Compliance Check',
                   description: 'Checks for legal issues that could jeopardize your deposit. Starts at 100pts and deducts for each issue found in the 등기부등본.',
-                  scoring: 'Critical Issues: Seizure (압류) -100pts, Auction (경매) -100pts, Provisional Seizure (가압류) -50pts | Serious Issues: Superficies (지상권) -40pts, Provisional Registration (가등기) -35pts, Provisional Disposition (가처분) -30pts | Moderate Issues: Easement (지역권) -20pts, Advance Notice (예고등기) -15pts, Unregistered Land Rights (대지권미등기) -10pts | Liens: -25pts each'
+                  scoring: 'Critical Issues: Seizure (압류) -100pts, Auction (경매) -100pts, Provisional Seizure (가압류) -50pts | Serious Issues: Superficies (지상권) -40pts, Provisional Registration (가등기) -35pts, Provisional Disposition (가처분) -30pts | Moderate Issues: Shared Ownership (공동소유) -25pts, Easement (지역권) -20pts, Advance Notice (예고등기) -15pts, Unregistered Land Rights (대지권미등기) -10pts | Liens: -25pts each'
                 },
                 marketScore: {
                   title: 'Market Conditions Analysis',
-                  description: 'Assesses market trend and data confidence. Calculation: Start at 70pts → Add trend adjustment → Add confidence bonus/penalty.',
-                  scoring: 'Step 1 - Market Trend: Rising (+20pts), Stable (no change), Falling (-30pts) | Step 2 - Confidence: >80% (+10pts), 50-80% (no change), <50% (-10pts)'
+                  description: 'Assesses market trend with confidence-amplified impact. Higher confidence strengthens the trend signal (good news gets better, bad news gets worse). Lower confidence adds uncertainty penalty.',
+                  scoring: 'Base: 70pts | Rising Market: High confidence >80% (+25pts), Lower confidence (+15pts) | Falling Market: High confidence >80% (-35pts), Lower confidence (-25pts) | Stable: No trend adjustment | Additional: Low confidence <50% (-10pts uncertainty penalty)'
                 },
                 buildingScore: {
-                  title: 'Building Status Assessment',
-                  description: 'Evaluates building age, physical condition, and legal compliance. Checks for 위반건축물 (code violations) and 무허가건축물 (unauthorized construction) which can affect property value and resale.',
-                  scoring: 'Age-based: <5 years (100pts), 5-10 (90pts), 10-15 (80pts), 15-20 (70pts), 20-25 (60pts), 25-30 (50pts), >30 (40pts) | Violations: -50pts for code violations or unauthorized construction'
+                  title: 'Building Age Assessment',
+                  description: 'Evaluates building age and physical condition. Older buildings typically have higher maintenance costs and potential structural issues.',
+                  scoring: 'Age-based: <5 years (100pts), 5-10 (90pts), 10-15 (80pts), 15-20 (70pts), 20-25 (60pts), 25-30 (50pts), >30 (40pts)'
                 }
               };
 
@@ -359,7 +394,7 @@ export default function ReportPage() {
                     <span className="font-bold text-gray-900 text-lg">{value}/100</span>
                   </div>
                   <div className={`h-3 rounded-full overflow-hidden ${
-                    key === 'legalScore' && value === 0
+                    value === 0
                       ? 'bg-red-200 ring-2 ring-red-500 ring-offset-1'
                       : 'bg-gray-200'
                   }`}>
@@ -368,7 +403,7 @@ export default function ReportPage() {
                         value >= 75 ? 'from-emerald-500 to-teal-500' :
                         value >= 50 ? 'from-yellow-500 to-orange-400' :
                         value >= 25 ? 'from-orange-500 to-red-500' :
-                        key === 'legalScore' && value === 0 ? 'from-red-700 to-red-900' : 'from-red-600 to-rose-600'
+                        value === 0 ? 'from-red-700 to-red-900' : 'from-red-600 to-rose-600'
                       }`}
                       style={{ width: `${value || 0.5}%`, minWidth: value === 0 ? '4px' : '0' }}
                     />
@@ -401,8 +436,11 @@ export default function ReportPage() {
                     <li><span className="font-semibold">Junior:</span> Second mortgage - repaid after senior debt</li>
                     <li><span className="font-semibold">Subordinate:</span> Lower priority - higher risk</li>
                   </ul>
+                  <p className="text-gray-600 mt-2 pt-2 border-t border-gray-200 text-[11px]">
+                    <span className="font-semibold">📝 Note:</span> This ranking shows all competing claims on the property: mortgages (근저당권), jeonse rights (전세권), and lease rights (임차권). All of these compete for repayment in foreclosure, ranked by registration date.
+                  </p>
                   <p className="text-gray-600 mt-3 pt-3 border-t border-gray-200">
-                    <span className="font-semibold text-orange-600">⚠️ Important:</span> Your jeonse deposit typically ranks after all registered mortgages. Ensure sufficient equity remains to cover your deposit.
+                    <span className="font-semibold text-orange-600">⚠️ Important:</span> Your proposed jeonse deposit will rank after all currently registered claims shown above. Ensure sufficient equity remains to cover your deposit.
                   </p>
                 </div>
               </div>
@@ -455,13 +493,13 @@ export default function ReportPage() {
                     <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Rank</th>
                     <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Priority</th>
                     <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Type</th>
-                    <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Creditor & Amount</th>
+                    <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Amount</th>
                     <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Registration Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {report.riskAnalysis.debtRanking.map((debt, index) => {
-                    const isYourJeonse = debt.creditor === 'You';
+                    const isYourJeonse = debt.type.includes('Your Jeonse');
                     const priorityColors = {
                       senior: 'bg-red-50/80 border-l-4 border-red-500',
                       junior: 'bg-orange-50/80 border-l-4 border-orange-500',
@@ -502,31 +540,9 @@ export default function ReportPage() {
                           </span>
                         </td>
                         <td className="py-6 px-5">
-                          <div className="flex items-center justify-between gap-6">
-                            <div className="flex-1">
-                              {isYourJeonse ? (
-                                <span className="font-bold text-purple-900 text-lg">{debt.creditor}</span>
-                              ) : (
-                                <div className="leading-tight">
-                                  {debt.creditor.includes('주식회사') ? (
-                                    <>
-                                      <div className="font-semibold text-gray-900 text-lg whitespace-nowrap">
-                                        {debt.creditor.replace('주식회사', '').trim()}
-                                      </div>
-                                      <div className="text-sm text-gray-600 mt-0.5">주식회사</div>
-                                    </>
-                                  ) : (
-                                    <div className="font-semibold text-gray-900 text-lg">{debt.creditor}</div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-shrink-0">
-                              <span className={`font-bold text-2xl tracking-tight whitespace-nowrap ${isYourJeonse ? 'text-purple-900' : 'text-gray-900'}`}>
-                                ₩{(debt.amount / 100000000).toFixed(1)}억
-                              </span>
-                            </div>
-                          </div>
+                          <span className={`font-bold text-2xl tracking-tight whitespace-nowrap ${isYourJeonse ? 'text-purple-900' : 'text-gray-900'}`}>
+                            ₩{(debt.amount / 100000000).toFixed(1)}억
+                          </span>
                         </td>
                         <td className="py-6 px-5">
                           <span className="text-gray-600 text-sm font-medium">

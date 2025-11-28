@@ -12,10 +12,18 @@ export interface District {
 
 export interface Apartment {
   name: string;
-  nameEn: string;
+  nameEn?: string;
   dong?: string; // Neighborhood (동) where the apartment is located
+  dongs?: string[]; // Multiple neighborhoods (for large complexes)
   district?: string; // District (구) where the apartment is located
+  districtCode?: string; // District code for MOLIT API
   molitNames?: string[]; // Alternative names used in MOLIT database
+  transactionCount?: number; // Number of recent transactions
+  areas?: number[]; // Available unit sizes (㎡)
+  priceRange?: {
+    min: number;
+    max: number;
+  };
 }
 
 export const SEOUL_DISTRICTS: District[] = [
@@ -60,10 +68,19 @@ export const SEOUL_DISTRICTS: District[] = [
     nameEn: 'Gangbuk-gu',
     code: '11305',
     dongs: [
-      { name: '미아동', nameEn: 'Mia-dong' },
       { name: '번동', nameEn: 'Beon-dong' },
+      { name: '미아동', nameEn: 'Mia-dong' },
+      { name: '송중동', nameEn: 'Songjung-dong' },
+      { name: '송천동', nameEn: 'Songcheon-dong' },
+      { name: '삼양동', nameEn: 'Samyang-dong' },
       { name: '수유동', nameEn: 'Suyu-dong' },
-      { name: '우이동', nameEn: 'Ui-dong' }
+      { name: '우이동', nameEn: 'Ui-dong' },
+      { name: '인수동', nameEn: 'Insu-dong' },
+      { name: '삼각산동', nameEn: 'Samgaksan-dong' },
+      { name: '번1동', nameEn: 'Beon 1-dong' },
+      { name: '번2동', nameEn: 'Beon 2-dong' },
+      { name: '번3동', nameEn: 'Beon 3-dong' },
+      { name: '수유1동', nameEn: 'Suyu 1-dong' }
     ]
   },
   {
@@ -82,7 +99,8 @@ export const SEOUL_DISTRICTS: District[] = [
       { name: '염창동', nameEn: 'Yeomchang-dong' },
       { name: '오곡동', nameEn: 'Ogok-dong' },
       { name: '오쇠동', nameEn: 'Osoe-dong' },
-      { name: '외발산동', nameEn: 'Oebalsan-dong' }
+      { name: '외발산동', nameEn: 'Oebalsan-dong' },
+      { name: '화곡동', nameEn: 'Hwagok-dong' }
     ]
   },
   {
@@ -92,7 +110,24 @@ export const SEOUL_DISTRICTS: District[] = [
     dongs: [
       { name: '남현동', nameEn: 'Namhyeon-dong' },
       { name: '봉천동', nameEn: 'Bongcheon-dong' },
-      { name: '신림동', nameEn: 'Sillim-dong' }
+      { name: '신림동', nameEn: 'Sillim-dong' },
+      { name: '중앙동', nameEn: 'Jungang-dong' },
+      { name: '청룡동', nameEn: 'Cheongnyong-dong' },
+      { name: '행운동', nameEn: 'Haengun-dong' },
+      { name: '청림동', nameEn: 'Cheonglim-dong' },
+      { name: '성현동', nameEn: 'Seonghyeon-dong' },
+      { name: '낙성대동', nameEn: 'Nakseongdae-dong' },
+      { name: '인헌동', nameEn: 'Inheon-dong' },
+      { name: '조원동', nameEn: 'Jowon-dong' },
+      { name: '신원동', nameEn: 'Sinwon-dong' },
+      { name: '서림동', nameEn: 'Seorim-dong' },
+      { name: '신사동', nameEn: 'Sinsa-dong' },
+      { name: '미성동', nameEn: 'Miseong-dong' },
+      { name: '난곡동', nameEn: 'Nan-gok-dong' },
+      { name: '난향동', nameEn: 'Nanhyang-dong' },
+      { name: '삼성동', nameEn: 'Samseong-dong' },
+      { name: '대학동', nameEn: 'Daehak-dong' },
+      { name: '보라매동', nameEn: 'Boramae-dong' }
     ]
   },
   {
@@ -265,18 +300,25 @@ export const SEOUL_DISTRICTS: District[] = [
     nameEn: 'Seongdong-gu',
     code: '11200',
     dongs: [
-      { name: '금호동', nameEn: 'Geumho-dong' },
+      { name: '금호동1가', nameEn: 'Geumho-dong 1-ga' },
+      { name: '금호동2가', nameEn: 'Geumho-dong 2-ga' },
+      { name: '금호동3가', nameEn: 'Geumho-dong 3-ga' },
+      { name: '금호동4가', nameEn: 'Geumho-dong 4-ga' },
       { name: '도선동', nameEn: 'Doseon-dong' },
       { name: '마장동', nameEn: 'Majang-dong' },
       { name: '사근동', nameEn: 'Sageun-dong' },
       { name: '상왕십리동', nameEn: 'Sangwangsimni-dong' },
-      { name: '성수동', nameEn: 'Seongsu-dong' },
+      { name: '성수동1가', nameEn: 'Seongsu-dong 1-ga' },
+      { name: '성수동2가', nameEn: 'Seongsu-dong 2-ga' },
       { name: '송정동', nameEn: 'Songjeong-dong' },
       { name: '용답동', nameEn: 'Yongdap-dong' },
       { name: '옥수동', nameEn: 'Oksu-dong' },
+      { name: '왕십리동', nameEn: 'Wangsimni-dong' },
+      { name: '왕십리2동', nameEn: 'Wangsimni 2-dong' },
       { name: '하왕십리동', nameEn: 'Hawangsimni-dong' },
       { name: '행당동', nameEn: 'Haengdang-dong' },
-      { name: '홍익동', nameEn: 'Hongik-dong' }
+      { name: '홍익동', nameEn: 'Hongik-dong' },
+      { name: '응봉동', nameEn: 'Eungbong-dong' }
     ]
   },
   {
@@ -286,13 +328,45 @@ export const SEOUL_DISTRICTS: District[] = [
     dongs: [
       { name: '길음동', nameEn: 'Gireum-dong' },
       { name: '돈암동', nameEn: 'Donam-dong' },
+      { name: '돈암동1가', nameEn: 'Donam-dong 1-ga' },
+      { name: '돈암동2가', nameEn: 'Donam-dong 2-ga' },
       { name: '동선동', nameEn: 'Dongseon-dong' },
+      { name: '동선동1가', nameEn: 'Dongseon-dong 1-ga' },
+      { name: '동선동2가', nameEn: 'Dongseon-dong 2-ga' },
+      { name: '동선동3가', nameEn: 'Dongseon-dong 3-ga' },
+      { name: '동선동4가', nameEn: 'Dongseon-dong 4-ga' },
+      { name: '동선동5가', nameEn: 'Dongseon-dong 5-ga' },
       { name: '동소문동', nameEn: 'Dongsomun-dong' },
+      { name: '동소문동1가', nameEn: 'Dongsomun-dong 1-ga' },
+      { name: '동소문동2가', nameEn: 'Dongsomun-dong 2-ga' },
+      { name: '동소문동3가', nameEn: 'Dongsomun-dong 3-ga' },
+      { name: '동소문동4가', nameEn: 'Dongsomun-dong 4-ga' },
+      { name: '동소문동5가', nameEn: 'Dongsomun-dong 5-ga' },
+      { name: '동소문동6가', nameEn: 'Dongsomun-dong 6-ga' },
+      { name: '동소문동7가', nameEn: 'Dongsomun-dong 7-ga' },
       { name: '보문동', nameEn: 'Bomun-dong' },
+      { name: '보문동1가', nameEn: 'Bomun-dong 1-ga' },
+      { name: '보문동2가', nameEn: 'Bomun-dong 2-ga' },
+      { name: '보문동3가', nameEn: 'Bomun-dong 3-ga' },
+      { name: '보문동4가', nameEn: 'Bomun-dong 4-ga' },
+      { name: '보문동5가', nameEn: 'Bomun-dong 5-ga' },
+      { name: '보문동6가', nameEn: 'Bomun-dong 6-ga' },
+      { name: '보문동7가', nameEn: 'Bomun-dong 7-ga' },
       { name: '삼선동', nameEn: 'Samseon-dong' },
+      { name: '삼선동1가', nameEn: 'Samseon-dong 1-ga' },
+      { name: '삼선동2가', nameEn: 'Samseon-dong 2-ga' },
+      { name: '삼선동3가', nameEn: 'Samseon-dong 3-ga' },
+      { name: '삼선동4가', nameEn: 'Samseon-dong 4-ga' },
+      { name: '삼선동5가', nameEn: 'Samseon-dong 5-ga' },
       { name: '석관동', nameEn: 'Seokgwan-dong' },
       { name: '성북동', nameEn: 'Seongbuk-dong' },
+      { name: '성북동1가', nameEn: 'Seongbuk-dong 1-ga' },
       { name: '안암동', nameEn: 'Anam-dong' },
+      { name: '안암동1가', nameEn: 'Anam-dong 1-ga' },
+      { name: '안암동2가', nameEn: 'Anam-dong 2-ga' },
+      { name: '안암동3가', nameEn: 'Anam-dong 3-ga' },
+      { name: '안암동4가', nameEn: 'Anam-dong 4-ga' },
+      { name: '안암동5가', nameEn: 'Anam-dong 5-ga' },
       { name: '장위동', nameEn: 'Jangwi-dong' },
       { name: '정릉동', nameEn: 'Jeongneung-dong' },
       { name: '종암동', nameEn: 'Jongam-dong' }
@@ -325,7 +399,25 @@ export const SEOUL_DISTRICTS: District[] = [
     dongs: [
       { name: '목동', nameEn: 'Mok-dong' },
       { name: '신월동', nameEn: 'Sinwol-dong' },
-      { name: '신정동', nameEn: 'Sinjeong-dong' }
+      { name: '신정동', nameEn: 'Sinjeong-dong' },
+      { name: '신월1동', nameEn: 'Sinwol 1-dong' },
+      { name: '신월2동', nameEn: 'Sinwol 2-dong' },
+      { name: '신월3동', nameEn: 'Sinwol 3-dong' },
+      { name: '신월4동', nameEn: 'Sinwol 4-dong' },
+      { name: '신월5동', nameEn: 'Sinwol 5-dong' },
+      { name: '신월6동', nameEn: 'Sinwol 6-dong' },
+      { name: '신월7동', nameEn: 'Sinwol 7-dong' },
+      { name: '신정1동', nameEn: 'Sinjeong 1-dong' },
+      { name: '신정2동', nameEn: 'Sinjeong 2-dong' },
+      { name: '신정3동', nameEn: 'Sinjeong 3-dong' },
+      { name: '신정4동', nameEn: 'Sinjeong 4-dong' },
+      { name: '신정6동', nameEn: 'Sinjeong 6-dong' },
+      { name: '신정7동', nameEn: 'Sinjeong 7-dong' },
+      { name: '목1동', nameEn: 'Mok 1-dong' },
+      { name: '목2동', nameEn: 'Mok 2-dong' },
+      { name: '목3동', nameEn: 'Mok 3-dong' },
+      { name: '목4동', nameEn: 'Mok 4-dong' },
+      { name: '목5동', nameEn: 'Mok 5-dong' }
     ]
   },
   {
@@ -335,13 +427,39 @@ export const SEOUL_DISTRICTS: District[] = [
     dongs: [
       { name: '경인로', nameEn: 'Gyeongin-ro' },
       { name: '당산동', nameEn: 'Dangsan-dong' },
+      { name: '당산동1가', nameEn: 'Dangsan-dong 1-ga' },
+      { name: '당산동2가', nameEn: 'Dangsan-dong 2-ga' },
+      { name: '당산동3가', nameEn: 'Dangsan-dong 3-ga' },
+      { name: '당산동4가', nameEn: 'Dangsan-dong 4-ga' },
+      { name: '당산동5가', nameEn: 'Dangsan-dong 5-ga' },
+      { name: '당산동6가', nameEn: 'Dangsan-dong 6-ga' },
       { name: '대림동', nameEn: 'Daerim-dong' },
       { name: '도림동', nameEn: 'Dorim-dong' },
       { name: '문래동', nameEn: 'Mullae-dong' },
+      { name: '문래동1가', nameEn: 'Mullae-dong 1-ga' },
+      { name: '문래동2가', nameEn: 'Mullae-dong 2-ga' },
+      { name: '문래동3가', nameEn: 'Mullae-dong 3-ga' },
+      { name: '문래동4가', nameEn: 'Mullae-dong 4-ga' },
+      { name: '문래동5가', nameEn: 'Mullae-dong 5-ga' },
+      { name: '문래동6가', nameEn: 'Mullae-dong 6-ga' },
       { name: '양평동', nameEn: 'Yangpyeong-dong' },
+      { name: '양평동1가', nameEn: 'Yangpyeong-dong 1-ga' },
+      { name: '양평동2가', nameEn: 'Yangpyeong-dong 2-ga' },
+      { name: '양평동3가', nameEn: 'Yangpyeong-dong 3-ga' },
+      { name: '양평동4가', nameEn: 'Yangpyeong-dong 4-ga' },
+      { name: '양평동5가', nameEn: 'Yangpyeong-dong 5-ga' },
+      { name: '양평동6가', nameEn: 'Yangpyeong-dong 6-ga' },
       { name: '양화동', nameEn: 'Yanghwa-dong' },
       { name: '여의도동', nameEn: 'Yeouido-dong' },
-      { name: '영등포동', nameEn: 'Yeongdeungpo-dong' }
+      { name: '영등포동', nameEn: 'Yeongdeungpo-dong' },
+      { name: '영등포동1가', nameEn: 'Yeongdeungpo-dong 1-ga' },
+      { name: '영등포동2가', nameEn: 'Yeongdeungpo-dong 2-ga' },
+      { name: '영등포동3가', nameEn: 'Yeongdeungpo-dong 3-ga' },
+      { name: '영등포동4가', nameEn: 'Yeongdeungpo-dong 4-ga' },
+      { name: '영등포동5가', nameEn: 'Yeongdeungpo-dong 5-ga' },
+      { name: '영등포동6가', nameEn: 'Yeongdeungpo-dong 6-ga' },
+      { name: '영등포동7가', nameEn: 'Yeongdeungpo-dong 7-ga' },
+      { name: '영등포동8가', nameEn: 'Yeongdeungpo-dong 8-ga' }
     ]
   },
   {
@@ -361,14 +479,26 @@ export const SEOUL_DISTRICTS: District[] = [
       { name: '서빙고동', nameEn: 'Seobinggo-dong' },
       { name: '신계동', nameEn: 'Singye-dong' },
       { name: '신창동', nameEn: 'Sinchang-dong' },
-      { name: '원효로', nameEn: 'Wonhyo-ro' },
+      { name: '원효로1가', nameEn: 'Wonhyo-ro 1-ga' },
+      { name: '원효로2가', nameEn: 'Wonhyo-ro 2-ga' },
+      { name: '원효로3가', nameEn: 'Wonhyo-ro 3-ga' },
+      { name: '원효로4가', nameEn: 'Wonhyo-ro 4-ga' },
       { name: '용문동', nameEn: 'Yongmun-dong' },
-      { name: '용산동', nameEn: 'Yongsan-dong' },
+      { name: '용산동1가', nameEn: 'Yongsan-dong 1-ga' },
+      { name: '용산동2가', nameEn: 'Yongsan-dong 2-ga' },
+      { name: '용산동3가', nameEn: 'Yongsan-dong 3-ga' },
+      { name: '용산동4가', nameEn: 'Yongsan-dong 4-ga' },
+      { name: '용산동5가', nameEn: 'Yongsan-dong 5-ga' },
+      { name: '용산동6가', nameEn: 'Yongsan-dong 6-ga' },
       { name: '이촌동', nameEn: 'Ichon-dong' },
       { name: '이태원동', nameEn: 'Itaewon-dong' },
       { name: '주성동', nameEn: 'Juseong-dong' },
-      { name: '청파동', nameEn: 'Cheongpa-dong' },
-      { name: '한강로', nameEn: 'Hangang-ro' },
+      { name: '청파동1가', nameEn: 'Cheongpa-dong 1-ga' },
+      { name: '청파동2가', nameEn: 'Cheongpa-dong 2-ga' },
+      { name: '청파동3가', nameEn: 'Cheongpa-dong 3-ga' },
+      { name: '한강로1가', nameEn: 'Hangang-ro 1-ga' },
+      { name: '한강로2가', nameEn: 'Hangang-ro 2-ga' },
+      { name: '한강로3가', nameEn: 'Hangang-ro 3-ga' },
       { name: '한남동', nameEn: 'Hannam-dong' },
       { name: '효창동', nameEn: 'Hyochang-dong' },
       { name: '후암동', nameEn: 'Huam-dong' }
@@ -405,6 +535,7 @@ export const SEOUL_DISTRICTS: District[] = [
       { name: '관수동', nameEn: 'Gwansu-dong' },
       { name: '관철동', nameEn: 'Gwancheol-dong' },
       { name: '관훈동', nameEn: 'Gwanhun-dong' },
+      { name: '관철동', nameEn: 'Gwancheol-dong' },
       { name: '교남동', nameEn: 'Gyonam-dong' },
       { name: '교북동', nameEn: 'Gyobuk-dong' },
       { name: '구기동', nameEn: 'Gugi-dong' },
@@ -413,7 +544,73 @@ export const SEOUL_DISTRICTS: District[] = [
       { name: '낙원동', nameEn: 'Nagwon-dong' },
       { name: '내수동', nameEn: 'Naesu-dong' },
       { name: '내자동', nameEn: 'Naeja-dong' },
-      { name: '혜화동', nameEn: 'Hyehwa-dong' }
+      { name: '누상동', nameEn: 'Nusang-dong' },
+      { name: '누하동', nameEn: 'Nuha-dong' },
+      { name: '당주동', nameEn: 'Dangju-dong' },
+      { name: '도렴동', nameEn: 'Doryeom-dong' },
+      { name: '돈의동', nameEn: 'Donui-dong' },
+      { name: '동숭동', nameEn: 'Dongsung-dong' },
+      { name: '묘동', nameEn: 'Myo-dong' },
+      { name: '무악동', nameEn: 'Muak-dong' },
+      { name: '부암동', nameEn: 'Buam-dong' },
+      { name: '봉익동', nameEn: 'Bongik-dong' },
+      { name: '사간동', nameEn: 'Sagan-dong' },
+      { name: '사직동', nameEn: 'Sajik-dong' },
+      { name: '삼청동', nameEn: 'Samcheong-dong' },
+      { name: '서린동', nameEn: 'Seorin-dong' },
+      { name: '세종로', nameEn: 'Sejong-ro' },
+      { name: '소격동', nameEn: 'Sogyeok-dong' },
+      { name: '송월동', nameEn: 'Songwol-dong' },
+      { name: '송현동', nameEn: 'Songhyeon-dong' },
+      { name: '수송동', nameEn: 'Susong-dong' },
+      { name: '숭인동', nameEn: 'Sungin-dong' },
+      { name: '신교동', nameEn: 'Singyo-dong' },
+      { name: '신문로1가', nameEn: 'Sinmun-ro 1-ga' },
+      { name: '신문로2가', nameEn: 'Sinmun-ro 2-ga' },
+      { name: '신영동', nameEn: 'Sinyeong-dong' },
+      { name: '안국동', nameEn: 'Anguk-dong' },
+      { name: '연건동', nameEn: 'Yeongeon-dong' },
+      { name: '연지동', nameEn: 'Yeonji-dong' },
+      { name: '예지동', nameEn: 'Yeji-dong' },
+      { name: '옥인동', nameEn: 'Ogin-dong' },
+      { name: '와룡동', nameEn: 'Waryong-dong' },
+      { name: '운니동', nameEn: 'Unni-dong' },
+      { name: '원남동', nameEn: 'Wonnam-dong' },
+      { name: '원서동', nameEn: 'Wonseo-dong' },
+      { name: '이화동', nameEn: 'Ihwa-dong' },
+      { name: '익선동', nameEn: 'Ikseon-dong' },
+      { name: '인사동', nameEn: 'Insa-dong' },
+      { name: '인의동', nameEn: 'Inui-dong' },
+      { name: '장사동', nameEn: 'Jangsa-dong' },
+      { name: '재동', nameEn: 'Jae-dong' },
+      { name: '적선동', nameEn: 'Jeokseon-dong' },
+      { name: '종로1가', nameEn: 'Jongno 1-ga' },
+      { name: '종로2가', nameEn: 'Jongno 2-ga' },
+      { name: '종로3가', nameEn: 'Jongno 3-ga' },
+      { name: '종로4가', nameEn: 'Jongno 4-ga' },
+      { name: '종로5가', nameEn: 'Jongno 5-ga' },
+      { name: '종로6가', nameEn: 'Jongno 6-ga' },
+      { name: '중학동', nameEn: 'Junghak-dong' },
+      { name: '창성동', nameEn: 'Changseong-dong' },
+      { name: '창신동', nameEn: 'Changsin-dong' },
+      { name: '청운동', nameEn: 'Cheongun-dong' },
+      { name: '청진동', nameEn: 'Cheongjin-dong' },
+      { name: '체부동', nameEn: 'Chebu-dong' },
+      { name: '충신동', nameEn: 'Chungsin-dong' },
+      { name: '통의동', nameEn: 'Tongui-dong' },
+      { name: '통인동', nameEn: 'Tongin-dong' },
+      { name: '팔판동', nameEn: 'Palpan-dong' },
+      { name: '평동', nameEn: 'Pyeong-dong' },
+      { name: '평창동', nameEn: 'Pyeongchang-dong' },
+      { name: '필운동', nameEn: 'Pirun-dong' },
+      { name: '행촌동', nameEn: 'Haengchon-dong' },
+      { name: '혜화동', nameEn: 'Hyehwa-dong' },
+      { name: '홍지동', nameEn: 'Hongji-dong' },
+      { name: '홍파동', nameEn: 'Hongpa-dong' },
+      { name: '화동', nameEn: 'Hwa-dong' },
+      { name: '효자동', nameEn: 'Hyoja-dong' },
+      { name: '효제동', nameEn: 'Hyoje-dong' },
+      { name: '훈정동', nameEn: 'Hunjeong-dong' }
     ]
   },
   {
@@ -422,18 +619,79 @@ export const SEOUL_DISTRICTS: District[] = [
     code: '11140',
     dongs: [
       { name: '광희동', nameEn: 'Gwanghui-dong' },
-      { name: '남대문로', nameEn: 'Namdaemun-ro' },
-      { name: '남산동', nameEn: 'Namsan-dong' },
-      { name: '명동', nameEn: 'Myeong-dong' },
+      { name: '남대문로1가', nameEn: 'Namdaemun-ro 1-ga' },
+      { name: '남대문로2가', nameEn: 'Namdaemun-ro 2-ga' },
+      { name: '남대문로3가', nameEn: 'Namdaemun-ro 3-ga' },
+      { name: '남대문로4가', nameEn: 'Namdaemun-ro 4-ga' },
+      { name: '남대문로5가', nameEn: 'Namdaemun-ro 5-ga' },
+      { name: '남산동1가', nameEn: 'Namsan-dong 1-ga' },
+      { name: '남산동2가', nameEn: 'Namsan-dong 2-ga' },
+      { name: '남산동3가', nameEn: 'Namsan-dong 3-ga' },
+      { name: '남창동', nameEn: 'Namchang-dong' },
+      { name: '남학동', nameEn: 'Namhak-dong' },
+      { name: '다동', nameEn: 'Da-dong' },
+      { name: '덕수궁길', nameEn: 'Deoksugung-gil' },
+      { name: '무교동', nameEn: 'Mugyo-dong' },
+      { name: '명동1가', nameEn: 'Myeong-dong 1-ga' },
+      { name: '명동2가', nameEn: 'Myeong-dong 2-ga' },
+      { name: '무학동', nameEn: 'Muhak-dong' },
+      { name: '북창동', nameEn: 'Bukchang-dong' },
+      { name: '봉래동1가', nameEn: 'Bongnae-dong 1-ga' },
+      { name: '봉래동2가', nameEn: 'Bongnae-dong 2-ga' },
+      { name: '산림동', nameEn: 'Sallim-dong' },
+      { name: '서소문동', nameEn: 'Seosomun-dong' },
+      { name: '소공동', nameEn: 'Sogong-dong' },
+      { name: '수표동', nameEn: 'Supyo-dong' },
+      { name: '수하동', nameEn: 'Suha-dong' },
+      { name: '순화동', nameEn: 'Sunhwa-dong' },
       { name: '신당동', nameEn: 'Sindang-dong' },
-      { name: '을지로', nameEn: 'Euljiro' },
-      { name: '장충동', nameEn: 'Jangchung-dong' },
+      { name: '쌍림동', nameEn: 'Ssanglim-dong' },
+      { name: '예관동', nameEn: 'Yegwan-dong' },
+      { name: '예장동', nameEn: 'Yejang-dong' },
+      { name: '오장동', nameEn: 'Ojang-dong' },
+      { name: '을지로1가', nameEn: 'Euljiro 1-ga' },
+      { name: '을지로2가', nameEn: 'Euljiro 2-ga' },
+      { name: '을지로3가', nameEn: 'Euljiro 3-ga' },
+      { name: '을지로4가', nameEn: 'Euljiro 4-ga' },
+      { name: '을지로5가', nameEn: 'Euljiro 5-ga' },
+      { name: '을지로6가', nameEn: 'Euljiro 6-ga' },
+      { name: '을지로7가', nameEn: 'Euljiro 7-ga' },
+      { name: '의주로1가', nameEn: 'Uiju-ro 1-ga' },
+      { name: '의주로2가', nameEn: 'Uiju-ro 2-ga' },
+      { name: '인현동1가', nameEn: 'Inhyeon-dong 1-ga' },
+      { name: '인현동2가', nameEn: 'Inhyeon-dong 2-ga' },
+      { name: '입정동', nameEn: 'Ipjeong-dong' },
+      { name: '장교동', nameEn: 'Janggyo-dong' },
+      { name: '장충동1가', nameEn: 'Jangchung-dong 1-ga' },
+      { name: '장충동2가', nameEn: 'Jangchung-dong 2-ga' },
+      { name: '저동1가', nameEn: 'Jeo-dong 1-ga' },
+      { name: '저동2가', nameEn: 'Jeo-dong 2-ga' },
       { name: '정동', nameEn: 'Jeong-dong' },
+      { name: '주교동', nameEn: 'Jugyo-dong' },
+      { name: '주자동', nameEn: 'Juja-dong' },
       { name: '중림동', nameEn: 'Jungnim-dong' },
-      { name: '충무로', nameEn: 'Chungmuro' },
-      { name: '필동', nameEn: 'Pil-dong' },
+      { name: '초동', nameEn: 'Cho-dong' },
+      { name: '충무로1가', nameEn: 'Chungmuro 1-ga' },
+      { name: '충무로2가', nameEn: 'Chungmuro 2-ga' },
+      { name: '충무로3가', nameEn: 'Chungmuro 3-ga' },
+      { name: '충무로4가', nameEn: 'Chungmuro 4-ga' },
+      { name: '충무로5가', nameEn: 'Chungmuro 5-ga' },
+      { name: '태평로1가', nameEn: 'Taepyeong-ro 1-ga' },
+      { name: '태평로2가', nameEn: 'Taepyeong-ro 2-ga' },
+      { name: '퇴계로1가', nameEn: 'Toegye-ro 1-ga' },
+      { name: '퇴계로2가', nameEn: 'Toegye-ro 2-ga' },
+      { name: '퇴계로3가', nameEn: 'Toegye-ro 3-ga' },
+      { name: '퇴계로4가', nameEn: 'Toegye-ro 4-ga' },
+      { name: '퇴계로5가', nameEn: 'Toegye-ro 5-ga' },
+      { name: '퇴계로6가', nameEn: 'Toegye-ro 6-ga' },
+      { name: '필동1가', nameEn: 'Pil-dong 1-ga' },
+      { name: '필동2가', nameEn: 'Pil-dong 2-ga' },
+      { name: '필동3가', nameEn: 'Pil-dong 3-ga' },
       { name: '황학동', nameEn: 'Hwanghak-dong' },
-      { name: '회현동', nameEn: 'Hoehyeon-dong' }
+      { name: '회현동1가', nameEn: 'Hoehyeon-dong 1-ga' },
+      { name: '회현동2가', nameEn: 'Hoehyeon-dong 2-ga' },
+      { name: '회현동3가', nameEn: 'Hoehyeon-dong 3-ga' },
+      { name: '흥인동', nameEn: 'Heungin-dong' }
     ]
   },
   {
@@ -451,11 +709,47 @@ export const SEOUL_DISTRICTS: District[] = [
   }
 ];
 
+// Load comprehensive apartment database from MOLIT data
+let APARTMENT_DATABASE: Apartment[] | null = null;
+
 /**
- * Common Seoul Apartment Complexes with English Translations
+ * Load comprehensive apartment database from generated JSON file
+ * This contains ALL apartments in Seoul with recent transactions
+ */
+function loadApartmentDatabase(): Apartment[] {
+  if (APARTMENT_DATABASE) {
+    return APARTMENT_DATABASE;
+  }
+
+  try {
+    // In production, this would be loaded from the JSON file
+    // For now, we'll use dynamic import or fs.readFileSync in Node.js context
+    if (typeof window === 'undefined') {
+      // Server-side
+      const fs = require('fs');
+      const path = require('path');
+      const dbPath = path.join(process.cwd(), 'scripts', 'apartment-database.json');
+
+      if (fs.existsSync(dbPath)) {
+        const data = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
+        APARTMENT_DATABASE = data.apartments;
+        console.log(`✅ Loaded ${APARTMENT_DATABASE?.length || 0} apartments from database`);
+        return APARTMENT_DATABASE || [];
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load apartment database, falling back to hardcoded list:', error);
+  }
+
+  // Fallback to hardcoded list if database file not found
+  return SEOUL_APARTMENTS_FALLBACK;
+}
+
+/**
+ * Fallback list of common Seoul apartments (used if database file not available)
  * This is a curated list of popular apartment complexes across Seoul
  */
-export const SEOUL_APARTMENTS: Apartment[] = [
+const SEOUL_APARTMENTS_FALLBACK: Apartment[] = [
   // Major brands - General
   { name: '래미안', nameEn: 'Raemian' },
   { name: '아이파크', nameEn: 'I-Park' },
@@ -605,6 +899,12 @@ export const SEOUL_APARTMENTS: Apartment[] = [
   { name: '상봉동래미안', nameEn: 'Sangbong-dong Raemian' }
 ];
 
+/**
+ * Get comprehensive apartment list
+ * Loads from database file if available, otherwise uses fallback
+ */
+export const SEOUL_APARTMENTS: Apartment[] = loadApartmentDatabase();
+
 export function getDistrictByCode(code: string): District | undefined {
   return SEOUL_DISTRICTS.find(d => d.code === code);
 }
@@ -616,22 +916,39 @@ export function getDistrictByName(name: string): District | undefined {
 export function searchApartments(query: string, dong?: string, district?: string): Apartment[] {
   const lowerQuery = query.toLowerCase();
   return SEOUL_APARTMENTS.filter(apt => {
-    // Match query
-    const matchesQuery = apt.name.toLowerCase().includes(lowerQuery) ||
-      apt.nameEn.toLowerCase().includes(lowerQuery);
+    // Match query against apartment name, district, and dong
+    const matchesName = apt.name.toLowerCase().includes(lowerQuery) ||
+      (apt.nameEn && apt.nameEn.toLowerCase().includes(lowerQuery));
+
+    const matchesDistrict = apt.district && apt.district.toLowerCase().includes(lowerQuery);
+
+    const matchesDong = (apt.dong && apt.dong.toLowerCase().includes(lowerQuery)) ||
+      (apt.dongs && apt.dongs.some(d => d.toLowerCase().includes(lowerQuery)));
+
+    const matchesQuery = matchesName || matchesDistrict || matchesDong;
+
+    if (!matchesQuery) {
+      return false;
+    }
 
     // If dong is specified, filter by dong
-    if (dong && apt.dong) {
-      return matchesQuery && apt.dong === dong;
+    if (dong) {
+      // Check both single dong and multiple dongs
+      const matchesDongFilter = apt.dong === dong ||
+        (apt.dongs && apt.dongs.includes(dong));
+
+      if (!matchesDongFilter) {
+        return false;
+      }
     }
 
     // If only district is specified, filter by district
     if (district && apt.district) {
-      return matchesQuery && apt.district === district;
+      return apt.district === district;
     }
 
     // If no location filter, return all matches
-    return matchesQuery;
+    return true;
   });
 }
 
