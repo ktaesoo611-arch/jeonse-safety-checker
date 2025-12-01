@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import Tooltip from '@/components/Tooltip';
 import Link from 'next/link';
 
 interface MortgageRanking {
@@ -218,20 +219,18 @@ export default function ReportPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="bg-gray-50 rounded-xl p-5">
               <p className="text-sm text-gray-600 mb-2 font-medium">Jeonse Deposit</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ₩{(report.property.proposedJeonse / 100000000).toFixed(1)}억
-              </p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-gray-900">
+                  ₩{(report.property.proposedJeonse / 100000000).toFixed(1)}
+                </span>
+                <span className="text-lg font-semibold text-gray-700">억</span>
+              </div>
             </div>
             <div className="bg-gray-50 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-2">
                 <p className="text-sm text-gray-600 font-medium">Est. Market Value</p>
-                <div className="group relative">
-                  <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity absolute z-50 w-80 p-4 bg-white border border-gray-200 rounded-lg shadow-xl -right-2 top-6 text-xs leading-relaxed">
+                <Tooltip content={
+                  <div>
                     <p className="font-bold text-gray-900 mb-2">How is this calculated?</p>
                     <p className="text-gray-700 mb-3">
                       {report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5
@@ -241,15 +240,7 @@ export default function ReportPage() {
 
                     {report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5 && (
                       <>
-                        <p className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                          Data Confidence
-                          <span
-                            className="cursor-help text-gray-400 hover:text-gray-600"
-                            title="Confidence score (0-100%) calculated from: R² statistical reliability (50% weight), transaction recency (25% weight), transaction volume (15% weight), and time span coverage (10% weight). Higher confidence = more reliable valuation estimate."
-                          >
-                            ⓘ
-                          </span>
-                        </p>
+                        <p className="font-semibold text-gray-900 mb-1">Data Confidence</p>
                         <p className="text-gray-700 mb-3">
                           {(report.property.valuation.confidence * 100).toFixed(0)}% confidence based on {
                             report.property.valuation.confidence >= 0.7 ? 'strong statistical trend and multiple recent transactions' :
@@ -271,26 +262,14 @@ export default function ReportPage() {
 
                     {report.property.valuation?.marketTrend && (
                       <>
-                        <p className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                          Market Trend
-                          <span
-                            className="cursor-help text-gray-400 hover:text-gray-600"
-                            title={
-                              report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5
-                                ? "Statistical trend detection using linear regression on 12 months of MOLIT transaction data. R² measures how well the trend fits actual data (>70% = strong trend, 40-70% = moderate, <40% = weak/noisy). Dynamic thresholds adjust based on statistical confidence to filter out market noise."
-                                : "No recent transaction data available for this property. 'Stable' is a default assumption only - actual market trend is unknown. Use caution when making decisions based on this estimate."
-                            }
-                          >
-                            ⓘ
-                          </span>
-                        </p>
+                        <p className="font-semibold text-gray-900 mb-1">Market Trend</p>
                         <p className="text-gray-700 mb-3 capitalize">
                           {report.property.valuation.marketTrend === 'rising' && '📈 Rising'}
                           {report.property.valuation.marketTrend === 'stable' && (
                             <>
                               ➡️ Stable
                               {report.property.valuation?.confidence === 0.5 && (
-                                <span className="text-amber-600 ml-1" title="Default assumption - no transaction data">⚠️</span>
+                                <span className="text-amber-600 ml-1">⚠️ (No transaction data)</span>
                               )}
                             </>
                           )}
@@ -308,13 +287,22 @@ export default function ReportPage() {
                       <span className="font-semibold text-orange-600">⚠️ Important:</span> This is an estimate. Actual market value may vary. We recommend getting an independent professional appraisal (감정평가) before proceeding.
                     </p>
                   </div>
-                </div>
+                }>
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </Tooltip>
               </div>
-              <p className="text-2xl font-bold text-gray-900">
-                {report.property.estimatedValue
-                  ? `₩${(report.property.estimatedValue / 100000000).toFixed(1)}억`
-                  : 'N/A'}
-              </p>
+              {report.property.estimatedValue ? (
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-gray-900">
+                    ₩{(report.property.estimatedValue / 100000000).toFixed(1)}
+                  </span>
+                  <span className="text-lg font-semibold text-gray-700">억</span>
+                </div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900">N/A</p>
+              )}
             </div>
             <div className="bg-gray-50 rounded-xl p-5">
               <p className="text-sm text-gray-600 mb-2 font-medium">LTV Ratio</p>
@@ -322,9 +310,12 @@ export default function ReportPage() {
             </div>
             <div className="bg-gray-50 rounded-xl p-5">
               <p className="text-sm text-gray-600 mb-2 font-medium">Total Debt</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ₩{(report.riskAnalysis.metrics.totalDebt / 100000000).toFixed(1)}억
-              </p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-gray-900">
+                  ₩{(report.riskAnalysis.metrics.totalDebt / 100000000).toFixed(1)}
+                </span>
+                <span className="text-lg font-semibold text-gray-700">억</span>
+              </div>
             </div>
           </div>
         </Card>
@@ -377,19 +368,18 @@ export default function ReportPage() {
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-900 text-lg">{labels[key]}</span>
-                      <div className="group relative">
-                        <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity absolute z-50 w-96 p-4 bg-white border border-gray-200 rounded-lg shadow-xl left-0 top-6 text-xs leading-relaxed">
+                      <Tooltip content={
+                        <div>
                           <p className="font-bold text-gray-900 mb-2">{scoreInfo.title}</p>
                           <p className="text-gray-700 mb-3">{scoreInfo.description}</p>
                           <p className="font-semibold text-gray-900 mb-1">Scoring:</p>
                           <p className="text-gray-600">{scoreInfo.scoring}</p>
                         </div>
-                      </div>
+                      }>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </Tooltip>
                     </div>
                     <span className="font-bold text-gray-900 text-lg">{value}/100</span>
                   </div>
@@ -419,13 +409,8 @@ export default function ReportPage() {
           <Card className="mb-8 shadow-lg border-0">
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Debt & Collateral Analysis</h2>
-              <div className="group relative">
-                <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity absolute z-50 w-96 p-4 bg-white border border-gray-200 rounded-lg shadow-xl -right-2 top-6 text-xs leading-relaxed">
+              <Tooltip content={
+                <div>
                   <p className="font-bold text-gray-900 mb-2">Understanding Debt Priority</p>
                   <p className="text-gray-700 mb-3">
                     In case of property auction, creditors are repaid in order of registration date. Understanding this ranking is crucial for assessing your deposit safety.
@@ -443,7 +428,11 @@ export default function ReportPage() {
                     <span className="font-semibold text-orange-600">⚠️ Important:</span> Your proposed jeonse deposit will rank after all currently registered claims shown above. Ensure sufficient equity remains to cover your deposit.
                   </p>
                 </div>
-              </div>
+              }>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </Tooltip>
             </div>
 
             {/* Summary Statistics */}
@@ -622,10 +611,10 @@ export default function ReportPage() {
                 >
                   <div className="flex items-start gap-4">
                     <span className="text-3xl flex-shrink-0">⚠️</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <p className="font-bold text-gray-900 text-lg">{risk.type}</p>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3 mb-2 flex-wrap">
+                        <p className="font-bold text-gray-900 text-lg break-words flex-1 min-w-0">{risk.type}</p>
+                        <span className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-bold ${
                           risk.severity === 'CRITICAL' ? 'bg-red-600 text-white' :
                           risk.severity === 'HIGH' ? 'bg-orange-600 text-white' :
                           'bg-yellow-600 text-white'
@@ -633,7 +622,7 @@ export default function ReportPage() {
                           {risk.severity}
                         </span>
                       </div>
-                      <p className="text-gray-700 leading-relaxed">{risk.description}</p>
+                      <p className="text-gray-700 leading-relaxed break-words">{risk.description}</p>
                     </div>
                   </div>
                 </div>
