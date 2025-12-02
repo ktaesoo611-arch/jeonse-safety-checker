@@ -5,6 +5,13 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import Link from 'next/link';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client for direct uploads
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function UploadPage() {
   const router = useRouter();
@@ -46,6 +53,7 @@ export default function UploadPage() {
   };
 
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleUpload = async () => {
     if (!file) {
@@ -55,44 +63,75 @@ export default function UploadPage() {
 
     try {
       setIsUploading(true);
+      setUploadProgress(10);
 
-      // Upload file and wait for completion
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('analysisId', analysisId);
-      formData.append('documentType', 'deunggibu');
+      // Generate unique file path
+      const timestamp = Date.now();
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const storagePath = `${analysisId}/deunggibu_${timestamp}_${sanitizedFileName}`;
 
-      const uploadResponse = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData
-      });
+      console.log('Uploading to Supabase Storage:', storagePath);
+      setUploadProgress(20);
 
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const uploadData = await uploadResponse.json();
-
-      if (uploadData.documentId) {
-        // Start parsing
-        const parseResponse = await fetch('/api/documents/parse', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ documentId: uploadData.documentId })
+      // Upload directly to Supabase Storage from client
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(storagePath, file, {
+          contentType: 'application/pdf',
+          upsert: false,
         });
 
-        if (!parseResponse.ok) {
-          throw new Error('Failed to start document parsing');
-        }
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
 
-      // Only redirect after successful upload and parse
+      console.log('File uploaded to storage:', uploadData);
+      setUploadProgress(60);
+
+      // Register the upload in database
+      const registerResponse = await fetch('/api/documents/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analysisId,
+          documentType: 'deunggibu',
+          fileName: file.name,
+          filePath: storagePath,
+          fileSize: file.size,
+        }),
+      });
+
+      if (!registerResponse.ok) {
+        const errorData = await registerResponse.json();
+        throw new Error(errorData.error || 'Failed to register document');
+      }
+
+      const registerData = await registerResponse.json();
+      console.log('Document registered:', registerData);
+      setUploadProgress(80);
+
+      // Start parsing
+      const parseResponse = await fetch('/api/documents/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: registerData.documentId })
+      });
+
+      if (!parseResponse.ok) {
+        throw new Error('Failed to start document parsing');
+      }
+
+      setUploadProgress(100);
+      console.log('Upload complete, redirecting to processing');
+
+      // Redirect after successful upload and parse
       router.push(`/analyze/${analysisId}/processing`);
 
     } catch (error: any) {
       console.error('Upload error:', error);
       setIsUploading(false);
+      setUploadProgress(0);
       alert(`Upload failed: ${error.message || 'Unknown error'}`);
     }
   };
@@ -207,6 +246,19 @@ export default function UploadPage() {
           {/* Upload Button */}
           {file && (
             <div className="mt-8 pt-8 border-t border-gray-100">
+              {isUploading && (
+                <div className="mb-4">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-600 to-teal-600 transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2 text-center">
+                    {uploadProgress}% complete
+                  </p>
+                </div>
+              )}
               <Button
                 size="lg"
                 className="w-full text-lg py-5"
@@ -216,7 +268,7 @@ export default function UploadPage() {
                 {isUploading ? (
                   <span className="flex items-center justify-center gap-3">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Uploading...
+                    Uploading to server...
                   </span>
                 ) : (
                   'Start analysis →'
