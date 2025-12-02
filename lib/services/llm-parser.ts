@@ -114,15 +114,20 @@ export class LLMParser {
 
     return `You are an expert at parsing Korean real estate documents (등기부등본).
 
-Extract ALL entries from the OCR text below. Focus on the summary section "3. (근)저당권 및 전세권 등 ( 을구 )".
+Extract ALL debt-related entries from the OCR text. This includes entries from:
+- Section "3. (근)저당권 및 전세권 등 ( 을구 )" - mortgage and jeonse summary
+- Any sections mentioning "근저당권설정", "전세권설정", "주택임차권"
+
+**CRITICAL**: Do NOT skip ANY entries. Even if there's only ONE mortgage, extract it!
 
 **IMPORTANT INSTRUCTIONS:**
 
-1. **근저당권 (Mortgages)**:
-   - Look for "근저당권설정" entries
-   - Extract: 순위번호 (priority), 접수일자 (date), 채권최고액 (max secured amount), 근저당권자 (creditor)
-   - Date format: YYYY년MM월DD일 or YYYY-MM-DD
-   - Amount format: 금XXX원
+1. **근저당권 (Mortgages)** - HIGHEST PRIORITY:
+   - Look for EVERY "근저당권설정" entry in the document
+   - Extract: 순위번호 (priority), 접수일자/등록일 (date), 채권최고액 (max secured amount), 근저당권자 (creditor)
+   - Date format: YYYY년MM월DD일 or YYYY-MM-DD or YYYY년M월D일
+   - Amount format: Look for "금", "채권최고액", or numbers followed by "원"
+   - **EXAMPLE**: "순위번호 19 | 근저당권설정 | 2021년3월28일 | 채권최고액 금393,900,000원 | 근저당권자 농협은행주식회사"
 
 2. **전세권 및 주택임차권 (Jeonse Rights and Housing Lease Rights)**:
    - Look for THREE types: "전세권설정", "전세권변경", AND "주택임차권" (court-ordered lease registration)
@@ -141,15 +146,17 @@ Extract ALL entries from the OCR text below. Focus on the summary section "3. (�
    - Use delimiters like "|" or "제XXX호" to separate fields
    - If date appears multiple times, match it to the closest entry type
 
+**PARSE CAREFULLY**: Even if section 3 shows only a table with ONE mortgage entry, extract that mortgage! Do not return empty arrays if mortgages exist.
+
 Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 
 {
   "mortgages": [
     {
-      "priority": 25,
-      "registrationDate": "2022-02-09",
-      "maxSecuredAmount": 1534000000,
-      "creditor": "신한은행 주식회사",
+      "priority": 19,
+      "registrationDate": "2021-03-28",
+      "maxSecuredAmount": 393900000,
+      "creditor": "농협은행주식회사",
       "confidence": 0.95
     }
   ],
