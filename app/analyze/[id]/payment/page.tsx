@@ -212,23 +212,6 @@ export default function PaymentPage() {
             >
               Pay ₩{PAYMENT_AMOUNT.toLocaleString()}
             </button>
-
-            {/* Dev Mode Skip Payment Button */}
-            {DEV_MODE && (
-              <div className="mt-4">
-                <div className="text-center mb-2">
-                  <span className="text-xs text-gray-500 bg-yellow-50 px-2 py-1 rounded border border-yellow-200">
-                    DEV MODE ONLY
-                  </span>
-                </div>
-                <button
-                  onClick={handleSkipPayment}
-                  className="w-full bg-yellow-500 text-white text-lg font-semibold px-8 py-4 rounded-xl hover:bg-yellow-600 transition-all duration-200 shadow-lg hover:shadow-xl"
-                >
-                  Skip Payment (Dev Mode)
-                </button>
-              </div>
-            )}
           </div>
         )}
 
