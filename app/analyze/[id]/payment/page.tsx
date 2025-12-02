@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk';
 
 const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY || '';
-const PAYMENT_AMOUNT = 0; // Free during beta period
+const PAYMENT_AMOUNT = 0; // Free during beta period - Updated 2025-12-02
 const DEV_MODE = process.env.NEXT_PUBLIC_ENABLE_DEV_MODE === 'true';
 
 export default function PaymentPage() {
