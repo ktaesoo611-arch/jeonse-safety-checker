@@ -230,7 +230,7 @@ export default function TermsPage() {
             <div className="bg-gray-50 rounded-xl p-6">
               <div className="space-y-3 text-gray-700">
                 <p><strong>Company:</strong> 전세안전연구소 (Jeonse Safety Institute)</p>
-                <p><strong>Representative:</strong> 김태수 (Kim Tae-su)</p>
+                <p><strong>Representative:</strong> 김태수 (Kim Tae-soo)</p>
                 <p><strong>Business Registration:</strong> 595-47-01161</p>
                 <p><strong>Address:</strong> 서울특별시 중구 왕십리로 407, 101동 601호 (신당동, 신당파인힐하나유보라아파트)</p>
                 <p><strong>Phone:</strong> 010-2382-8432</p>
