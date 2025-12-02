@@ -93,11 +93,28 @@ export default function PaymentPage() {
     }
 
     try {
-      // If payment amount is 0 (free beta), skip payment and go directly to analysis page
+      // If payment amount is 0 (free beta), mark as approved and redirect to upload
       if (PAYMENT_AMOUNT === 0) {
-        console.log('Free beta detected - redirecting to analysis page');
-        console.log('Redirecting to:', `/analyze/${analysisId}`);
-        router.push(`/analyze/${analysisId}`);
+        console.log('Free beta detected - marking payment as approved');
+        setIsLoading(true);
+
+        const response = await fetch('/api/payments/skip-dev', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            analysisId,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to process free beta');
+        }
+
+        console.log('Payment marked as approved, redirecting to upload');
+        router.push(`/analyze/${analysisId}/upload`);
         return;
       }
 

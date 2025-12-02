@@ -4,14 +4,6 @@ import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 export async function POST(request: Request) {
   try {
-    // Check if dev mode is enabled
-    if (process.env.NEXT_PUBLIC_ENABLE_DEV_MODE !== 'true') {
-      return NextResponse.json(
-        { error: 'Dev mode is not enabled' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { analysisId } = body;
 
@@ -54,12 +46,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update analysis_results to mark payment as approved (dev mode)
+    // Update analysis_results to mark payment as approved (free beta)
     const { error: updateError } = await supabaseAdmin
       .from('analysis_results')
       .update({
         payment_status: 'approved',
-        payment_key: 'dev-mode-skip',
+        payment_key: 'free-beta',
         payment_amount: 0,
       })
       .eq('id', analysisId);
@@ -74,7 +66,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Payment skipped in dev mode',
+      message: 'Payment approved for free beta',
     });
 
   } catch (error) {
