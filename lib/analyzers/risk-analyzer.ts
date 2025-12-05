@@ -313,13 +313,15 @@ export class RiskAnalyzer {
     if (deunggibu.hasProvisionalDisposition) score -= 30; // 가처분
 
     // Moderate issues
-    if (deunggibu.ownership.length > 1) score -= 25; // 공동소유 (Shared ownership)
+    if (deunggibu.ownership && deunggibu.ownership.length > 1) score -= 25; // 공동소유 (Shared ownership)
     if (deunggibu.hasEasement) score -= 20; // 지역권
     if (deunggibu.hasAdvanceNotice) score -= 15; // 예고등기
     if (deunggibu.hasUnregisteredLandRights) score -= 10; // 대지권미등기
 
-    // Liens
-    score -= deunggibu.liens.length * 25;
+    // Liens (defensive check to prevent crash)
+    if (deunggibu.liens && Array.isArray(deunggibu.liens)) {
+      score -= deunggibu.liens.length * 25;
+    }
 
     return Math.max(0, score);
   }
@@ -436,6 +438,9 @@ export class RiskAnalyzer {
    * Based on 주택임대차보호법 시행령 [별표 1] 과밀억제권역
    */
   private determineRegion(address: string): string {
+    // Handle undefined or null address
+    if (!address) return '기타 지역';
+
     // 1. 서울특별시
     if (address.includes('서울')) return '서울';
 
@@ -726,8 +731,20 @@ export class RiskAnalyzer {
       });
     }
 
+    // Provisional disposition
+    if (deunggibu.hasProvisionalDisposition) {
+      risks.push({
+        type: 'provisional_disposition',
+        severity: 'HIGH',
+        title: '가처분 (Provisional Disposition)',
+        description: 'Court-ordered provisional disposition exists on this property. This restricts property transactions and indicates legal disputes. High legal risk.',
+        impact: -30,
+        category: 'legal'
+      });
+    }
+
     // Shared ownership (공동소유)
-    if (deunggibu.ownership.length > 1) {
+    if (deunggibu.ownership && Array.isArray(deunggibu.ownership) && deunggibu.ownership.length > 1) {
       const ownerNames = deunggibu.ownership.map(o => `${o.ownerName} (${o.ownershipPercentage}%)`).join(', ');
       risks.push({
         type: 'shared_ownership',

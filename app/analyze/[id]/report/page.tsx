@@ -476,14 +476,14 @@ export default function ReportPage() {
 
             {/* Debt Ranking Table */}
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b-2 border-gray-300">
-                    <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Rank</th>
-                    <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Priority</th>
-                    <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Type</th>
-                    <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Amount</th>
-                    <th className="text-left py-4 px-5 text-xs font-bold text-gray-600 bg-gray-50 uppercase tracking-wider">Registration Date</th>
+                  <tr className="border-b-2 border-gray-300 bg-gray-50">
+                    <th className="text-center py-4 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Rank</th>
+                    <th className="text-center py-4 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Priority</th>
+                    <th className="text-center py-4 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Type</th>
+                    <th className="text-center py-4 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Amount</th>
+                    <th className="text-center py-4 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Registration<br/>Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -503,40 +503,54 @@ export default function ReportPage() {
                     return (
                       <tr
                         key={index}
-                        className={`border-b border-gray-200 hover:shadow-md transition-all ${
-                          isYourJeonse ? 'bg-gradient-to-r from-purple-100/70 via-purple-50/50 to-purple-100/70 border-l-4 border-purple-600 shadow-sm' : priorityColors[debt.priority]
+                        className={`border-b border-gray-200 ${
+                          isYourJeonse ? 'bg-gradient-to-r from-purple-100/70 via-purple-50/50 to-purple-100/70 border-l-4 border-purple-600' : priorityColors[debt.priority]
                         }`}
                       >
-                        <td className="py-6 px-5">
-                          <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 text-white font-bold text-base shadow-md">
+                        <td className="py-5 px-4 text-center">
+                          <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 text-white font-bold text-sm">
                             {debt.rank}
                           </span>
                         </td>
-                        <td className="py-6 px-5">
+                        <td className="py-5 px-4 text-center">
                           {isYourJeonse ? (
-                            <span className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg tracking-wide">
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-600 to-purple-700 text-white uppercase tracking-wide">
                               YOUR DEPOSIT
                             </span>
                           ) : (
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide shadow-md ${priorityBadges[debt.priority]}`}>
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide ${priorityBadges[debt.priority]}`}>
                               {debt.priority}
                             </span>
                           )}
                         </td>
-                        <td className="py-6 px-5">
-                          <span className={`font-semibold ${isYourJeonse ? 'text-gray-900 text-base' : 'text-gray-800'}`}>
-                            {debt.type}
-                          </span>
+                        <td className="py-5 px-4 text-center">
+                          <div className={`font-medium text-sm ${isYourJeonse ? 'text-gray-900' : 'text-gray-800'}`}>
+                            {debt.type.replace(' (Mortgage)', '')}
+                          </div>
+                          {!isYourJeonse && (
+                            <div className="text-xs text-gray-500 mt-0.5">(Mortgage)</div>
+                          )}
                         </td>
-                        <td className="py-6 px-5">
-                          <span className={`font-bold text-2xl tracking-tight whitespace-nowrap ${isYourJeonse ? 'text-purple-900' : 'text-gray-900'}`}>
+                        <td className="py-5 px-4 text-center">
+                          <div className={`font-bold text-xl ${isYourJeonse ? 'text-purple-900' : 'text-gray-900'}`}>
                             ₩{(debt.amount / 100000000).toFixed(1)}억
-                          </span>
+                          </div>
                         </td>
-                        <td className="py-6 px-5">
-                          <span className="text-gray-600 text-sm font-medium">
-                            {debt.registrationDate}
-                          </span>
+                        <td className="py-5 px-4 text-center">
+                          {debt.registrationDate.includes('(') ? (
+                            <>
+                              <div className="text-gray-700 text-sm font-medium">
+                                {debt.registrationDate.split(' (')[0]}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                ({debt.registrationDate.split(' (')[1].replace(')', '')})
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-gray-700 text-sm font-medium whitespace-nowrap">
+                              {debt.registrationDate}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -847,147 +861,112 @@ export default function ReportPage() {
             overflow-x: visible !important;
           }
 
-          /* Table base styling - unified font size */
+          /* Debt Ranking Table - Clean print styling */
           table {
-            font-size: 10px !important;
-            line-height: 1.5 !important;
+            border-collapse: collapse !important;
             width: 100% !important;
+            font-size: 11px !important;
+            line-height: 1.4 !important;
+          }
+
+          table thead tr {
+            background-color: #f9fafb !important;
+            border-bottom: 2px solid #d1d5db !important;
           }
 
           table th {
             font-size: 10px !important;
             font-weight: 700 !important;
-            padding: 10px 8px !important;
+            padding: 12px 8px !important;
             text-align: center !important;
             vertical-align: middle !important;
-            background-color: #f9fafb !important;
+            color: #374151 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.025em !important;
+          }
+
+          table tbody tr {
+            border-bottom: 1px solid #e5e7eb !important;
           }
 
           table td {
-            font-size: 10px !important;
-            padding: 12px 8px !important;
+            padding: 14px 8px !important;
             vertical-align: middle !important;
+            text-align: center !important;
           }
 
-          /* Optimized column widths - no overflow */
-          table td:nth-child(1),
-          table th:nth-child(1) {
-            width: 8% !important;
-            text-align: center !important;
-          }   /* Rank */
+          /* Column widths */
+          table th:nth-child(1), table td:nth-child(1) { width: 12% !important; }  /* Rank */
+          table th:nth-child(2), table td:nth-child(2) { width: 22% !important; }  /* Priority */
+          table th:nth-child(3), table td:nth-child(3) { width: 24% !important; }  /* Type */
+          table th:nth-child(4), table td:nth-child(4) { width: 24% !important; }  /* Amount */
+          table th:nth-child(5), table td:nth-child(5) { width: 18% !important; }  /* Date */
 
-          table td:nth-child(2),
-          table th:nth-child(2) {
-            width: 18% !important;
-            text-align: center !important;
-          }  /* Priority */
-
-          table td:nth-child(3),
-          table th:nth-child(3) {
-            width: 17% !important;
-            text-align: center !important;
-          }  /* Type */
-
-          table td:nth-child(4),
-          table th:nth-child(4) {
-            width: 37% !important;
-            text-align: left !important;
-          }  /* Creditor & Amount */
-
-          table td:nth-child(5),
-          table th:nth-child(5) {
-            width: 20% !important;
-            text-align: center !important;
-          }  /* Registration Date */
-
-          /* Row styling */
-          table tbody tr {
-            border-bottom: 1px solid #e5e7eb !important;
-            min-height: 55px !important;
-          }
-
-          /* Rank badge */
+          /* Rank badge - smaller for PDF */
           table td:nth-child(1) span {
             display: inline-flex !important;
-            width: 32px !important;
-            height: 32px !important;
-            font-size: 10px !important;
+            width: 30px !important;
+            height: 30px !important;
+            font-size: 11px !important;
             font-weight: 700 !important;
             align-items: center !important;
             justify-content: center !important;
             border-radius: 50% !important;
+            background: linear-gradient(to bottom right, #374151, #1f2937) !important;
+            color: white !important;
           }
 
-          /* Priority badges - same size as text */
+          /* Priority badges - consistent sizing */
           table td:nth-child(2) span {
-            font-size: 10px !important;
+            font-size: 9px !important;
             font-weight: 700 !important;
-            padding: 6px 12px !important;
+            padding: 5px 10px !important;
             white-space: nowrap !important;
             display: inline-block !important;
             border-radius: 6px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
           }
 
-          /* Type column - consistent */
-          table td:nth-child(3) {
-            font-size: 10px !important;
-            font-weight: 500 !important;
-            line-height: 1.5 !important;
-          }
-
-          /* Creditor & Amount - side by side */
-          table td:nth-child(4) > div {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            gap: 12px !important;
-          }
-
-          /* Creditor name side */
-          table td:nth-child(4) > div > div:first-child {
-            flex: 1 !important;
-            min-width: 0 !important;
-          }
-
-          /* Creditor main name - unified size */
-          table td:nth-child(4) > div > div:first-child > div:first-child,
-          table td:nth-child(4) > div > span {
-            font-size: 10px !important;
+          /* Type column - split into two lines */
+          table td:nth-child(3) div:first-child {
+            font-size: 11px !important;
             font-weight: 600 !important;
-            line-height: 1.5 !important;
-            word-break: keep-all !important;
+            color: #1f2937 !important;
+            margin-bottom: 2px !important;
           }
 
-          /* 주식회사 suffix - same size */
-          table td:nth-child(4) > div > div:first-child > div:last-child {
-            font-size: 10px !important;
+          table td:nth-child(3) div:last-child {
+            font-size: 9px !important;
             font-weight: 400 !important;
-            line-height: 1.5 !important;
             color: #6b7280 !important;
-            margin-top: 2px !important;
           }
 
-          /* Amount side - right aligned */
-          table td:nth-child(4) > div > div:last-child {
-            flex-shrink: 0 !important;
-            text-align: right !important;
-          }
-
-          /* Amount value - same size as everything else */
-          table td:nth-child(4) > div > div:last-child span {
-            font-size: 10px !important;
+          /* Amount - clean and bold */
+          table td:nth-child(4) div {
+            font-size: 14px !important;
             font-weight: 700 !important;
+            color: #1f2937 !important;
             white-space: nowrap !important;
           }
 
-          /* Registration Date - allow wrapping */
-          table td:nth-child(5) {
+          /* Registration Date */
+          table td:nth-child(5) div {
             font-size: 10px !important;
             font-weight: 500 !important;
-            word-break: keep-all !important;
-            overflow-wrap: break-word !important;
-            line-height: 1.5 !important;
-            padding: 12px 6px !important;
+            color: #374151 !important;
+            white-space: nowrap !important;
+          }
+
+          /* Row background colors for print */
+          table tbody tr.border-l-4 {
+            border-left-width: 4px !important;
+            border-left-style: solid !important;
+          }
+
+          /* Remove hover effects in print */
+          table tbody tr {
+            box-shadow: none !important;
           }
         }
       `}</style>

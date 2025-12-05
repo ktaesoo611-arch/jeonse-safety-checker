@@ -176,6 +176,7 @@ async function performRealAnalysis(
       console.log(`   - Mortgages found: ${deunggibuData.mortgages.length}`);
       console.log(`   - Jeonse rights found: ${deunggibuData.jeonseRights.length}`);
       console.log(`   - Liens found: ${deunggibuData.liens.length}`);
+      console.log(`   - Building year extracted: ${deunggibuData.buildingYear || 'not found'}`);
 
       parsingMethod = 'llm';
     } catch (llmError) {
@@ -301,7 +302,44 @@ async function performRealAnalysis(
       calculatedAge: buildingAge
     });
 
-    // Step 5: Perform risk analysis
+    // Step 5: Add user-provided address to deunggibuData (LLM parser doesn't populate this)
+    if (!deunggibuData.address && address) {
+      deunggibuData.address = address;
+    }
+
+    // Step 5.5: Populate boolean flags from liens array (LLM parser doesn't set these)
+    if (deunggibuData.liens && Array.isArray(deunggibuData.liens)) {
+      deunggibuData.hasAuction = false;
+      deunggibuData.hasSeizure = false;
+      deunggibuData.hasProvisionalSeizure = false;
+      deunggibuData.hasProvisionalDisposition = false;
+
+      deunggibuData.liens.forEach((lien: any) => {
+        const lienType = lien.type?.toLowerCase() || '';
+        if (lienType.includes('경매')) {
+          deunggibuData.hasAuction = true;
+        }
+        if (lienType.includes('압류') && !lienType.includes('가압류')) {
+          deunggibuData.hasSeizure = true;
+        }
+        if (lienType.includes('가압류')) {
+          deunggibuData.hasProvisionalSeizure = true;
+        }
+        if (lienType.includes('가처분')) {
+          deunggibuData.hasProvisionalDisposition = true;
+        }
+      });
+
+      console.log('Populated legal flags from liens:', {
+        hasAuction: deunggibuData.hasAuction,
+        hasSeizure: deunggibuData.hasSeizure,
+        hasProvisionalSeizure: deunggibuData.hasProvisionalSeizure,
+        hasProvisionalDisposition: deunggibuData.hasProvisionalDisposition,
+        liensCount: deunggibuData.liens.length
+      });
+    }
+
+    // Step 6: Perform risk analysis
     const riskAnalysis = riskAnalyzer.analyze(
       estimatedValue,
       proposedJeonse,
