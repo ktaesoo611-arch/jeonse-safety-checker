@@ -88,26 +88,25 @@ export default function LandingPageV4() {
             </div>
           </Link>
           <div className="hidden md:flex items-center gap-2">
-            {/* Service Links */}
-            <Link href="/analyze" className="group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden">
-              <span className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
-              <span className="relative text-[#4A5568] group-hover:text-white flex items-center gap-2 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                Jeonse Safety
-              </span>
+            {/* Navigation Links */}
+            <a href="#services" className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all">
+              Services
+            </a>
+            <a href="#how-it-works" className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all">
+              How It Works
+            </a>
+            <Link href="/pricing" className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all">
+              Pricing
             </Link>
 
-            <Link href="/analyze/wolse" className="group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden">
-              <span className="absolute inset-0 bg-gradient-to-r from-orange-400 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
-              <span className="relative text-[#4A5568] group-hover:text-white flex items-center gap-2 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            {/* Primary CTA */}
+            <Link href="/check">
+              <button className="group px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-200/50 transition-all hover:-translate-y-0.5 flex items-center gap-2">
+                Check My Rental
+                <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
-                Wolse Price
-                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[9px] font-bold rounded group-hover:bg-white/20 group-hover:text-white transition-colors">FREE</span>
-              </span>
+              </button>
             </Link>
 
             <div className="w-px h-6 bg-gradient-to-b from-transparent via-amber-200 to-transparent mx-1" />
@@ -182,53 +181,49 @@ export default function LandingPageV4() {
           `}
         >
           <div className="border-t border-amber-100 py-4 px-6 space-y-2 bg-[#FDFBF7]/95 backdrop-blur-md">
-            {/* Services Section */}
-            <div className="py-3 bg-amber-50/50 rounded-2xl px-4">
-              <div className="text-xs text-amber-700 uppercase tracking-wider font-semibold mb-3 flex items-center gap-2">
-                <span className="w-4 h-px bg-amber-300" />
-                Services
-                <span className="flex-1 h-px bg-amber-300" />
-              </div>
-              <Link
-                href="/analyze"
-                className="flex items-center gap-3 px-3 py-3 hover:bg-white rounded-xl transition-all mb-2 group"
-                onClick={(e) => {
-                  haptic.navigation(e.currentTarget);
-                  setMobileMenuOpen(false);
-                }}
-              >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shadow-amber-200 group-hover:scale-105 transition-transform">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-[#1A202C] text-sm">Jeonse Safety Check</div>
-                  <div className="text-xs text-[#718096]">Deposit safety analysis</div>
-                </div>
-              </Link>
-              <Link
-                href="/analyze/wolse"
-                className="flex items-center gap-3 px-3 py-3 hover:bg-white rounded-xl transition-all group"
-                onClick={(e) => {
-                  haptic.navigation(e.currentTarget);
-                  setMobileMenuOpen(false);
-                }}
-              >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center shadow-md shadow-orange-200 group-hover:scale-105 transition-transform">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-[#1A202C] text-sm flex items-center gap-2">
-                    Wolse Price Check
-                    <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[9px] font-bold rounded">FREE</span>
-                  </div>
-                  <div className="text-xs text-[#718096]">Monthly rent verification</div>
-                </div>
-              </Link>
-            </div>
+            {/* Primary CTA */}
+            <Link
+              href="/check"
+              className="block bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 rounded-xl text-center font-semibold shadow-md mb-4"
+              onClick={(e) => {
+                haptic.medium(e.currentTarget);
+                setMobileMenuOpen(false);
+              }}
+            >
+              Check My Rental
+            </Link>
+
+            {/* Navigation Links */}
+            <a
+              href="#services"
+              className="block px-6 py-3 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all"
+              onClick={(e) => {
+                haptic.navigation(e.currentTarget);
+                setMobileMenuOpen(false);
+              }}
+            >
+              Services
+            </a>
+            <a
+              href="#how-it-works"
+              className="block px-6 py-3 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all"
+              onClick={(e) => {
+                haptic.navigation(e.currentTarget);
+                setMobileMenuOpen(false);
+              }}
+            >
+              How It Works
+            </a>
+            <Link
+              href="/pricing"
+              className="block px-6 py-3 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all"
+              onClick={(e) => {
+                haptic.navigation(e.currentTarget);
+                setMobileMenuOpen(false);
+              }}
+            >
+              Pricing
+            </Link>
 
             {/* Auth Links */}
             {!authLoading && user && (
@@ -306,7 +301,7 @@ export default function LandingPageV4() {
               </div>
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] text-[#1A202C] mb-6">
-                Rent safely in
+                Rent Safely in
                 <span className="relative inline-block mx-3">
                   <span className="relative z-10">Korea</span>
                   <span className="absolute bottom-2 left-0 right-0 h-3 bg-amber-300/50 -z-0" />
@@ -314,28 +309,33 @@ export default function LandingPageV4() {
               </h1>
 
               <p className="text-lg text-[#4A5568] leading-relaxed mb-8 max-w-lg">
-                We help foreigners understand Korean rental contracts. Check your jeonse deposit safety
-                or verify if your monthly rent is fair — all in English.
+                Before you sign, make sure your deposit is protected and your rent is fair.
+                We analyze Korean rental contracts — in English, in minutes.
               </p>
 
-              {/* CTA Buttons */}
-              <div className="flex flex-wrap items-center gap-4 mb-12">
-                <Link href="/analyze">
-                  <button className="group px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 flex items-center gap-3">
-                    Jeonse Safety Check
-                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {/* Single Primary CTA Button */}
+              <div className="mb-8">
+                <Link href="/check">
+                  <button className="group px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 flex items-center gap-3">
+                    Check My Rental
+                    <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
                   </button>
                 </Link>
-                <Link href="/analyze/wolse">
-                  <button className="group px-8 py-4 bg-white border-2 border-amber-200 text-[#2D3748] font-semibold rounded-2xl hover:shadow-xl hover:shadow-amber-100/50 transition-all hover:-translate-y-1 hover:border-amber-300 flex items-center gap-3">
-                    Wolse Price Check
-                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                  </button>
-                </Link>
+              </div>
+
+              {/* Trust Badges */}
+              <div className="flex flex-wrap items-center gap-3 mb-8">
+                <span className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-full text-sm font-medium text-amber-700">
+                  Works for Jeonse & Wolse
+                </span>
+                <span className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-full text-sm font-medium text-blue-700">
+                  Full English
+                </span>
+                <span className="px-4 py-2 bg-green-50 border border-green-200 rounded-full text-sm font-medium text-green-700">
+                  Instant Results
+                </span>
               </div>
 
               {/* Trust indicators */}
@@ -373,23 +373,24 @@ export default function LandingPageV4() {
           <div className="text-center mb-16">
             <span className="text-amber-600 text-sm font-semibold tracking-wider uppercase">Our Services</span>
             <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#1A202C]">
-              Two ways to protect your rental
+              Complete protection for your rental
             </h2>
             <p className="mt-4 text-[#4A5568] max-w-2xl mx-auto">
-              Whether you're paying a large jeonse deposit or monthly wolse rent, we've got you covered.
+              Whether you're signing a jeonse or wolse contract, we help you rent with confidence.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Jeonse Safety Check */}
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Deposit Safety Check */}
             <ServiceCard
               icon={<ShieldCheckIcon className="w-8 h-8" />}
-              title="Jeonse Safety Check"
-              description="Analyze your jeonse contract for hidden risks. We check the property register, verify ownership, detect mortgages, and calculate if your deposit is safe."
+              title="Deposit Safety Check"
+              subtitle="Is your deposit protected?"
+              description="We analyze the property register, verify ownership, detect liens and mortgages, and assess whether your deposit money is safe. Works for both jeonse and wolse contracts."
               features={[
                 "20+ risk factor analysis",
-                "Property register translation",
-                "AI-powered valuation",
+                "등기부등본 translation & analysis",
+                "Deposit-to-value assessment",
                 "Safety score (0-100)",
                 "PDF report in English"
               ]}
@@ -404,19 +405,40 @@ export default function LandingPageV4() {
             <ServiceCard
               icon={<CurrencyIcon className="w-8 h-8" />}
               title="Wolse Price Check"
-              description="Verify if your monthly rent is fair. We compare your quote against market rates and legal limits, with negotiation scripts if you're overpaying."
+              subtitle="Is your rent fair?"
+              description="We compare your monthly rent against actual market transactions in your building and neighborhood. Know if you're overpaying before you sign."
               features={[
                 "Market rate comparison",
-                "Legal rate compliance",
-                "Savings calculation",
-                "Negotiation scripts",
-                "Instant results"
+                "Price rating (Fair / High / Overpriced)",
+                "Recent transaction data",
+                "Negotiation tips if overpriced"
               ]}
               price="9,900"
               betaPrice="FREE"
               href="/analyze/wolse"
               color="orange"
               delay={200}
+              tip="💡 Wolse renters: Also run a Deposit Safety Check to protect your deposit"
+            />
+
+            {/* Full Rental Check */}
+            <ServiceCard
+              icon={<CheckCircleIcon className="w-8 h-8" />}
+              title="Full Rental Check"
+              subtitle="Complete protection for wolse renters"
+              description="Get both the Deposit Safety Check and Wolse Price Check in one report. Know your deposit is safe AND your rent is fair."
+              features={[
+                "Everything in Deposit Safety Check",
+                "Everything in Wolse Price Check",
+                "One combined report",
+                "Save time with single submission"
+              ]}
+              price="19,900"
+              betaPrice="FREE"
+              href="/check"
+              color="green"
+              delay={400}
+              badge="Best Value"
             />
           </div>
         </div>
@@ -446,8 +468,8 @@ export default function LandingPageV4() {
             />
             <ProblemCard
               icon={<CurrencyIcon className="w-6 h-6" />}
-              title="Large deposits at risk"
-              description="Jeonse deposits often exceed 300M. Without proper checks, you could lose everything."
+              title="Deposits at risk"
+              description="Rental deposits — whether jeonse (₩100M+) or wolse (₩5M-₩30M) — can be lost if the landlord has hidden debts. In 2023, 24,668 victims lost ₩2.28 trillion to deposit fraud."
               color="amber"
               delay={150}
             />
@@ -490,48 +512,49 @@ export default function LandingPageV4() {
           <div className="text-center mb-16">
             <span className="text-amber-600 text-sm font-semibold tracking-wider uppercase">How it works</span>
             <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#1A202C]">
-              Simple steps to peace of mind
+              Three simple steps to rental safety
             </h2>
           </div>
 
-          {/* Two workflows side by side */}
-          <div className="grid lg:grid-cols-2 gap-12">
-            {/* Jeonse Workflow */}
-            <div className="bg-amber-50/50 rounded-3xl p-8 border border-amber-100">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
-                  <ShieldCheckIcon className="w-5 h-5 text-white" />
+          {/* Unified 3-step workflow */}
+          <div className="max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-3 gap-8 mb-12">
+              {/* Step 1 */}
+              <div className="text-center group">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  1
                 </div>
-                <h3 className="text-xl font-bold text-[#1A202C]">Jeonse Safety Check</h3>
+                <h3 className="text-xl font-bold text-[#1A202C] mb-2">Choose your rental type</h3>
+                <p className="text-[#718096]">Tell us if you have a jeonse or wolse contract. We'll customize the analysis for your situation.</p>
               </div>
-              <div className="space-y-6">
-                <WorkflowStep number="1" title="Select apartment" description="Search 5,398+ Seoul apartments" />
-                <WorkflowStep number="2" title="Upload document" description="Property register PDF" />
-                <WorkflowStep number="3" title="Get report" description="Safety score + recommendations" />
+
+              {/* Step 2 */}
+              <div className="text-center group">
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-amber-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  2
+                </div>
+                <h3 className="text-xl font-bold text-[#1A202C] mb-2">Enter property details</h3>
+                <p className="text-[#718096]">Search our database of 5,398+ Seoul apartments or upload your contract and property register.</p>
               </div>
-              <Link href="/analyze" className="mt-8 block">
-                <button className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-amber-200/50 transition-all">
-                  Start Jeonse Check
-                </button>
-              </Link>
+
+              {/* Step 3 */}
+              <div className="text-center group">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  3
+                </div>
+                <h3 className="text-xl font-bold text-[#1A202C] mb-2">Get your report</h3>
+                <p className="text-[#718096]">Receive your safety score, risk analysis, and recommendations — all in English, in about 2 minutes.</p>
+              </div>
             </div>
 
-            {/* Wolse Workflow */}
-            <div className="bg-orange-50/50 rounded-3xl p-8 border border-orange-100">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-600 rounded-xl flex items-center justify-center">
-                  <CurrencyIcon className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-[#1A202C]">Wolse Price Check</h3>
-              </div>
-              <div className="space-y-6">
-                <WorkflowStep number="1" title="Select apartment" description="Enter building and unit details" />
-                <WorkflowStep number="2" title="Enter your quote" description="Deposit + monthly rent amounts" />
-                <WorkflowStep number="3" title="Get assessment" description="Fair price + negotiation tips" />
-              </div>
-              <Link href="/analyze/wolse" className="mt-8 block">
-                <button className="w-full py-3 bg-gradient-to-r from-orange-400 to-amber-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-200/50 transition-all">
-                  Start Wolse Check
+            {/* Single CTA Button */}
+            <div className="text-center">
+              <Link href="/check">
+                <button className="group px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3">
+                  Check My Rental
+                  <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
                 </button>
               </Link>
             </div>
@@ -560,13 +583,13 @@ export default function LandingPageV4() {
                     <div className="text-white/60 text-sm mt-1">vs 420M deposit</div>
                   </div>
                   <div className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors">
-                    <div className="text-white/40 text-sm mb-2">Wolse Rate</div>
+                    <div className="text-white/40 text-sm mb-2">Rent Rating</div>
                     <div className="text-2xl font-bold text-amber-400">FAIR</div>
                     <div className="text-amber-400/70 text-sm mt-1">Within market</div>
                   </div>
                   <div className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors">
                     <div className="text-white/40 text-sm mb-2">Potential Savings</div>
-                    <div className="text-2xl font-bold text-white">50K</div>
+                    <div className="text-2xl font-bold text-white">₩50K</div>
                     <div className="text-white/60 text-sm mt-1">per month</div>
                   </div>
                 </div>
@@ -640,18 +663,10 @@ export default function LandingPageV4() {
             Join hundreds of expats who have navigated the Korean rental market with confidence.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/analyze">
-              <button className="group px-10 py-5 bg-white text-amber-600 font-bold text-lg rounded-2xl hover:shadow-2xl transition-all hover:-translate-y-1 flex items-center gap-3">
-                Jeonse Safety Check
-                <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </button>
-            </Link>
-            <Link href="/analyze/wolse">
-              <button className="group px-10 py-5 bg-white/20 text-white font-bold text-lg rounded-2xl hover:bg-white/30 transition-all hover:-translate-y-1 flex items-center gap-3 border border-white/30">
-                Wolse Price Check
+          <div className="flex justify-center">
+            <Link href="/check">
+              <button className="group px-12 py-6 bg-white text-amber-600 font-bold text-xl rounded-2xl hover:shadow-2xl transition-all hover:-translate-y-1 flex items-center gap-3">
+                Check My Rental
                 <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
@@ -686,7 +701,8 @@ export default function LandingPageV4() {
             <div>
               <div className="text-white/40 text-sm uppercase tracking-wider mb-4">Services</div>
               <div className="space-y-3">
-                <Link href="/analyze" className="block text-white/70 hover:text-white transition-colors">Jeonse Safety Check</Link>
+                <Link href="/check" className="block text-white/70 hover:text-white transition-colors">Check My Rental</Link>
+                <Link href="/analyze" className="block text-white/70 hover:text-white transition-colors">Deposit Safety Check</Link>
                 <Link href="/analyze/wolse" className="block text-white/70 hover:text-white transition-colors">Wolse Price Check</Link>
                 <Link href="/pricing" className="block text-white/70 hover:text-white transition-colors">Pricing</Link>
               </div>
@@ -768,29 +784,40 @@ export default function LandingPageV4() {
 
 // ============ Service Card Component ============
 function ServiceCard({
-  icon, title, description, features, price, betaPrice, href, color, delay = 0
+  icon, title, subtitle, description, features, price, betaPrice, href, color, delay = 0, tip, badge
 }: {
   icon: React.ReactNode;
   title: string;
+  subtitle?: string;
   description: string;
   features: string[];
   price: string;
   betaPrice: string;
   href: string;
-  color: 'amber' | 'orange';
+  color: 'amber' | 'orange' | 'green';
   delay?: number;
+  tip?: string;
+  badge?: string;
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const gradients = {
     amber: 'from-amber-500 to-orange-600',
-    orange: 'from-orange-400 to-amber-600'
+    orange: 'from-orange-400 to-amber-600',
+    green: 'from-green-500 to-emerald-600'
   };
 
   const bgColors = {
     amber: 'bg-amber-50 border-amber-200 hover:border-amber-300',
-    orange: 'bg-orange-50 border-orange-200 hover:border-orange-300'
+    orange: 'bg-orange-50 border-orange-200 hover:border-orange-300',
+    green: 'bg-green-50 border-green-200 hover:border-green-300'
+  };
+
+  const checkColors = {
+    amber: 'text-amber-500',
+    orange: 'text-orange-500',
+    green: 'text-green-500'
   };
 
   useEffect(() => {
@@ -809,20 +836,28 @@ function ServiceCard({
   return (
     <div
       ref={ref}
-      className={`group p-8 rounded-3xl border-2 transition-all duration-700 hover:shadow-xl hover:-translate-y-2 ${bgColors[color]} ${
+      className={`group p-8 rounded-3xl border-2 transition-all duration-700 hover:shadow-xl hover:-translate-y-2 relative ${bgColors[color]} ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
       }`}
     >
+      {badge && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span className={`px-4 py-1.5 bg-gradient-to-r ${gradients[color]} text-white text-xs font-bold rounded-full shadow-lg`}>
+            {badge}
+          </span>
+        </div>
+      )}
       <div className={`w-14 h-14 bg-gradient-to-br ${gradients[color]} rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform shadow-lg`}>
         {icon}
       </div>
-      <h3 className="text-2xl font-bold text-[#1A202C] mb-3">{title}</h3>
+      <h3 className="text-2xl font-bold text-[#1A202C] mb-1">{title}</h3>
+      {subtitle && <p className="text-sm text-[#718096] mb-3">{subtitle}</p>}
       <p className="text-[#4A5568] mb-6 leading-relaxed">{description}</p>
 
       <ul className="space-y-3 mb-8">
         {features.map((feature, i) => (
           <li key={i} className="flex items-center gap-3 text-[#4A5568]">
-            <svg className="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`w-5 h-5 ${checkColors[color]} flex-shrink-0`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             {feature}
@@ -832,7 +867,7 @@ function ServiceCard({
 
       <div className="flex items-baseline gap-2 mb-6">
         <span className="text-3xl font-bold text-[#1A202C]">{betaPrice}</span>
-        <span className="text-[#718096] line-through">{price}</span>
+        <span className="text-[#718096] line-through">₩{price}</span>
         <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">BETA</span>
       </div>
 
@@ -844,6 +879,10 @@ function ServiceCard({
           </svg>
         </button>
       </Link>
+
+      {tip && (
+        <p className="mt-4 text-xs text-[#718096] text-center">{tip}</p>
+      )}
     </div>
   );
 }
