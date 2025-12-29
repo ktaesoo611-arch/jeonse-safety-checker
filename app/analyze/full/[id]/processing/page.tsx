@@ -55,10 +55,11 @@ export default function FullRentalProcessingPage() {
 
         const data = await response.json();
 
-        if (response.ok) {
+        if (response.ok && data.result) {
           // Store wolse result in session storage for the report page
-          sessionStorage.setItem(`full-rental-wolse-result-${analysisId}`, JSON.stringify(data));
-          setWolseResult(data);
+          // Note: API returns { success, result, inputData }, we only need result
+          sessionStorage.setItem(`full-rental-wolse-result-${analysisId}`, JSON.stringify(data.result));
+          setWolseResult(data.result);
           setWolseStatus('completed');
         } else {
           console.error('Wolse analysis failed:', data.error);
