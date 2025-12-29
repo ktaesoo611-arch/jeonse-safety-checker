@@ -168,9 +168,9 @@ export default function WolseAnalyzePage() {
               href="/analyze"
               className="text-[#4A5568] hover:text-amber-600 font-medium transition-colors"
             >
-              Jeonse Analysis
+              Deposit Safety
             </Link>
-            <span className="text-amber-600 font-semibold">Wolse Analysis</span>
+            <span className="text-amber-600 font-semibold">Wolse Price</span>
           </div>
         </div>
       </header>

@@ -233,7 +233,7 @@ export default function ReportPage() {
           <h2 className="text-2xl font-bold text-[#1A202C] mb-6">Property Information</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="bg-amber-50/50 rounded-xl p-5 border border-amber-100 print:bg-gray-50 print:border-gray-200">
-              <p className="text-sm text-gray-600 mb-2 font-medium">Jeonse Deposit</p>
+              <p className="text-sm text-gray-600 mb-2 font-medium">Your Deposit</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-gray-900">
                   ₩{(report.property.proposedJeonse / 100000000).toFixed(1)}
@@ -250,7 +250,7 @@ export default function ReportPage() {
                     <p className="text-gray-700 mb-3">
                       {report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5
                         ? `Calculated as the average of recent real market transactions from the MOLIT (Ministry of Land, Infrastructure and Transport) database.`
-                        : `Estimated based on the proposed jeonse amount using typical jeonse-to-value ratios (70%), as recent transaction data was not available.`}
+                        : `Estimated based on the proposed deposit amount using typical deposit-to-value ratios (70%), as recent transaction data was not available.`}
                     </p>
 
                     {report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5 && (
@@ -351,12 +351,12 @@ export default function ReportPage() {
               const descriptions: Record<string, { title: string; description: string; scoring: string }> = {
                 ltvScore: {
                   title: 'Loan-to-Value Ratio Assessment',
-                  description: 'Calculates total exposure ratio: LTV = (All Existing Debt + Your Jeonse) / Property Value. Existing debt includes mortgages, jeonse rights (전세권), and lease rights (임차권). Lower LTV means more equity cushion to protect your deposit in foreclosure.',
+                  description: 'Calculates total exposure ratio: LTV = (All Existing Debt + Your Deposit) / Property Value. Existing debt includes mortgages, jeonse rights (전세권), and lease rights (임차권). Lower LTV means more equity cushion to protect your deposit in foreclosure.',
                   scoring: '100 pts: <50% (Excellent) • 80 pts: 50-60% (Good) • 60 pts: 60-70% (Acceptable) • 40 pts: 70-80% (Risky) • 20 pts: 80-90% (Dangerous) • 0 pts: >90% (Critical)'
                 },
                 debtScore: {
                   title: 'Debt Structure Analysis',
-                  description: 'Evaluates existing debt burden (excluding your jeonse). Total debt includes mortgages, jeonse rights (전세권), and lease rights (임차권). Calculation: Start at 100pts → Apply debt ratio penalty → Subtract creditor penalty (capped at -20pts).',
+                  description: 'Evaluates existing debt burden (excluding your deposit). Total debt includes mortgages, jeonse rights (전세권), and lease rights (임차권). Calculation: Start at 100pts → Apply debt ratio penalty → Subtract creditor penalty (capped at -20pts).',
                   scoring: 'Step 1 - Debt Ratio: >70% (-50pts), 60-70% (-30pts), 50-60% (-15pts), 40-50% (-5pts), <40% (no penalty) | Step 2 - Creditor Penalty: -5pts per creditor (mortgages + jeonse/lease rights), capped at -20pts max | Final Score: 100 - penalties (worst case: 100 - 50 - 20 = 30pts minimum)'
                 },
                 legalScore: {
@@ -440,7 +440,7 @@ export default function ReportPage() {
                     <span className="font-semibold">📝 Note:</span> This ranking shows all competing claims on the property: mortgages (근저당권), jeonse rights (전세권), and lease rights (임차권). All of these compete for repayment in foreclosure, ranked by registration date.
                   </p>
                   <p className="text-gray-600 mt-3 pt-3 border-t border-gray-200">
-                    <span className="font-semibold text-orange-600">⚠️ Important:</span> Your proposed jeonse deposit will rank after all currently registered claims shown above. Ensure sufficient equity remains to cover your deposit.
+                    <span className="font-semibold text-orange-600">⚠️ Important:</span> Your proposed deposit will rank after all currently registered claims shown above. Ensure sufficient equity remains to cover your deposit.
                   </p>
                 </div>
               }>
@@ -614,7 +614,7 @@ export default function ReportPage() {
                     Critical: Negative equity detected!
                   </p>
                   <p className="text-red-800 text-sm mt-2">
-                    The total debt plus your proposed jeonse exceeds the property value. This means there may not be enough value to fully cover your deposit in case of foreclosure. <span className="font-bold">We strongly recommend reconsidering this property.</span>
+                    The total debt plus your proposed deposit exceeds the property value. This means there may not be enough value to fully cover your deposit in case of foreclosure. <span className="font-bold">We strongly recommend reconsidering this property.</span>
                   </p>
                 </div>
               )}

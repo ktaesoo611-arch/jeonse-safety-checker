@@ -161,7 +161,7 @@ export default function UploadPage() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full text-sm font-semibold mb-6 border border-amber-200">
-            <span>Jeonse Safety</span>
+            <span>Deposit Safety</span>
             <span className="text-amber-400">|</span>
             <span>Step 2 of 3</span>
           </div>

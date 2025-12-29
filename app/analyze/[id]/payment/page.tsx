@@ -291,7 +291,7 @@ export default function PaymentPage() {
         {/* Header Section */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full text-sm font-semibold mb-6 border border-amber-200">
-            <span>Jeonse Safety</span>
+            <span>Deposit Safety</span>
             <span className="text-amber-400">|</span>
             <span>Step 2 of 4</span>
           </div>
@@ -313,7 +313,7 @@ export default function PaymentPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-[#1A202C]">K-Rent Safety Analysis</h2>
-              <p className="text-[#718096]">Complete jeonse safety check</p>
+              <p className="text-[#718096]">Complete deposit safety check</p>
             </div>
           </div>
           <div className="flex justify-between items-center">

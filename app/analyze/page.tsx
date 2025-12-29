@@ -106,7 +106,7 @@ export default function AnalyzePage() {
     if (!formData.district) newErrors.district = 'Please select a district';
     if (!formData.dong) newErrors.dong = 'Please select a dong (neighborhood)';
     if (!formData.building) newErrors.building = 'Please enter building name';
-    if (!formData.proposedJeonse) newErrors.proposedJeonse = 'Please enter jeonse amount';
+    if (!formData.proposedJeonse) newErrors.proposedJeonse = 'Please enter deposit amount';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -170,12 +170,12 @@ export default function AnalyzePage() {
             <span className="text-xl font-semibold text-[#2D3748]">K-Rent Safety</span>
           </Link>
           <div className="flex items-center gap-4">
-            <span className="text-amber-600 font-semibold">Jeonse Analysis</span>
+            <span className="text-amber-600 font-semibold">Deposit Safety</span>
             <Link
               href="/analyze/wolse"
               className="text-[#4A5568] hover:text-amber-600 font-medium transition-colors"
             >
-              Wolse Analysis
+              Wolse Price
             </Link>
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function AnalyzePage() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full text-sm font-semibold mb-6 border border-amber-200">
-            <span>Jeonse Safety</span>
+            <span>Deposit Safety</span>
             <span className="text-amber-400">|</span>
             <span>Step 1 of 3</span>
           </div>
@@ -309,10 +309,10 @@ export default function AnalyzePage() {
               )}
             </div>
 
-            {/* Jeonse Amount */}
+            {/* Deposit Amount */}
             <div>
               <Input
-                label="Jeonse Deposit Amount (KRW) *"
+                label="Deposit Amount (KRW) *"
                 placeholder="500,000,000"
                 value={formatNumber(formData.proposedJeonse)}
                 onChange={(e) => setFormData({ ...formData, proposedJeonse: parseNumber(e.target.value) })}

@@ -363,7 +363,7 @@ export default function LandingPageV4() {
               Complete protection for your rental
             </h2>
             <p className="mt-4 text-[#4A5568] max-w-2xl mx-auto">
-              Whether you're signing a jeonse or wolse contract, we help you rent with confidence.
+              Choose the service that fits your needs and rent with confidence.
             </p>
           </div>
 
@@ -373,7 +373,7 @@ export default function LandingPageV4() {
               icon={<ShieldCheckIcon className="w-8 h-8" />}
               title="Deposit Safety Check"
               subtitle="Is your deposit protected?"
-              description="Whether you're signing a jeonse or wolse contract, we analyze the property register, verify ownership, detect liens and mortgages, and assess whether your deposit is safe."
+              description="We analyze the property register, verify ownership, detect liens and mortgages, and assess whether your deposit is safe. Works for any Korean rental contract."
               features={[
                 "20+ risk factor analysis",
                 "등기부등본 translation & analysis",

@@ -142,7 +142,7 @@ export default function JeonsePreviewPage() {
 
       await paymentWidget.requestPayment({
         orderId,
-        orderName: 'Jeonse Safety Analysis',
+        orderName: 'Deposit Safety Analysis',
         successUrl: `${window.location.origin}/analyze/${analysisId}/payment/success`,
         failUrl: `${window.location.origin}/analyze/${analysisId}/preview?error=payment_failed`,
       });
@@ -245,7 +245,7 @@ export default function JeonsePreviewPage() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full text-sm font-semibold mb-6 border border-amber-200">
-            <span>Jeonse Safety</span>
+            <span>Deposit Safety</span>
             <span className="text-amber-400">|</span>
             <span>Preview</span>
           </div>
@@ -294,7 +294,7 @@ export default function JeonsePreviewPage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-[#1A202C]">Unlock Full Report</h2>
-                  <p className="text-[#718096]">Jeonse Safety Analysis</p>
+                  <p className="text-[#718096]">Deposit Safety Analysis</p>
                 </div>
               </div>
             </div>

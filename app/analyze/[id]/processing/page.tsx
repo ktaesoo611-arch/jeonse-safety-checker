@@ -98,7 +98,7 @@ export default function ProcessingPage() {
         {/* Header Section */}
         <div className="mb-12 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full text-sm font-semibold mb-6 border border-amber-200">
-            <span>Jeonse Safety</span>
+            <span>Deposit Safety</span>
             <span className="text-amber-400">|</span>
             <span>Step 3 of 3</span>
           </div>
@@ -208,7 +208,7 @@ export default function ProcessingPage() {
             <div>
               <h3 className="font-bold text-amber-100 mb-2 text-lg">Did you know?</h3>
               <p className="text-amber-50/90 leading-relaxed">
-                Between 2022-2024, jeonse fraud caused over ₩1 trillion in damages in Korea.
+                Between 2022-2024, rental deposit fraud caused over ₩1 trillion in damages in Korea.
                 Thorough pre-screening is essential to protect your deposit.
               </p>
             </div>
