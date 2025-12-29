@@ -326,32 +326,19 @@ export default function LandingPageV4() {
               </div>
 
               {/* Trust Badges */}
-              <div className="flex flex-wrap items-center gap-3 mb-8">
-                <span className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-full text-sm font-medium text-amber-700">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-full text-sm font-medium text-amber-700 flex items-center gap-2">
+                  <HomeIcon className="w-4 h-4" />
                   Works for Jeonse & Wolse
                 </span>
-                <span className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-full text-sm font-medium text-blue-700">
+                <span className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-full text-sm font-medium text-blue-700 flex items-center gap-2">
+                  <TranslateIcon className="w-4 h-4" />
                   Full English
                 </span>
-                <span className="px-4 py-2 bg-green-50 border border-green-200 rounded-full text-sm font-medium text-green-700">
+                <span className="px-4 py-2 bg-green-50 border border-green-200 rounded-full text-sm font-medium text-green-700 flex items-center gap-2">
+                  <ClockIcon className="w-4 h-4" />
                   Instant Results
                 </span>
-              </div>
-
-              {/* Trust indicators */}
-              <div className="flex flex-wrap items-center gap-6 pt-8 border-t border-amber-100">
-                <div className="flex items-center gap-2">
-                  <ShieldCheckIcon className="w-5 h-5 text-green-600" />
-                  <span className="text-sm text-[#4A5568]">100% Secure</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <TranslateIcon className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm text-[#4A5568]">Full English</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ClockIcon className="w-5 h-5 text-amber-600" />
-                  <span className="text-sm text-[#4A5568]">Instant Results</span>
-                </div>
               </div>
             </div>
 
