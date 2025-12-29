@@ -175,7 +175,7 @@ export function JeonsePreviewDisplay({ data, onUnlock, isLoading }: JeonsePrevie
       <div className="grid md:grid-cols-2 gap-6">
         {/* Jeonse Amount - VISIBLE */}
         <div className="bg-white rounded-3xl p-6 shadow-xl shadow-amber-900/5 border border-amber-100">
-          <p className="text-sm text-[#718096] mb-2">Your Jeonse Deposit</p>
+          <p className="text-sm text-[#718096] mb-2">Your Deposit</p>
           <p className="text-3xl font-bold text-[#1A202C]">{formatEok(property.proposedJeonse)}</p>
           <p className="text-sm text-[#718096] mt-2">{property.address}</p>
         </div>
