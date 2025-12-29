@@ -688,7 +688,7 @@ export default function LandingPageV4() {
             <div>
               <div className="text-white/40 text-sm uppercase tracking-wider mb-4">Services</div>
               <div className="space-y-3">
-                <Link href="/check" className="block text-white/70 hover:text-white transition-colors">Check My Rental</Link>
+                <Link href="/analyze/full" className="block text-white/70 hover:text-white transition-colors">Full Wolse Check</Link>
                 <Link href="/analyze" className="block text-white/70 hover:text-white transition-colors">Deposit Safety Check</Link>
                 <Link href="/analyze/wolse" className="block text-white/70 hover:text-white transition-colors">Wolse Price Check</Link>
                 <Link href="/pricing" className="block text-white/70 hover:text-white transition-colors">Pricing</Link>
