@@ -211,14 +211,11 @@ export default function FullRentalCheckPage() {
             </div>
             <span className="text-xl font-semibold text-[#2D3748]">K-Rent Safety</span>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/analyze" className="text-[#4A5568] hover:text-amber-600 font-medium transition-colors">
-              Deposit Safety
-            </Link>
-            <Link href="/analyze/wolse" className="text-[#4A5568] hover:text-amber-600 font-medium transition-colors">
-              Wolse Price
-            </Link>
-          </div>
+          <Link href="/check">
+            <button className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-200/50 transition-all font-medium">
+              New analysis
+            </button>
+          </Link>
         </div>
       </header>
 

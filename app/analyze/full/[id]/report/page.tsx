@@ -667,7 +667,7 @@ export default function FullRentalReportPage() {
         {wolseResult && (
           <div className="mb-16">
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-200">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200">
                 <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -677,7 +677,7 @@ export default function FullRentalReportPage() {
 
             {/* Key Metrics */}
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-amber-900/5 border border-amber-100">
+              <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-green-900/5 border border-green-100">
                 <p className="text-sm text-[#718096] mb-2">Your Rent</p>
                 <p className="text-3xl font-bold text-[#1A202C]">{formatWon(wolseResult.userMonthlyRent)}</p>
                 <p className="text-sm text-[#718096] mt-2">
@@ -685,15 +685,15 @@ export default function FullRentalReportPage() {
                 </p>
               </div>
 
-              <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-amber-900/5 border border-amber-100">
+              <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-green-900/5 border border-green-100">
                 <p className="text-sm text-[#718096] mb-2">Expected Rent (Market)</p>
-                <p className="text-3xl font-bold text-amber-600">{formatWon(wolseResult.expectedRent ?? wolseResult.userMonthlyRent)}</p>
+                <p className="text-3xl font-bold text-green-600">{formatWon(wolseResult.expectedRent ?? wolseResult.userMonthlyRent)}</p>
                 <p className="text-sm text-[#718096] mt-2">
                   at {wolseResult.marketRate.toFixed(1)}% market rate
                 </p>
               </div>
 
-              <div className={`rounded-3xl p-6 text-center shadow-xl shadow-amber-900/5 border ${
+              <div className={`rounded-3xl p-6 text-center shadow-xl shadow-green-900/5 border ${
                 (wolseResult.rentDifference ?? 0) <= 0
                   ? 'bg-emerald-50 border-emerald-200'
                   : (wolseResult.rentDifferencePercent ?? 0) <= 5
@@ -714,7 +714,7 @@ export default function FullRentalReportPage() {
             </div>
 
             {/* Market Rate Info */}
-            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-amber-900/5 border border-amber-100 mb-8">
+            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/5 border border-green-100 mb-8">
               <div className="grid md:grid-cols-3 gap-6 text-center mb-6">
                 <div>
                   <p className="text-sm text-[#718096] mb-1">Market Rate</p>
@@ -736,7 +736,7 @@ export default function FullRentalReportPage() {
 
             {/* Savings Potential */}
             {(wolseResult.savingsPotential.vsMarket > 0 || wolseResult.savingsPotential.vsLegal > 0) && (
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-3xl p-6 border border-amber-200 mb-8">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-3xl p-6 border border-green-200 mb-8">
                 <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
                   <span>💰</span> Potential Savings
                 </h3>
@@ -744,7 +744,7 @@ export default function FullRentalReportPage() {
                   {wolseResult.savingsPotential.vsMarket > 0 && (
                     <div>
                       <p className="text-sm text-[#4A5568]">If negotiated to market rate:</p>
-                      <p className="text-2xl font-bold text-amber-600">
+                      <p className="text-2xl font-bold text-green-600">
                         {formatWon(wolseResult.savingsPotential.vsMarket)}/year
                       </p>
                     </div>
@@ -762,7 +762,7 @@ export default function FullRentalReportPage() {
             )}
 
             {/* Price Trend */}
-            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-amber-900/5 border border-amber-100 mb-8">
+            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/5 border border-green-100 mb-8">
               <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
                 <span>{getTrendIcon(wolseResult.trend.direction)}</span> Price Trend
               </h3>
@@ -785,8 +785,8 @@ export default function FullRentalReportPage() {
                   {wolseResult.negotiationOptions.map((option, index) => (
                     <div
                       key={index}
-                      className={`bg-white rounded-3xl p-6 cursor-pointer transition-all hover:shadow-xl shadow-xl shadow-amber-900/5 border ${
-                        option.recommended ? 'border-2 border-amber-400 bg-amber-50/30' : 'border-amber-100'
+                      className={`bg-white rounded-3xl p-6 cursor-pointer transition-all hover:shadow-xl shadow-xl shadow-green-900/5 border ${
+                        option.recommended ? 'border-2 border-green-400 bg-green-50/30' : 'border-green-100'
                       }`}
                       onClick={() => copyToClipboard(option.script, option.name)}
                     >
@@ -795,7 +795,7 @@ export default function FullRentalReportPage() {
                           <h4 className="font-bold text-[#1A202C] flex items-center gap-2">
                             {option.name}
                             {option.recommended && (
-                              <span className="text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2 py-0.5 rounded-full">
+                              <span className="text-xs bg-gradient-to-r from-green-500 to-emerald-600 text-white px-2 py-0.5 rounded-full">
                                 Recommended
                               </span>
                             )}
@@ -805,7 +805,7 @@ export default function FullRentalReportPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold text-amber-600">
+                          <p className="text-lg font-bold text-green-600">
                             Save {formatWon(option.yearlySavings)}/yr
                           </p>
                           <p className="text-sm text-[#718096]">
@@ -814,12 +814,12 @@ export default function FullRentalReportPage() {
                         </div>
                       </div>
 
-                      <div className="bg-amber-50 rounded-2xl p-4 text-sm text-[#4A5568] leading-relaxed border border-amber-100">
+                      <div className="bg-green-50 rounded-2xl p-4 text-sm text-[#4A5568] leading-relaxed border border-green-100">
                         "{option.script}"
                       </div>
 
                       <div className="mt-3 text-right">
-                        <span className={`text-sm ${copiedScript === option.name ? 'text-amber-600 font-medium' : 'text-[#A0AEC0]'}`}>
+                        <span className={`text-sm ${copiedScript === option.name ? 'text-green-600 font-medium' : 'text-[#A0AEC0]'}`}>
                           {copiedScript === option.name ? '✓ Copied to clipboard!' : 'Click to copy script'}
                         </span>
                       </div>
@@ -831,14 +831,14 @@ export default function FullRentalReportPage() {
 
             {/* Recent Transactions */}
             {wolseResult.recentTransactions.length > 0 && (
-              <div className="bg-white rounded-3xl p-6 shadow-xl shadow-amber-900/5 border border-amber-100">
+              <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/5 border border-green-100">
                 <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
                   <span>📊</span> Recent Transactions ({wolseResult.contractCount} contracts)
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b-2 border-amber-200">
+                      <tr className="border-b-2 border-green-200">
                         <th className="text-left py-3 px-3 font-semibold text-[#4A5568]">Date</th>
                         <th className="text-left py-3 px-3 font-semibold text-[#4A5568]">Area</th>
                         <th className="text-left py-3 px-3 font-semibold text-[#4A5568]">Floor</th>
@@ -848,7 +848,7 @@ export default function FullRentalReportPage() {
                     </thead>
                     <tbody>
                       {wolseResult.recentTransactions.slice(0, 10).map((tx, index) => (
-                        <tr key={index} className="border-b border-amber-100 hover:bg-amber-50/50">
+                        <tr key={index} className="border-b border-green-100 hover:bg-green-50/50">
                           <td className="py-3 px-3 text-[#4A5568]">
                             {tx.year}.{tx.month.toString().padStart(2, '0')}.{tx.day.toString().padStart(2, '0')}
                           </td>

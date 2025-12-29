@@ -110,7 +110,7 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
       {/* Key Metrics - Rent Comparison */}
       <div className="grid md:grid-cols-3 gap-6">
         {/* Your Rent */}
-        <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-amber-900/5 border border-amber-100">
+        <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-orange-900/5 border border-orange-100">
           <p className="text-sm text-[#718096] mb-2">Your Rent</p>
           <p className="text-3xl font-bold text-[#1A202C]">{formatWon(result.userMonthlyRent)}</p>
           <p className="text-sm text-[#718096] mt-2">
@@ -119,16 +119,16 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
         </div>
 
         {/* Expected Rent (Market) */}
-        <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-amber-900/5 border border-amber-100">
+        <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-orange-900/5 border border-orange-100">
           <p className="text-sm text-[#718096] mb-2">Expected Rent (Market)</p>
-          <p className="text-3xl font-bold text-amber-600">{formatWon(expectedRent)}</p>
+          <p className="text-3xl font-bold text-orange-600">{formatWon(expectedRent)}</p>
           <p className="text-sm text-[#718096] mt-2">
             at {result.marketRate.toFixed(1)}% market rate
           </p>
         </div>
 
         {/* Difference */}
-        <div className={`rounded-3xl p-6 text-center shadow-xl shadow-amber-900/5 border ${
+        <div className={`rounded-3xl p-6 text-center shadow-xl shadow-orange-900/5 border ${
           rentDifference <= 0
             ? 'bg-emerald-50 border-emerald-200'
             : rentDifference > 0 && rentDifferencePercent <= 5
@@ -152,7 +152,7 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
       </div>
 
       {/* Market Rate Info */}
-      <div className="bg-white rounded-3xl p-6 shadow-xl shadow-amber-900/5 border border-amber-100">
+      <div className="bg-white rounded-3xl p-6 shadow-xl shadow-orange-900/5 border border-orange-100">
         <div className="grid md:grid-cols-3 gap-6 text-center mb-6">
           <div>
             <p className="text-sm text-[#718096] mb-1">Market Rate</p>
@@ -175,8 +175,8 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
         </div>
 
         {/* Explanation for foreigners */}
-        <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
-          <h4 className="text-sm font-semibold text-amber-800 mb-2">What do these rates mean?</h4>
+        <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
+          <h4 className="text-sm font-semibold text-orange-800 mb-2">What do these rates mean?</h4>
           <div className="space-y-2 text-sm text-[#4A5568]">
             <p>
               <strong className="text-[#1A202C]">Market Rate ({result.marketRate.toFixed(1)}%)</strong>:
@@ -187,7 +187,7 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
               The government-set cap for lease renewals. When renewing your lease, you can request deposit-to-rent conversions at this rate.
             </p>
             {result.marketRate > result.legalRate && (
-              <p className="text-amber-700 bg-amber-100 rounded-lg p-2 mt-2">
+              <p className="text-orange-700 bg-orange-100 rounded-lg p-2 mt-2">
                 <strong>Tip:</strong> Market rate is above legal cap. For new contracts, expect market rates.
                 For renewals, you have the right to request the legal rate ({result.legalRate.toFixed(1)}%).
               </p>
@@ -198,7 +198,7 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
 
       {/* Savings Potential */}
       {(result.savingsPotential.vsMarket > 0 || result.savingsPotential.vsLegal > 0) && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-3xl p-6 border border-amber-200">
+        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-6 border border-orange-200">
           <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
             <span>💰</span> Potential Savings
           </h3>
@@ -206,7 +206,7 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
             {result.savingsPotential.vsMarket > 0 && (
               <div>
                 <p className="text-sm text-[#4A5568]">If negotiated to market rate:</p>
-                <p className="text-2xl font-bold text-amber-600">
+                <p className="text-2xl font-bold text-orange-600">
                   {formatWon(result.savingsPotential.vsMarket)}/year
                 </p>
               </div>
@@ -224,7 +224,7 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
       )}
 
       {/* Price Trend */}
-      <div className="bg-white rounded-3xl p-6 shadow-xl shadow-amber-900/5 border border-amber-100">
+      <div className="bg-white rounded-3xl p-6 shadow-xl shadow-orange-900/5 border border-orange-100">
         <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
           <span>{getTrendIcon(result.trend.direction)}</span> Price Trend
         </h3>
@@ -259,14 +259,14 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
 
       {/* Recent Transactions */}
       {result.recentTransactions.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 shadow-xl shadow-amber-900/5 border border-amber-100">
+        <div className="bg-white rounded-3xl p-6 shadow-xl shadow-orange-900/5 border border-orange-100">
           <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
             <span>📊</span> Recent Transactions ({result.contractCount} contracts)
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b-2 border-amber-200">
+                <tr className="border-b-2 border-orange-200">
                   <th className="text-left py-3 px-3 font-semibold text-[#4A5568]">Date</th>
                   <th className="text-left py-3 px-3 font-semibold text-[#4A5568]">Area</th>
                   <th className="text-left py-3 px-3 font-semibold text-[#4A5568]">Floor</th>
@@ -276,7 +276,7 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
               </thead>
               <tbody>
                 {result.recentTransactions.slice(0, 10).map((tx, index) => (
-                  <tr key={index} className="border-b border-amber-100 hover:bg-amber-50/50">
+                  <tr key={index} className="border-b border-orange-100 hover:bg-orange-50/50">
                     <td className="py-3 px-3 text-[#4A5568]">
                       {tx.year}.{tx.month.toString().padStart(2, '0')}.{tx.day.toString().padStart(2, '0')}
                     </td>
@@ -305,14 +305,14 @@ export function WolseResultsDisplay({ result, onNewAnalysis }: WolseResultsDispl
         {onNewAnalysis && (
           <button
             onClick={onNewAnalysis}
-            className="px-8 py-4 bg-white border-2 border-amber-200 text-[#4A5568] font-semibold rounded-2xl hover:bg-amber-50 transition-colors"
+            className="px-8 py-4 bg-white border-2 border-orange-200 text-[#4A5568] font-semibold rounded-2xl hover:bg-orange-50 transition-colors"
           >
             Analyze Another Quote
           </button>
         )}
         <button
           onClick={() => window.print()}
-          className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all"
+          className="px-8 py-4 bg-gradient-to-r from-orange-400 to-amber-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-orange-200/50 transition-all"
         >
           Print Results
         </button>
@@ -348,8 +348,8 @@ function NegotiationOptionCard({
 
   return (
     <div
-      className={`bg-white rounded-3xl p-6 cursor-pointer transition-all hover:shadow-xl shadow-xl shadow-amber-900/5 border ${
-        option.recommended ? 'border-2 border-amber-400 bg-amber-50/30' : 'border-amber-100'
+      className={`bg-white rounded-3xl p-6 cursor-pointer transition-all hover:shadow-xl shadow-xl shadow-orange-900/5 border ${
+        option.recommended ? 'border-2 border-orange-400 bg-orange-50/30' : 'border-orange-100'
       }`}
       onClick={onCopy}
     >
@@ -358,7 +358,7 @@ function NegotiationOptionCard({
           <h4 className="font-bold text-[#1A202C] flex items-center gap-2">
             {option.name}
             {option.recommended && (
-              <span className="text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-gradient-to-r from-orange-400 to-amber-600 text-white px-2 py-0.5 rounded-full">
                 Recommended
               </span>
             )}
@@ -368,7 +368,7 @@ function NegotiationOptionCard({
           </p>
         </div>
         <div className="text-right">
-          <p className="text-lg font-bold text-amber-600">
+          <p className="text-lg font-bold text-orange-600">
             Save {formatWon(option.yearlySavings)}/yr
           </p>
           <p className="text-sm text-[#718096]">
@@ -378,13 +378,13 @@ function NegotiationOptionCard({
       </div>
 
       {/* Script */}
-      <div className="bg-amber-50 rounded-2xl p-4 text-sm text-[#4A5568] leading-relaxed border border-amber-100">
+      <div className="bg-orange-50 rounded-2xl p-4 text-sm text-[#4A5568] leading-relaxed border border-orange-100">
         "{option.script}"
       </div>
 
       {/* Copy indicator */}
       <div className="mt-3 text-right">
-        <span className={`text-sm ${copied ? 'text-amber-600 font-medium' : 'text-[#A0AEC0]'}`}>
+        <span className={`text-sm ${copied ? 'text-orange-600 font-medium' : 'text-[#A0AEC0]'}`}>
           {copied ? '✓ Copied to clipboard!' : 'Click to copy script'}
         </span>
       </div>
