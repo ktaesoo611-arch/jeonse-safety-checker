@@ -870,20 +870,6 @@ export default function FullRentalReportPage() {
           </div>
         )}
 
-        {/* Pricing Banner */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-700 rounded-3xl p-8 mb-8 text-white text-center">
-          <h3 className="text-2xl font-bold mb-2">Full Wolse Check Report</h3>
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <span className="text-2xl line-through opacity-70">₩19,900</span>
-            <span className="text-4xl font-bold">FREE</span>
-            <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-semibold">BETA</span>
-          </div>
-          <p className="text-green-100 max-w-lg mx-auto">
-            Comprehensive deposit safety + rent price analysis in one report.
-            Free during beta period.
-          </p>
-        </div>
-
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8 print:hidden">
           <Link href="/check" className="flex-1">
