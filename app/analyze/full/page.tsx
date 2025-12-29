@@ -213,12 +213,11 @@ export default function FullRentalCheckPage() {
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/analyze" className="text-[#4A5568] hover:text-amber-600 font-medium transition-colors">
-              Jeonse
+              Deposit Safety
             </Link>
             <Link href="/analyze/wolse" className="text-[#4A5568] hover:text-amber-600 font-medium transition-colors">
-              Wolse
+              Wolse Price
             </Link>
-            <span className="text-green-600 font-semibold">Full Check</span>
           </div>
         </div>
       </header>

@@ -170,7 +170,12 @@ export default function WolseAnalyzePage() {
             >
               Deposit Safety
             </Link>
-            <span className="text-amber-600 font-semibold">Wolse Price</span>
+            <Link
+              href="/analyze/full"
+              className="text-[#4A5568] hover:text-green-600 font-medium transition-colors"
+            >
+              Full Wolse
+            </Link>
           </div>
         </div>
       </header>

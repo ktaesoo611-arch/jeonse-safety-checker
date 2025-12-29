@@ -170,12 +170,17 @@ export default function AnalyzePage() {
             <span className="text-xl font-semibold text-[#2D3748]">K-Rent Safety</span>
           </Link>
           <div className="flex items-center gap-4">
-            <span className="text-amber-600 font-semibold">Deposit Safety</span>
             <Link
               href="/analyze/wolse"
               className="text-[#4A5568] hover:text-amber-600 font-medium transition-colors"
             >
               Wolse Price
+            </Link>
+            <Link
+              href="/analyze/full"
+              className="text-[#4A5568] hover:text-green-600 font-medium transition-colors"
+            >
+              Full Wolse
             </Link>
           </div>
         </div>
