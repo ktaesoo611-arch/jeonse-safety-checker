@@ -537,7 +537,7 @@ async function generateMockRiskAnalysis(
     risks.push({
       type: 'senior_mortgage',
       severity: 'HIGH',
-      title: 'Bank Mortgage Has Priority Over Your Jeonse',
+      title: 'Bank Mortgage Has Priority Over Your Deposit',
       description: `KB국민은행 has ₩${(mockMortgageAmount / 100000000).toFixed(1)}억 senior mortgage. In foreclosure, they get paid first. You do NOT qualify for 소액보증금 priority.`,
       impact: -30,
       category: 'priority'
@@ -546,10 +546,10 @@ async function generateMockRiskAnalysis(
 
   if (proposedJeonse / estimatedValue > 0.70) {
     risks.push({
-      type: 'high_jeonse_ratio',
+      type: 'high_deposit_ratio',
       severity: 'MEDIUM',
-      title: 'Jeonse Ratio Above Recommended',
-      description: `Your jeonse is ${(proposedJeonse / estimatedValue * 100).toFixed(1)}% of property value. Recommended maximum is 70%.`,
+      title: 'Deposit Ratio Above Recommended',
+      description: `Your deposit is ${(proposedJeonse / estimatedValue * 100).toFixed(1)}% of property value. Recommended maximum is 70%.`,
       impact: -15,
       category: 'debt'
     });
@@ -557,7 +557,7 @@ async function generateMockRiskAnalysis(
 
   // Generate recommendations
   const mandatory: string[] = [
-    'Get 확정일자 AND 전입신고 SAME DAY as payment',
+    'Get 확정일자 AND residence registration SAME DAY as payment (Foreigners: 외국인등록/체류지변경신고, Overseas Koreans: 국내거소신고/거소이전신고)',
     'Move in physically same day (점유 required for 대항력)',
     'Verify all information in 등기부등본 is current (request copy dated within 1 week)'
   ];
@@ -617,8 +617,8 @@ async function generateMockRiskAnalysis(
       threshold: smallAmountThreshold,
       region,
       explanation: isSmallAmount
-        ? `Your jeonse (₩${(proposedJeonse / 10000).toFixed(0)}만원) qualifies for 소액보증금 우선변제 in ${region}. Up to ₩${(smallAmountProtected / 10000).toFixed(0)}만원 is protected with priority repayment even if senior mortgages exist. CRITICAL: Must get 확정일자 + 전입신고 + 점유 on SAME DAY.`
-        : `Your jeonse (₩${(proposedJeonse / 10000).toFixed(0)}만원) EXCEEDS the 소액보증금 threshold (₩${(smallAmountThreshold / 10000).toFixed(0)}만원) for ${region}. You will NOT receive priority repayment protection. Senior mortgages will be paid first in foreclosure.`
+        ? `Your deposit (₩${(proposedJeonse / 10000).toFixed(0)}만원) qualifies for 소액보증금 우선변제 in ${region}. Up to ₩${(smallAmountProtected / 10000).toFixed(0)}만원 is protected with priority repayment even if senior mortgages exist. CRITICAL: Must get 확정일자 + residence registration + 점유 on SAME DAY. For foreigners: 외국인등록 or 체류지변경신고. For overseas Koreans: 국내거소신고 or 거소이전신고.`
+        : `Your deposit (₩${(proposedJeonse / 10000).toFixed(0)}만원) EXCEEDS the 소액보증금 threshold (₩${(smallAmountThreshold / 10000).toFixed(0)}만원) for ${region}. You will NOT receive priority repayment protection. Senior mortgages will be paid first in foreclosure.`
     },
 
     risks,
@@ -640,7 +640,7 @@ async function generateMockRiskAnalysis(
       },
       {
         rank: 2,
-        type: '전세 (Your Jeonse) - PROPOSED',
+        type: '보증금 (Your Deposit) - PROPOSED',
         creditor: 'You',
         amount: proposedJeonse,
         registrationDate: '미등록 (To be registered)',
