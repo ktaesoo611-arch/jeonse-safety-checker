@@ -86,7 +86,7 @@ export default function FullRentalProcessingPage() {
             setProgress(100);
             setCurrentStep(steps.length - 1);
             setTimeout(() => {
-              router.push(`/analyze/full-rental/${analysisId}/report`);
+              router.push(`/analyze/full/${analysisId}/report`);
             }, 1000);
           } else {
             // Wait for wolse to complete
@@ -159,7 +159,7 @@ export default function FullRentalProcessingPage() {
         {/* Header Section */}
         <div className="mb-12 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-semibold mb-6 border border-green-200">
-            <span>Full Rental Check</span>
+            <span>Full Wolse Check</span>
             <span className="text-green-400">|</span>
             <span>Step 3 of 3</span>
           </div>

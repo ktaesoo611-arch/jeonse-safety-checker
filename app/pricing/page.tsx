@@ -55,7 +55,7 @@ export default function PricingPage() {
               </span>
             </Link>
 
-            <Link href="/analyze/full-rental" className="group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden">
+            <Link href="/analyze/full" className="group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden">
               <span className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
               <span className="relative text-[#4A5568] group-hover:text-white flex items-center gap-2 transition-colors">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,7 +184,7 @@ export default function PricingPage() {
               </div>
             </div>
 
-            {/* Full Rental Check - Best Value */}
+            {/* Full Wolse Check - Best Value */}
             <div className="bg-white rounded-3xl border-2 border-green-400 shadow-xl shadow-green-100/50 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group relative">
               {/* Best Value Badge */}
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
@@ -195,7 +195,7 @@ export default function PricingPage() {
 
               <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 text-white">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-bold">Full Rental Check</h3>
+                  <h3 className="text-2xl font-bold">Full Wolse Check</h3>
                   <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold">
                     FREE BETA
                   </span>
@@ -209,19 +209,19 @@ export default function PricingPage() {
 
               <div className="p-8">
                 <ul className="space-y-4 mb-8">
-                  <FeatureItem text="Everything in Jeonse Safety Check" />
+                  <FeatureItem text="Everything in Deposit Safety Check" />
                   <FeatureItem text="Everything in Wolse Price Check" />
                   <FeatureItem text="Combined comprehensive report" />
                   <FeatureItem text="Deposit + rent analysis together" />
                   <FeatureItem text="One document upload" />
-                  <FeatureItem text="Save ₩4,900 vs separate services" />
+                  <FeatureItem text="Save ₩4,800 vs separate services" />
                   <FeatureItem text="Best for wolse with large deposit" />
                   <FeatureItem text="Complete peace of mind" />
                 </ul>
 
-                <Link href="/analyze/full-rental">
+                <Link href="/analyze/full">
                   <button className="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-green-200/50 transition-all group-hover:-translate-y-1 flex items-center justify-center gap-2">
-                    Start Full Rental Check
+                    Start Full Wolse Check
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
@@ -331,9 +331,9 @@ export default function PricingPage() {
                 Join hundreds of expats who have safely navigated the Korean rental market.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
-                <Link href="/analyze/full-rental">
+                <Link href="/analyze/full">
                   <button className="px-10 py-5 bg-white text-green-600 font-bold text-lg rounded-2xl hover:shadow-2xl transition-all hover:-translate-y-1 flex items-center gap-3">
-                    Full Rental Check
+                    Full Wolse Check
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>

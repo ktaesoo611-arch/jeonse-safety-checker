@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
   // Check if it's a protected analyze path (with ID like /analyze/abc123/...)
   const isProtectedAnalyzePath = /^\/analyze\/[a-zA-Z0-9-]+/.test(request.nextUrl.pathname) &&
     !request.nextUrl.pathname.startsWith('/analyze/wolse') &&
-    !request.nextUrl.pathname.startsWith('/analyze/full-rental');
+    !request.nextUrl.pathname.startsWith('/analyze/full');
 
   const isAuthPath = authPaths.some(path =>
     request.nextUrl.pathname.startsWith(path)

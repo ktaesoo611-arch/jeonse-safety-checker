@@ -9,7 +9,7 @@ import { SEOUL_DISTRICTS, Apartment } from '@/lib/data/address-data';
 import { useHaptic } from '@/lib/hooks/useHaptic';
 
 /**
- * Full Rental Check - Form Page (Step 1)
+ * Full Wolse Check - Form Page (Step 1)
  * Collects all data needed for both deposit safety and wolse price analysis
  */
 export default function FullRentalCheckPage() {
@@ -179,7 +179,7 @@ export default function FullRentalCheckPage() {
 
         haptic.success();
         // Redirect to upload page
-        router.push(`/analyze/full-rental/${data.analysisId}/upload`);
+        router.push(`/analyze/full/${data.analysisId}/upload`);
       } else {
         throw new Error(data.error || 'Failed to create analysis');
       }
@@ -237,12 +237,12 @@ export default function FullRentalCheckPage() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-semibold mb-6 border border-green-200">
-            <span>Full Rental Check</span>
+            <span>Full Wolse Check</span>
             <span className="text-green-400">|</span>
             <span>Step 1 of 3</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A202C] mb-4 tracking-tight">
-            Full Rental Check
+            Full Wolse Check
           </h1>
           <p className="text-xl text-[#4A5568] max-w-2xl mx-auto">
             Check your deposit safety and rent price together in one comprehensive report

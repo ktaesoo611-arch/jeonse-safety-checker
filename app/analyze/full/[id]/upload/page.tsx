@@ -120,8 +120,8 @@ export default function FullRentalUploadPage() {
 
       console.log('Upload complete, redirecting to processing');
 
-      // Redirect to full-rental processing page
-      router.push(`/analyze/full-rental/${analysisId}/processing`);
+      // Redirect to full processing page
+      router.push(`/analyze/full/${analysisId}/processing`);
 
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -157,7 +157,7 @@ export default function FullRentalUploadPage() {
       <div className="relative z-10 container mx-auto px-6 py-16 max-w-3xl">
         {/* Breadcrumb */}
         <div className="mb-8">
-          <Link href="/analyze/full-rental" className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-2 group">
+          <Link href="/analyze/full" className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-2 group">
             <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -168,7 +168,7 @@ export default function FullRentalUploadPage() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-semibold mb-6 border border-green-200">
-            <span>Full Rental Check</span>
+            <span>Full Wolse Check</span>
             <span className="text-green-400">|</span>
             <span>Step 2 of 3</span>
           </div>

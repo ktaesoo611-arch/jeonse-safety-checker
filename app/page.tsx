@@ -373,7 +373,7 @@ export default function LandingPageV4() {
               icon={<ShieldCheckIcon className="w-8 h-8" />}
               title="Deposit Safety Check"
               subtitle="Is your deposit protected?"
-              description="We analyze the property register, verify ownership, detect liens and mortgages, and assess whether your deposit money is safe. Works for both jeonse and wolse contracts."
+              description="Whether you're signing a jeonse or wolse contract, we analyze the property register, verify ownership, detect liens and mortgages, and assess whether your deposit is safe."
               features={[
                 "20+ risk factor analysis",
                 "등기부등본 translation & analysis",
@@ -405,24 +405,24 @@ export default function LandingPageV4() {
               href="/analyze/wolse"
               color="orange"
               delay={200}
-              tip="💡 Wolse renters: Also run a Deposit Safety Check to protect your deposit"
+              tip="💡 Want deposit protection too? Choose Full Wolse Check"
             />
 
-            {/* Full Rental Check */}
+            {/* Full Wolse Check */}
             <ServiceCard
               icon={<CheckCircleIcon className="w-8 h-8" />}
-              title="Full Rental Check"
+              title="Full Wolse Check"
               subtitle="Complete protection for wolse renters"
-              description="Get both the Deposit Safety Check and Wolse Price Check in one report. Know your deposit is safe AND your rent is fair."
+              description="Get both deposit safety analysis AND rent price comparison in one report. Know your deposit is protected and your rent is fair — before you sign."
               features={[
                 "Everything in Deposit Safety Check",
                 "Everything in Wolse Price Check",
                 "One combined report",
-                "Save time with single submission"
+                "Single form submission"
               ]}
               price="19,900"
               betaPrice="FREE"
-              href="/analyze/full-rental"
+              href="/analyze/full"
               color="green"
               delay={400}
               badge="Best Value"
@@ -613,7 +613,7 @@ export default function LandingPageV4() {
                 <div className="text-6xl text-amber-300 group-hover:scale-110 transition-transform duration-300">"</div>
                 <div>
                   <p className="text-lg text-[#4A5568] leading-relaxed mb-4">
-                    I was about to sign a contract when I found Jeonse Safety. The analysis revealed a hidden
+                    I was about to sign a contract when I found K-Rent Safety. The analysis revealed a hidden
                     mortgage I didn't know about. Saved me from potentially losing my entire deposit.
                   </p>
                   <div className="flex items-center gap-3">

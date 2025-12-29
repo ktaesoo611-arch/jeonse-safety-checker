@@ -10,7 +10,7 @@ import { useHaptic } from '@/lib/hooks/useHaptic';
  */
 export default function WolseOptionsPage() {
   const [mounted, setMounted] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<'price' | 'full' | null>(null);
+  const [selectedOption, setSelectedOption] = useState<'price' | 'deposit' | 'full' | null>(null);
   const haptic = useHaptic();
 
   useEffect(() => {
@@ -65,67 +65,116 @@ export default function WolseOptionsPage() {
           </div>
 
           {/* Option Cards */}
-          <div className="grid md:grid-cols-2 gap-6 mb-12">
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
             {/* Price Check Only */}
             <button
               onClick={(e) => {
                 haptic.medium(e.currentTarget);
                 setSelectedOption('price');
               }}
-              className={`group p-8 rounded-3xl border-2 text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+              className={`group p-6 rounded-3xl border-2 text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
                 selectedOption === 'price'
                   ? 'bg-orange-50 border-orange-400 shadow-lg shadow-orange-100'
                   : 'bg-white border-orange-100 hover:border-orange-300'
               }`}
             >
-              <div className="flex items-start gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all ${
+              <div className="flex flex-col">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all ${
                   selectedOption === 'price'
                     ? 'bg-gradient-to-br from-orange-400 to-amber-600 shadow-lg'
                     : 'bg-orange-100 group-hover:bg-gradient-to-br group-hover:from-orange-400 group-hover:to-amber-600'
                 }`}>
-                  <CurrencyIcon className={`w-7 h-7 ${selectedOption === 'price' ? 'text-white' : 'text-orange-600 group-hover:text-white'}`} />
+                  <CurrencyIcon className={`w-6 h-6 ${selectedOption === 'price' ? 'text-white' : 'text-orange-600 group-hover:text-white'}`} />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-[#1A202C] mb-2">Wolse Price Check</h3>
-                  <p className="text-[#718096] mb-4">
-                    Check if your monthly rent is fair compared to market rates
-                  </p>
-                  <ul className="text-sm text-[#4A5568] space-y-1.5 mb-4">
-                    <li className="flex items-center gap-2">
-                      <CheckIcon className="w-4 h-4 text-orange-500" />
-                      Market rate comparison
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckIcon className="w-4 h-4 text-orange-500" />
-                      Price rating (Fair / High / Overpriced)
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckIcon className="w-4 h-4 text-orange-500" />
-                      Negotiation tips if overpriced
-                    </li>
-                  </ul>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-[#1A202C]">FREE</span>
-                    <span className="text-sm text-[#718096] line-through">₩9,900</span>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">BETA</span>
-                  </div>
+                <h3 className="text-xl font-bold text-[#1A202C] mb-2">Wolse Price Check</h3>
+                <p className="text-[#718096] text-sm mb-4">
+                  Check if your monthly rent is fair
+                </p>
+                <ul className="text-sm text-[#4A5568] space-y-1.5 mb-4 flex-1">
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-orange-500" />
+                    Market rate comparison
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-orange-500" />
+                    Price rating
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-orange-500" />
+                    Negotiation tips
+                  </li>
+                </ul>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-bold text-[#1A202C]">FREE</span>
+                  <span className="text-sm text-[#718096] line-through">₩9,900</span>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">BETA</span>
                 </div>
-                {selectedOption === 'price' && (
-                  <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-                    <CheckIcon className="w-4 h-4 text-white" />
-                  </div>
-                )}
               </div>
+              {selectedOption === 'price' && (
+                <div className="absolute top-4 right-4 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
+                  <CheckIcon className="w-4 h-4 text-white" />
+                </div>
+              )}
             </button>
 
-            {/* Full Rental Check */}
+            {/* Deposit Safety Only */}
+            <button
+              onClick={(e) => {
+                haptic.medium(e.currentTarget);
+                setSelectedOption('deposit');
+              }}
+              className={`group p-6 rounded-3xl border-2 text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                selectedOption === 'deposit'
+                  ? 'bg-amber-50 border-amber-400 shadow-lg shadow-amber-100'
+                  : 'bg-white border-amber-100 hover:border-amber-300'
+              }`}
+            >
+              <div className="flex flex-col">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all ${
+                  selectedOption === 'deposit'
+                    ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg'
+                    : 'bg-amber-100 group-hover:bg-gradient-to-br group-hover:from-amber-500 group-hover:to-orange-600'
+                }`}>
+                  <ShieldCheckIcon className={`w-6 h-6 ${selectedOption === 'deposit' ? 'text-white' : 'text-amber-600 group-hover:text-white'}`} />
+                </div>
+                <h3 className="text-xl font-bold text-[#1A202C] mb-2">Deposit Safety Check</h3>
+                <p className="text-[#718096] text-sm mb-4">
+                  Check if your deposit is protected
+                </p>
+                <ul className="text-sm text-[#4A5568] space-y-1.5 mb-4 flex-1">
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-amber-500" />
+                    20+ risk factor analysis
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-amber-500" />
+                    등기부등본 translation
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-amber-500" />
+                    Safety score (0-100)
+                  </li>
+                </ul>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-bold text-[#1A202C]">FREE</span>
+                  <span className="text-sm text-[#718096] line-through">₩14,900</span>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">BETA</span>
+                </div>
+              </div>
+              {selectedOption === 'deposit' && (
+                <div className="absolute top-4 right-4 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
+                  <CheckIcon className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </button>
+
+            {/* Full Wolse Check */}
             <button
               onClick={(e) => {
                 haptic.medium(e.currentTarget);
                 setSelectedOption('full');
               }}
-              className={`group p-8 rounded-3xl border-2 text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative ${
+              className={`group p-6 rounded-3xl border-2 text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative ${
                 selectedOption === 'full'
                   ? 'bg-green-50 border-green-400 shadow-lg shadow-green-100'
                   : 'bg-white border-green-100 hover:border-green-300'
@@ -134,53 +183,48 @@ export default function WolseOptionsPage() {
               {/* Best Value Badge */}
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span className="px-4 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold rounded-full shadow-lg">
-                  Recommended
+                  Best Value
                 </span>
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all ${
+              <div className="flex flex-col">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all ${
                   selectedOption === 'full'
                     ? 'bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg'
                     : 'bg-green-100 group-hover:bg-gradient-to-br group-hover:from-green-500 group-hover:to-emerald-600'
                 }`}>
-                  <ShieldCheckIcon className={`w-7 h-7 ${selectedOption === 'full' ? 'text-white' : 'text-green-600 group-hover:text-white'}`} />
+                  <CheckCircleIcon className={`w-6 h-6 ${selectedOption === 'full' ? 'text-white' : 'text-green-600 group-hover:text-white'}`} />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-[#1A202C] mb-2">Full Rental Check</h3>
-                  <p className="text-[#718096] mb-4">
-                    Price check + Deposit safety analysis in one report
-                  </p>
-                  <ul className="text-sm text-[#4A5568] space-y-1.5 mb-4">
-                    <li className="flex items-center gap-2">
-                      <CheckIcon className="w-4 h-4 text-green-500" />
-                      Everything in Wolse Price Check
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckIcon className="w-4 h-4 text-green-500" />
-                      Deposit safety analysis (20+ risk factors)
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckIcon className="w-4 h-4 text-green-500" />
-                      Property register translation
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckIcon className="w-4 h-4 text-green-500" />
-                      Combined PDF report
-                    </li>
-                  </ul>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-[#1A202C]">FREE</span>
-                    <span className="text-sm text-[#718096] line-through">₩19,900</span>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">BETA</span>
-                  </div>
+                <h3 className="text-xl font-bold text-[#1A202C] mb-2">Full Wolse Check</h3>
+                <p className="text-[#718096] text-sm mb-4">
+                  Check both deposit safety AND rent price
+                </p>
+                <ul className="text-sm text-[#4A5568] space-y-1.5 mb-4 flex-1">
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-green-500" />
+                    Everything in Price Check
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-green-500" />
+                    Everything in Deposit Check
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="w-4 h-4 text-green-500" />
+                    Combined PDF report
+                  </li>
+                </ul>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-lg font-bold text-[#1A202C]">FREE</span>
+                  <span className="text-sm text-[#718096] line-through">₩19,900</span>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">BETA</span>
                 </div>
-                {selectedOption === 'full' && (
-                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                    <CheckIcon className="w-4 h-4 text-white" />
-                  </div>
-                )}
+                <p className="text-xs text-green-600 mt-2">Save ₩4,800 vs buying separately</p>
               </div>
+              {selectedOption === 'full' && (
+                <div className="absolute top-4 right-4 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                  <CheckIcon className="w-4 h-4 text-white" />
+                </div>
+              )}
             </button>
           </div>
 
@@ -204,7 +248,7 @@ export default function WolseOptionsPage() {
           {/* Continue Button */}
           {selectedOption && (
             <div className={`text-center transition-all duration-500 ${selectedOption ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-              {selectedOption === 'price' ? (
+              {selectedOption === 'price' && (
                 <Link href="/analyze/wolse">
                   <button
                     onClick={(e) => haptic.medium(e.currentTarget)}
@@ -216,13 +260,27 @@ export default function WolseOptionsPage() {
                     </svg>
                   </button>
                 </Link>
-              ) : (
-                <Link href="/analyze/full-rental">
+              )}
+              {selectedOption === 'deposit' && (
+                <Link href="/analyze">
+                  <button
+                    onClick={(e) => haptic.medium(e.currentTarget)}
+                    className="group px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3"
+                  >
+                    Continue to Deposit Safety Check
+                    <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </button>
+                </Link>
+              )}
+              {selectedOption === 'full' && (
+                <Link href="/analyze/full">
                   <button
                     onClick={(e) => haptic.medium(e.currentTarget)}
                     className="group px-10 py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-green-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3"
                   >
-                    Continue to Full Rental Check
+                    Continue to Full Wolse Check
                     <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
@@ -256,4 +314,8 @@ function CheckIcon({ className = "w-6 h-6" }: { className?: string }) {
 
 function WarningIcon({ className = "w-6 h-6" }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
+}
+
+function CheckCircleIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 }

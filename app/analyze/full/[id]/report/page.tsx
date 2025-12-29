@@ -235,7 +235,7 @@ export default function FullRentalReportPage() {
         {/* Page Header */}
         <div className="mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-semibold mb-4 border border-green-200 print:bg-green-100">
-            <span>Full Rental Check Complete</span>
+            <span>Full Wolse Check Complete</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A202C] mb-3 tracking-tight" style={{ letterSpacing: '-0.03em' }}>
             Comprehensive Report
@@ -777,7 +777,7 @@ export default function FullRentalReportPage() {
 
         {/* Pricing Banner */}
         <div className="bg-gradient-to-r from-green-600 to-emerald-700 rounded-3xl p-8 mb-8 text-white text-center">
-          <h3 className="text-2xl font-bold mb-2">Full Rental Check Report</h3>
+          <h3 className="text-2xl font-bold mb-2">Full Wolse Check Report</h3>
           <div className="flex items-center justify-center gap-4 mb-4">
             <span className="text-2xl line-through opacity-70">₩19,900</span>
             <span className="text-4xl font-bold">FREE</span>
