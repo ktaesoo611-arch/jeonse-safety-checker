@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { WolseInputForm, WolseFormData, WolsePreviewDisplay, WolseResultsDisplay, PaymentModal } from '@/components/wolse';
 import { WolseAnalysisResult } from '@/lib/types';
+import { analytics } from '@/lib/analytics';
 
 type ViewState = 'form' | 'preview' | 'full';
 
@@ -78,6 +79,9 @@ export default function WolseAnalyzePage() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to save analysis');
       }
+
+      // Track free beta usage
+      analytics.freeBetaUsed(data.result?.id || 'unknown', 'wolse');
 
       // Show full results
       setFullResult(data.result);

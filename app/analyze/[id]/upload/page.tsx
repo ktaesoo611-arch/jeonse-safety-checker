@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { analytics } from '@/lib/analytics';
 
 export default function UploadPage() {
   const router = useRouter();
@@ -103,6 +104,9 @@ export default function UploadPage() {
       const registerData = await registerResponse.json();
       console.log('Document registered:', registerData);
       setUploadProgress(100);
+
+      // Track document upload
+      analytics.documentUploaded(analysisId, 'deunggibu');
 
       // Start parsing in background (don't wait for it)
       fetch('/api/documents/parse', {
@@ -321,7 +325,7 @@ export default function UploadPage() {
               <span className="flex-shrink-0 w-8 h-8 bg-amber-100/20 backdrop-blur-sm rounded-full flex items-center justify-center font-bold text-amber-100">4</span>
               <div>
                 <p className="font-semibold text-amber-100 mb-1">Issue with summary (IMPORTANT!)</p>
-                <p className="text-amber-50/80">Pay 700, and <span className="font-bold text-yellow-200">MUST check 등기사항요약 checkbox</span> before downloading PDF</p>
+                <p className="text-amber-50/80">Pay ₩1,000, and <span className="font-bold text-yellow-200">MUST check 등기사항요약 checkbox</span> before downloading PDF</p>
               </div>
             </li>
           </ol>

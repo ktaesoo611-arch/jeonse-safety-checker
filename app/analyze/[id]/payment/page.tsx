@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { loadPaymentWidget } from '@tosspayments/payment-widget-sdk';
+import { analytics } from '@/lib/analytics';
 
 const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY || '';
 const PAYMENT_AMOUNT = 0; // Free during beta period - Updated 2025-12-02
@@ -21,6 +22,15 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null);
   const [orderData, setOrderData] = useState<any>(null);
   const [showPaymentWidget, setShowPaymentWidget] = useState(false);
+  const hasTrackedPageView = useRef(false);
+
+  // Track payment page view
+  useEffect(() => {
+    if (!hasTrackedPageView.current) {
+      hasTrackedPageView.current = true;
+      analytics.paymentInitiated(analysisId, 14900);
+    }
+  }, [analysisId]);
 
   // Initialize payment widget
   useEffect(() => {
@@ -139,6 +149,9 @@ export default function PaymentPage() {
           throw new Error(errorData.error || 'Failed to process free beta');
         }
 
+        // Track free beta usage
+        analytics.freeBetaUsed(analysisId, 'jeonse');
+
         console.log('Payment marked as approved, redirecting to upload');
         router.push(`/analyze/${analysisId}/upload`);
         return;
@@ -199,6 +212,9 @@ export default function PaymentPage() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to skip payment');
       }
+
+      // Track free beta usage
+      analytics.freeBetaUsed(analysisId, 'jeonse');
 
       // Redirect to analysis page to continue with upload
       router.push(`/analyze/${analysisId}`);

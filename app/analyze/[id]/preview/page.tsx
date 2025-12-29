@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { JeonsePreviewDisplay } from '@/components/jeonse';
+import { analytics } from '@/lib/analytics';
 
 const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY || '';
 
@@ -124,6 +125,9 @@ export default function JeonsePreviewPage() {
       if (!response.ok) {
         throw new Error('Failed to unlock');
       }
+
+      // Track free beta usage
+      analytics.freeBetaUsed(analysisId, 'jeonse');
 
       // Redirect to full report
       router.push(`/analyze/${analysisId}/report`);

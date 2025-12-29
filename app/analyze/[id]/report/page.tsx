@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Tooltip from '@/components/Tooltip';
 import Link from 'next/link';
+import { analytics } from '@/lib/analytics';
 
 interface MortgageRanking {
   rank: number;
@@ -79,6 +80,7 @@ export default function ReportPage() {
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasTrackedView = useRef(false);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -91,6 +93,17 @@ export default function ReportPage() {
 
         const data = await response.json();
         setReport(data);
+
+        // Track report view (only once)
+        if (!hasTrackedView.current) {
+          hasTrackedView.current = true;
+          analytics.reportViewed(
+            analysisId,
+            'jeonse',
+            data.riskAnalysis?.riskLevel,
+            data.summary?.safetyScore
+          );
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {

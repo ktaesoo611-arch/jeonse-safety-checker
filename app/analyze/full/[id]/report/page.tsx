@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Tooltip from '@/components/Tooltip';
 import Link from 'next/link';
 import { WolseAnalysisResult, WolseNegotiationOption } from '@/lib/types';
+import { analytics } from '@/lib/analytics';
 
 interface MortgageRanking {
   rank: number;
@@ -82,6 +83,7 @@ export default function FullRentalReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedScript, setCopiedScript] = useState<string | null>(null);
+  const hasTrackedView = useRef(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -93,6 +95,17 @@ export default function FullRentalReportPage() {
         }
         const reportData = await reportResponse.json();
         setReport(reportData);
+
+        // Track report view (only once)
+        if (!hasTrackedView.current) {
+          hasTrackedView.current = true;
+          analytics.reportViewed(
+            analysisId,
+            'full_wolse',
+            reportData.riskAnalysis?.riskLevel,
+            reportData.summary?.safetyScore
+          );
+        }
 
         // Load wolse result from session storage
         const storedWolse = sessionStorage.getItem(`full-rental-wolse-result-${analysisId}`);

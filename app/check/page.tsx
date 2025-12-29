@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useHaptic } from '@/lib/hooks/useHaptic';
+import { analytics } from '@/lib/analytics';
 
 /**
  * Rental Type Selection Page
@@ -143,7 +144,10 @@ export default function CheckPage() {
               {selectedType === 'jeonse' ? (
                 <Link href="/analyze">
                   <button
-                    onClick={(e) => haptic.medium(e.currentTarget)}
+                    onClick={(e) => {
+                      haptic.medium(e.currentTarget);
+                      analytics.rentalTypeSelected('jeonse');
+                    }}
                     className="group px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3"
                   >
                     Continue to Deposit Safety Check
@@ -155,7 +159,10 @@ export default function CheckPage() {
               ) : (
                 <Link href="/check/wolse">
                   <button
-                    onClick={(e) => haptic.medium(e.currentTarget)}
+                    onClick={(e) => {
+                      haptic.medium(e.currentTarget);
+                      analytics.rentalTypeSelected('wolse');
+                    }}
                     className="group px-10 py-5 bg-gradient-to-r from-orange-400 to-amber-500 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-orange-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3"
                   >
                     Continue

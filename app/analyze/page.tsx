@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import Link from 'next/link';
 import { SEOUL_DISTRICTS, Apartment } from '@/lib/data/address-data';
+import { analytics } from '@/lib/analytics';
 
 export default function AnalyzePage() {
   const router = useRouter();
@@ -136,6 +137,8 @@ export default function AnalyzePage() {
       const data = await response.json();
 
       if (response.ok && data.analysisId) {
+        // Track analysis started
+        analytics.analysisStarted('jeonse', data.analysisId);
         // Go directly to upload (payment happens after preview)
         router.push(`/analyze/${data.analysisId}/upload`);
       } else {

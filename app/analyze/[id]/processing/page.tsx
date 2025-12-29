@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { analytics } from '@/lib/analytics';
 
 const steps = [
   { id: 1, name: 'Register document analysis', icon: '📄' },
@@ -20,6 +21,7 @@ export default function ProcessingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<string>('processing');
+  const hasTrackedCompletion = useRef(false);
 
   useEffect(() => {
     // Poll for status updates
@@ -31,6 +33,18 @@ export default function ProcessingPage() {
         if (data.status === 'completed') {
           setProgress(100);
           setCurrentStep(steps.length - 1);
+
+          // Track analysis completion (only once)
+          if (!hasTrackedCompletion.current) {
+            hasTrackedCompletion.current = true;
+            analytics.analysisCompleted(
+              analysisId,
+              'jeonse',
+              data.riskLevel,
+              data.safetyScore
+            );
+          }
+
           setTimeout(() => {
             // Check if payment is already made (skip preview)
             if (data.paymentStatus === 'approved') {

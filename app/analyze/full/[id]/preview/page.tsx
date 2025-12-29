@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { analytics } from '@/lib/analytics';
 
 interface PreviewData {
   analysisId: string;
@@ -79,6 +80,9 @@ export default function FullWolsePreviewPage() {
       if (!response.ok) {
         throw new Error('Failed to unlock');
       }
+
+      // Track free beta usage
+      analytics.freeBetaUsed(analysisId, 'full_wolse');
 
       // Redirect to full report
       router.push(`/analyze/full/${analysisId}/report`);
