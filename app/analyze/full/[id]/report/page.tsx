@@ -221,7 +221,7 @@ export default function FullRentalReportPage() {
                 </svg>
                 Print
               </button>
-              <Link href="/">
+              <Link href="/check">
                 <button className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-200/50 transition-all font-medium">
                   New analysis
                 </button>
@@ -800,7 +800,7 @@ export default function FullRentalReportPage() {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8 print:hidden">
-          <Link href="/" className="flex-1">
+          <Link href="/check" className="flex-1">
             <button className="w-full px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold text-lg rounded-2xl hover:shadow-xl hover:shadow-green-200/50 transition-all hover:-translate-y-1">
               Start new analysis
             </button>

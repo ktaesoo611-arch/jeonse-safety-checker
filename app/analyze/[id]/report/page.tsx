@@ -187,7 +187,7 @@ export default function ReportPage() {
                 </svg>
                 Print
               </button>
-              <Link href="/">
+              <Link href="/check">
                 <button className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:shadow-lg hover:shadow-amber-200/50 transition-all font-medium">
                   New analysis
                 </button>
@@ -751,7 +751,7 @@ export default function ReportPage() {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8 print:hidden">
-          <Link href="/" className="flex-1">
+          <Link href="/check" className="flex-1">
             <button className="w-full px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1">
               Start new analysis
             </button>
