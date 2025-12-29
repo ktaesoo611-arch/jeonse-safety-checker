@@ -257,7 +257,7 @@ result.recommendations.mandatory.forEach(rec => {
   console.log(`MUST DO: ${rec}`);
 });
 // Output:
-// MUST DO: Get 확정일자 AND 전입신고 SAME DAY as payment
+// MUST DO: Get 확정일자 AND residence registration SAME DAY as payment (Foreigners: 외국인등록/체류지변경신고, Overseas Koreans: 국내거소신고/거소이전신고)
 // MUST DO: Move in physically same day (점유 required for 대항력)
 // MUST DO: You qualify for 소액보증금 (₩6600만원 protected) - maintain this status!
 ```

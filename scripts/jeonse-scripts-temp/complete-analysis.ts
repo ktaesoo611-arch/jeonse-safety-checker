@@ -64,7 +64,7 @@ const riskAnalysis = {
   ],
   recommendations: {
     mandatory: [
-      'Get 확정일자 AND 전입신고 SAME DAY as payment',
+      'Get 확정일자 AND residence registration SAME DAY as payment (Foreigners: 외국인등록/체류지변경신고, Overseas Koreans: 국내거소신고/거소이전신고)',
       'Move in physically same day (점유 required for 대항력)',
       'Verify all information in 등기부등본 is current (request copy dated within 1 week)',
       'You do NOT have 소액보증금 protection - senior mortgages get paid first'

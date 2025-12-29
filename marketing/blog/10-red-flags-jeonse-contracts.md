@@ -103,7 +103,7 @@ Open the property register and look at the "을구" (Section B) section. Add up 
 - Agent says "we don't usually show this to foreigners"
 
 **Why it's dangerous:**
-The property register is PUBLIC information that costs ₩700 to obtain. Any landlord refusing to provide it is hiding something—mortgages, liens, seizures, or worse.
+The property register is PUBLIC information that costs ₩1,000 to obtain. Any landlord refusing to provide it is hiding something—mortgages, liens, seizures, or worse.
 
 **This is the #1 behavior predictor of fraud.**
 
@@ -170,7 +170,7 @@ Look at the "갑구" (Section A) of the property register for ownership history.
 - "Foreign tenants usually don't register"
 
 **Why it's dangerous:**
-Lease registration (전입신고 + 확정일자) is your ONLY legal protection. Without it:
+Lease registration (residence registration + 확정일자) is your ONLY legal protection. For foreigners, this means 외국인등록 or 체류지변경신고; for overseas Koreans, it's 국내거소신고 or 거소이전신고. Without it:
 - ❌ You have no priority claim in bankruptcy
 - ❌ You cannot sue for deposit recovery
 - ❌ You're not protected by tenant laws
@@ -447,7 +447,7 @@ Never ignore your instincts. If something feels off:
 ✅ Take photos of property condition
 
 ### After Signing
-✅ Register lease within 14 days (전입신고)
+✅ Register lease within 14 days (Foreigners: 외국인등록/체류지변경신고, Overseas Koreans: 국내거소신고/거소이전신고)
 ✅ Get confirmation date stamp (확정일자)
 ✅ Apply for jeonse insurance if needed
 ✅ Keep all documents in safe place

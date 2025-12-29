@@ -40,7 +40,7 @@ This document tells you if a property is safe for jeonse. It reveals hidden debt
 2. Click "등기열람/발급" (Registry Viewing/Issuance)
 3. Choose "부동산" (Real Estate)
 4. Enter property address or registration number
-5. Pay ₩700 via card or bank transfer
+5. Pay ₩1,000 via card or bank transfer
 6. Download PDF immediately
 
 **Language:** Korean only (Chrome auto-translate helps with navigation)
@@ -473,7 +473,7 @@ When you receive 등기부등본, check these items in order:
 
 **Next steps:**
 1. Proceed with contract
-2. Still register your lease (전입신고 + 확정일자)
+2. Still register your lease (Foreigners: 외국인등록/체류지변경신고, Overseas Koreans: 국내거소신고/거소이전신고 + 확정일자)
 3. Consider jeonse insurance for extra protection
 4. Keep copy of 등기부등본 forever
 
@@ -563,7 +563,7 @@ A: Use VPN or ask real estate agent to provide it. Agent should give you this as
 A: No. Some owners pay cash. 0% mortgage is the safest scenario for jeonse.
 
 **Q: What if mortgage was 50% when I signed but landlord adds more later?**
-A: This is why you must register your lease (전입신고 + 확정일자). Registration gives you priority over mortgages added AFTER your confirmation date.
+A: This is why you must register your lease (Foreigners: 외국인등록/체류지변경신고, Overseas Koreans: 국내거소신고/거소이전신고 + 확정일자). Registration gives you priority over mortgages added AFTER your confirmation date.
 
 **Q: Can I check 등기부등본 before viewing the apartment?**
 A: If you have the exact address, yes. But usually you get it after deciding you're interested.

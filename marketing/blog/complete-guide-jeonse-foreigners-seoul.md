@@ -158,8 +158,9 @@ You MUST register your lease at the local district office (구청) to get legal 
 3. Pay small fee (₩5,000-10,000)
 4. Receive registration certificate
 
-**Also register:**
-- Your residence at the same time (전입신고)
+**Also register your residence to establish 대항력 (opposing force):**
+- **Foreigners (외국인):** Complete 외국인등록 or 체류지변경신고 at the immigration office
+- **Overseas Koreans (재외국민):** Complete 국내거소신고 or 거소이전신고 at the district office
 - Obtain "확정일자" (confirmation date stamp) on your contract—this establishes your priority ranking among creditors
 
 ### Step 6: Move In and Maintain

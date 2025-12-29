@@ -601,7 +601,7 @@ James signed a jeonse contract in March 2022 when everything looked good. Proper
 ### After Signing
 
 **Must do:**
-- [ ] Register lease within 14 days (전입신고)
+- [ ] Register lease within 14 days (Foreigners: 외국인등록/체류지변경신고, Overseas Koreans: 국내거소신고/거소이전신고)
 - [ ] Get confirmation date stamp (확정일자)
 - [ ] Apply for jeonse insurance
 - [ ] Check property register every 6 months

@@ -200,7 +200,7 @@ curl http://localhost:3000/api/analysis/report/68a4a312-c9fe-4fd3-82d4-5e9eaa7f1
 
   "recommendations": {
     "mandatory": [
-      "Get 확정일자 AND 전입신고 SAME DAY as payment",
+      "Get 확정일자 AND residence registration SAME DAY as payment (Foreigners: 외국인등록/체류지변경신고, Overseas Koreans: 국내거소신고/거소이전신고)",
       "Move in physically same day (점유 required for 대항력)"
     ],
     "recommended": [
