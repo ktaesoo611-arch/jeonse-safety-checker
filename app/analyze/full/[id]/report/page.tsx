@@ -457,7 +457,16 @@ export default function FullRentalReportPage() {
                             )}
                           </td>
                           <td className="py-5 px-4 text-center">
-                            <div className="font-medium text-sm text-gray-800">{debt.type.replace(' (Mortgage)', '')}</div>
+                            <div className="font-medium text-sm text-gray-800">{debt.type}</div>
+                            {debt.type.includes('근저당권') && (
+                              <div className="text-xs text-gray-500 mt-0.5">(Mortgage)</div>
+                            )}
+                            {debt.type.includes('전세권') && (
+                              <div className="text-xs text-gray-500 mt-0.5">(Jeonse Rights)</div>
+                            )}
+                            {debt.type.includes('임차권') && (
+                              <div className="text-xs text-gray-500 mt-0.5">(Lease Rights)</div>
+                            )}
                           </td>
                           <td className="py-5 px-4 text-center">
                             <div className={`font-bold text-xl ${isYourDeposit ? 'text-purple-900' : 'text-gray-900'}`}>
