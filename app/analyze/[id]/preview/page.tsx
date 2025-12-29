@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { JeonsePreviewDisplay } from '@/components/jeonse';
-import { loadPaymentWidget } from '@tosspayments/payment-widget-sdk';
 
 const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY || '';
 
@@ -73,12 +72,13 @@ export default function JeonsePreviewPage() {
     fetchPreview();
   }, [analysisId]);
 
-  // Initialize payment widget when modal opens
+  // Initialize payment widget when modal opens (dynamically import SDK)
   useEffect(() => {
     if (!showPaymentModal || !TOSS_CLIENT_KEY) return;
 
     async function initWidget() {
       try {
+        const { loadPaymentWidget } = await import('@tosspayments/payment-widget-sdk');
         const shortId = analysisId.replace(/-/g, '').substring(0, 32);
         const widget = await loadPaymentWidget(TOSS_CLIENT_KEY, `jeonse_${shortId}`);
         setPaymentWidget(widget);
