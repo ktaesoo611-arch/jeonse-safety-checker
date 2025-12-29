@@ -421,7 +421,7 @@ export default function FullRentalReportPage() {
                   </thead>
                   <tbody>
                     {report.riskAnalysis.debtRanking.map((debt, index) => {
-                      const isYourDeposit = debt.type.includes('Your Jeonse');
+                      const isYourDeposit = debt.type.includes('Your Deposit');
                       const priorityColors = {
                         senior: 'bg-red-50/80 border-l-4 border-red-500',
                         junior: 'bg-orange-50/80 border-l-4 border-orange-500',

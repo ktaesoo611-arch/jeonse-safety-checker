@@ -460,7 +460,7 @@ export default function ReportPage() {
                 <p className="text-xs text-blue-600 mt-1">{report.riskAnalysis.debtRanking.filter(d => d.type.includes('근저당권')).length} mortgage(s)</p>
               </div>
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-100">
-                <p className="text-sm text-purple-700 mb-2 font-medium">Your Jeonse (Proposed)</p>
+                <p className="text-sm text-purple-700 mb-2 font-medium">Your Deposit (Proposed)</p>
                 <p className="text-2xl font-bold text-purple-900">
                   ₩{(report.property.proposedJeonse / 100000000).toFixed(1)}억
                 </p>
@@ -503,7 +503,7 @@ export default function ReportPage() {
                 </thead>
                 <tbody>
                   {report.riskAnalysis.debtRanking.map((debt, index) => {
-                    const isYourJeonse = debt.type.includes('Your Jeonse');
+                    const isYourDeposit = debt.type.includes('Your Deposit');
                     const priorityColors = {
                       senior: 'bg-red-50/80 border-l-4 border-red-500',
                       junior: 'bg-orange-50/80 border-l-4 border-orange-500',
@@ -519,7 +519,7 @@ export default function ReportPage() {
                       <tr
                         key={index}
                         className={`border-b border-gray-200 ${
-                          isYourJeonse ? 'bg-gradient-to-r from-purple-100/70 via-purple-50/50 to-purple-100/70 border-l-4 border-purple-600' : priorityColors[debt.priority]
+                          isYourDeposit ? 'bg-gradient-to-r from-purple-100/70 via-purple-50/50 to-purple-100/70 border-l-4 border-purple-600' : priorityColors[debt.priority]
                         }`}
                       >
                         <td className="py-5 px-4 text-center">
@@ -528,7 +528,7 @@ export default function ReportPage() {
                           </span>
                         </td>
                         <td className="py-5 px-4 text-center">
-                          {isYourJeonse ? (
+                          {isYourDeposit ? (
                             <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-600 to-purple-700 text-white uppercase tracking-wide">
                               YOUR DEPOSIT
                             </span>
@@ -539,15 +539,15 @@ export default function ReportPage() {
                           )}
                         </td>
                         <td className="py-5 px-4 text-center">
-                          <div className={`font-medium text-sm ${isYourJeonse ? 'text-gray-900' : 'text-gray-800'}`}>
+                          <div className={`font-medium text-sm ${isYourDeposit ? 'text-gray-900' : 'text-gray-800'}`}>
                             {debt.type.replace(' (Mortgage)', '')}
                           </div>
-                          {!isYourJeonse && (
+                          {!isYourDeposit && (
                             <div className="text-xs text-gray-500 mt-0.5">(Mortgage)</div>
                           )}
                         </td>
                         <td className="py-5 px-4 text-center">
-                          <div className={`font-bold text-xl ${isYourJeonse ? 'text-purple-900' : 'text-gray-900'}`}>
+                          <div className={`font-bold text-xl ${isYourDeposit ? 'text-purple-900' : 'text-gray-900'}`}>
                             ₩{(debt.amount / 100000000).toFixed(1)}억
                           </div>
                         </td>
@@ -592,7 +592,7 @@ export default function ReportPage() {
                   <span className="font-bold text-red-700">- ₩{(report.riskAnalysis.metrics.totalDebt / 100000000).toFixed(1)}억</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="text-gray-700">Your Jeonse (Proposed)</span>
+                  <span className="text-gray-700">Your Deposit (Proposed)</span>
                   <span className="font-bold text-purple-700">- ₩{(report.property.proposedJeonse / 100000000).toFixed(1)}억</span>
                 </div>
                 <div className="flex justify-between py-3 bg-white rounded-lg px-3 mt-2">
