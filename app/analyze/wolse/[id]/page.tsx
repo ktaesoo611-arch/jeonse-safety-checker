@@ -71,7 +71,7 @@ export default function WolseAnalysisPage() {
   }, [analysisId, router]);
 
   const handleNewAnalysis = () => {
-    router.push('/analyze/wolse');
+    router.push('/check');
   };
 
   if (loading) {
@@ -137,7 +137,7 @@ export default function WolseAnalysisPage() {
             <h2 className="text-2xl font-bold text-[#1A202C] mb-2">Error</h2>
             <p className="text-[#4A5568] mb-6">{error}</p>
             <button
-              onClick={() => router.push('/analyze/wolse')}
+              onClick={() => router.push('/check')}
               className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:shadow-amber-200/50 transition-all font-semibold"
             >
               Start New Analysis
@@ -166,18 +166,15 @@ export default function WolseAnalysisPage() {
             </div>
             <span className="text-xl font-semibold text-[#2D3748]">K-Rent Safety</span>
           </Link>
+          <Link href="/check">
+            <button className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:shadow-lg hover:shadow-amber-200/50 transition-all font-medium">
+              New analysis
+            </button>
+          </Link>
         </div>
       </header>
 
       <div className="relative z-10 container mx-auto px-6 py-12 max-w-4xl">
-        <div className="mb-8">
-          <Link href="/analyze/wolse" className="text-amber-600 hover:text-amber-700 font-medium inline-flex items-center gap-2 group">
-            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            New Analysis
-          </Link>
-        </div>
 
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full text-sm font-semibold mb-6 border border-amber-200">
