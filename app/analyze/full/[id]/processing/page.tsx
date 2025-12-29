@@ -87,7 +87,7 @@ export default function FullRentalProcessingPage() {
             setProgress(100);
             setCurrentStep(steps.length - 1);
             setTimeout(() => {
-              router.push(`/analyze/full/${analysisId}/report`);
+              router.push(`/analyze/full/${analysisId}/preview`);
             }, 1000);
           } else {
             // Wait for wolse to complete
