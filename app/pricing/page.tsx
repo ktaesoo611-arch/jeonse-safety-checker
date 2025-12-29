@@ -185,7 +185,7 @@ export default function PricingPage() {
             </div>
 
             {/* Full Wolse Check - Best Value */}
-            <div className="bg-white rounded-3xl border-2 border-green-400 shadow-xl shadow-green-100/50 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group relative">
+            <div className="bg-white rounded-3xl border-2 border-green-400 shadow-xl shadow-green-100/50 overflow-visible hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group relative">
               {/* Best Value Badge */}
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                 <span className="px-4 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold rounded-full shadow-lg">
@@ -193,7 +193,7 @@ export default function PricingPage() {
                 </span>
               </div>
 
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 text-white">
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 text-white rounded-t-3xl">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-2xl font-bold">Full Wolse Check</h3>
                   <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold">
