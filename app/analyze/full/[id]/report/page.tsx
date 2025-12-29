@@ -310,7 +310,26 @@ export default function FullRentalReportPage() {
                 </div>
               </div>
               <div className="bg-green-50/50 rounded-xl p-5 border border-green-100 print:bg-gray-50 print:border-gray-200">
-                <p className="text-sm text-gray-600 mb-2 font-medium">Est. Market Value</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-sm text-gray-600 font-medium">Est. Market Value</p>
+                  <Tooltip content={
+                    <div>
+                      <p className="font-bold text-gray-900 mb-2">How is this calculated?</p>
+                      <p className="text-gray-700 mb-3">
+                        {report.property.valuation?.confidence && report.property.valuation.confidence !== 0.5
+                          ? `Calculated as the average of recent real market transactions from the MOLIT (Ministry of Land, Infrastructure and Transport) database.`
+                          : `Estimated based on the proposed deposit amount using typical deposit-to-value ratios (70%), as recent transaction data was not available.`}
+                      </p>
+                      <p className="text-gray-600 mt-3 pt-3 border-t border-gray-200">
+                        <span className="font-semibold text-orange-600">⚠️ Important:</span> This is an estimate. Actual market value may vary.
+                      </p>
+                    </div>
+                  }>
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </Tooltip>
+                </div>
                 {report.property.estimatedValue ? (
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-bold text-gray-900">
@@ -351,10 +370,54 @@ export default function FullRentalReportPage() {
                   buildingScore: 'Building Status Score'
                 };
 
+                const descriptions: Record<string, { title: string; description: string; scoring: string }> = {
+                  ltvScore: {
+                    title: 'Loan-to-Value Ratio Assessment',
+                    description: 'Calculates total exposure ratio: LTV = (All Existing Debt + Your Deposit) / Property Value. Lower LTV means more equity cushion to protect your deposit.',
+                    scoring: '100 pts: <50% • 80 pts: 50-60% • 60 pts: 60-70% • 40 pts: 70-80% • 20 pts: 80-90% • 0 pts: >90%'
+                  },
+                  debtScore: {
+                    title: 'Debt Structure Analysis',
+                    description: 'Evaluates existing debt burden. Calculation: Start at 100pts → Apply debt ratio penalty → Subtract creditor penalty.',
+                    scoring: 'Debt Ratio: >70% (-50pts), 60-70% (-30pts), 50-60% (-15pts) | Creditor Penalty: -5pts each, max -20pts'
+                  },
+                  legalScore: {
+                    title: 'Legal & Compliance Check',
+                    description: 'Checks for legal issues in 등기부등본 that could jeopardize your deposit.',
+                    scoring: 'Critical: Seizure/Auction -100pts | Serious: Superficies -40pts, Provisional Registration -35pts | Moderate: Shared Ownership -25pts'
+                  },
+                  marketScore: {
+                    title: 'Market Conditions Analysis',
+                    description: 'Assesses market trend with confidence-amplified impact.',
+                    scoring: 'Base: 70pts | Rising: +8~25pts | Falling: -15~35pts | Low confidence: -10pts'
+                  },
+                  buildingScore: {
+                    title: 'Building Age Assessment',
+                    description: 'Evaluates building age and physical condition.',
+                    scoring: '<5 yrs: 100pts • 5-10: 90pts • 10-15: 80pts • 15-20: 70pts • 20-25: 60pts • >30: 40pts'
+                  }
+                };
+
+                const scoreInfo = descriptions[key];
+
                 return (
                   <div key={key}>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold text-gray-900 text-lg">{labels[key]}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900 text-lg">{labels[key]}</span>
+                        <Tooltip content={
+                          <div>
+                            <p className="font-bold text-gray-900 mb-2">{scoreInfo.title}</p>
+                            <p className="text-gray-700 mb-3">{scoreInfo.description}</p>
+                            <p className="font-semibold text-gray-900 mb-1">Scoring:</p>
+                            <p className="text-gray-600">{scoreInfo.scoring}</p>
+                          </div>
+                        }>
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        </Tooltip>
+                      </div>
                       <span className="font-bold text-gray-900 text-lg">{value}/100</span>
                     </div>
                     <div className={`h-3 rounded-full overflow-hidden ${value === 0 ? 'bg-red-200 ring-2 ring-red-500 ring-offset-1' : 'bg-gray-200'}`}>
@@ -377,7 +440,30 @@ export default function FullRentalReportPage() {
           {/* Debt Ranking */}
           {report.riskAnalysis.debtRanking && report.riskAnalysis.debtRanking.length > 0 && (
             <div className="bg-white rounded-3xl p-8 mb-8 shadow-xl shadow-green-900/5 border border-green-100 print:shadow-none print:border-gray-200">
-              <h3 className="text-xl font-bold text-[#1A202C] mb-6">Debt & Collateral Analysis</h3>
+              <div className="flex items-center gap-3 mb-6">
+                <h3 className="text-xl font-bold text-[#1A202C]">Debt & Collateral Analysis</h3>
+                <Tooltip content={
+                  <div>
+                    <p className="font-bold text-gray-900 mb-2">Understanding Debt Priority</p>
+                    <p className="text-gray-700 mb-3">
+                      In case of property auction, creditors are repaid in order of registration date.
+                    </p>
+                    <p className="font-semibold text-gray-900 mb-1">Priority Levels:</p>
+                    <ul className="text-gray-700 mb-3 space-y-1 ml-4 list-disc">
+                      <li><span className="font-semibold">Senior:</span> First mortgage - highest priority</li>
+                      <li><span className="font-semibold">Junior:</span> Second mortgage - repaid after senior</li>
+                      <li><span className="font-semibold">Subordinate:</span> Lower priority - higher risk</li>
+                    </ul>
+                    <p className="text-gray-600 mt-2 pt-2 border-t border-gray-200">
+                      <span className="font-semibold text-orange-600">⚠️</span> Your deposit will rank after all registered claims.
+                    </p>
+                  </div>
+                }>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </Tooltip>
+              </div>
 
               {/* Summary Statistics */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
