@@ -170,7 +170,7 @@ export default function JeonsePreviewPage() {
   if (error || !previewData) {
     return (
       <div className="min-h-screen bg-[#FDFBF7]">
-        <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="fixed inset-0 z-0 pointer-events-none" style={{ transform: 'translateZ(0)' }}>
           <div className="absolute inset-0 bg-gradient-to-b from-[#FEF7ED] via-[#FDFBF7] to-[#F5F0E8]" />
         </div>
 
@@ -210,8 +210,8 @@ export default function JeonsePreviewPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
-      {/* Warm gradient background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
+      {/* Warm gradient background - GPU accelerated to prevent scroll issues */}
+      <div className="fixed inset-0 z-0 pointer-events-none" style={{ transform: 'translateZ(0)' }}>
         <div className="absolute inset-0 bg-gradient-to-b from-[#FEF7ED] via-[#FDFBF7] to-[#F5F0E8]" />
         <div className="absolute top-20 right-[10%] w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
         <div className="absolute bottom-[20%] left-[5%] w-72 h-72 bg-orange-200/30 rounded-full blur-3xl" />
