@@ -217,7 +217,7 @@ export default function WolseOptionsPage() {
                   </button>
                 </Link>
               ) : (
-                <Link href="/analyze/wolse?full=true">
+                <Link href="/analyze/full-rental">
                   <button
                     onClick={(e) => haptic.medium(e.currentTarget)}
                     className="group px-10 py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-green-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3"

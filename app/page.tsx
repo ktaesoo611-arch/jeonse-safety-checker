@@ -435,7 +435,7 @@ export default function LandingPageV4() {
               ]}
               price="19,900"
               betaPrice="FREE"
-              href="/check"
+              href="/analyze/full-rental"
               color="green"
               delay={400}
               badge="Best Value"
