@@ -177,15 +177,15 @@ export default function FullRentalReportPage() {
   const getAssessmentStyle = (assessment: string) => {
     switch (assessment) {
       case 'GOOD_DEAL':
-        return { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', icon: '🎉', label: 'Great Deal!' };
+        return { bg: 'bg-gradient-to-br from-emerald-500 to-teal-600', border: 'border-emerald-400', text: 'text-white', icon: '🎉', label: 'Great Deal!', isGradient: true };
       case 'FAIR':
-        return { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', icon: '✓', label: 'Fair Price' };
+        return { bg: 'bg-gradient-to-br from-blue-500 to-indigo-600', border: 'border-blue-400', text: 'text-white', icon: '✓', label: 'Fair Price', isGradient: true };
       case 'OVERPRICED':
-        return { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', icon: '⚠️', label: 'Above Market' };
+        return { bg: 'bg-gradient-to-br from-amber-500 to-orange-600', border: 'border-amber-400', text: 'text-white', icon: '⚠️', label: 'Above Market', isGradient: true };
       case 'SEVERELY_OVERPRICED':
-        return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', icon: '🚨', label: 'Significantly Overpriced' };
+        return { bg: 'bg-gradient-to-br from-red-500 to-rose-600', border: 'border-red-400', text: 'text-white', icon: '🚨', label: 'Significantly Overpriced', isGradient: true };
       default:
-        return { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', icon: '?', label: 'Unknown' };
+        return { bg: 'bg-gradient-to-br from-gray-500 to-gray-600', border: 'border-gray-400', text: 'text-white', icon: '?', label: 'Unknown', isGradient: true };
     }
   };
 
@@ -266,18 +266,18 @@ export default function FullRentalReportPage() {
 
           {/* Price Check Score */}
           {wolseResult && (
-            <div className={`rounded-3xl p-8 ${getAssessmentStyle(wolseResult.assessment).bg} ${getAssessmentStyle(wolseResult.assessment).border} border-2`}>
+            <div className={`rounded-3xl p-8 ${getAssessmentStyle(wolseResult.assessment).bg} shadow-2xl`}>
               <div className="text-center">
-                <div className={`inline-block px-4 py-2 bg-white/80 rounded-full border ${getAssessmentStyle(wolseResult.assessment).border} font-bold text-sm mb-4`}>
+                <div className="inline-block px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 font-bold text-sm mb-4 text-white">
                   Price Check
                 </div>
                 <div className="mb-4">
                   <div className="text-5xl mb-2">{getAssessmentStyle(wolseResult.assessment).icon}</div>
-                  <div className={`text-2xl font-bold ${getAssessmentStyle(wolseResult.assessment).text}`}>
+                  <div className="text-2xl font-bold text-white">
                     {getAssessmentStyle(wolseResult.assessment).label}
                   </div>
                 </div>
-                <p className="text-sm text-[#4A5568] max-w-sm mx-auto leading-relaxed">
+                <p className="text-sm text-white/90 max-w-sm mx-auto leading-relaxed">
                   {wolseResult.assessmentDetails}
                 </p>
               </div>
@@ -677,7 +677,7 @@ export default function FullRentalReportPage() {
 
             {/* Key Metrics */}
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-green-900/5 border border-green-100">
+              <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-green-900/10 border border-green-200">
                 <p className="text-sm text-[#718096] mb-2">Your Rent</p>
                 <p className="text-3xl font-bold text-[#1A202C]">{formatWon(wolseResult.userMonthlyRent)}</p>
                 <p className="text-sm text-[#718096] mt-2">
@@ -685,7 +685,7 @@ export default function FullRentalReportPage() {
                 </p>
               </div>
 
-              <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-green-900/5 border border-green-100">
+              <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-green-900/10 border border-green-200">
                 <p className="text-sm text-[#718096] mb-2">Expected Rent (Market)</p>
                 <p className="text-3xl font-bold text-green-600">{formatWon(wolseResult.expectedRent ?? wolseResult.userMonthlyRent)}</p>
                 <p className="text-sm text-[#718096] mt-2">
@@ -693,7 +693,7 @@ export default function FullRentalReportPage() {
                 </p>
               </div>
 
-              <div className={`rounded-3xl p-6 text-center shadow-xl shadow-green-900/5 border ${
+              <div className={`rounded-3xl p-6 text-center shadow-xl shadow-green-900/10 border ${
                 (wolseResult.rentDifference ?? 0) <= 0
                   ? 'bg-emerald-50 border-emerald-200'
                   : (wolseResult.rentDifferencePercent ?? 0) <= 5
@@ -714,7 +714,7 @@ export default function FullRentalReportPage() {
             </div>
 
             {/* Market Rate Info */}
-            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/5 border border-green-100 mb-8">
+            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/10 border border-green-200 mb-8">
               <div className="grid md:grid-cols-3 gap-6 text-center mb-6">
                 <div>
                   <p className="text-sm text-[#718096] mb-1">Market Rate</p>
@@ -736,7 +736,7 @@ export default function FullRentalReportPage() {
 
             {/* Savings Potential */}
             {(wolseResult.savingsPotential.vsMarket > 0 || wolseResult.savingsPotential.vsLegal > 0) && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-3xl p-6 border border-green-200 mb-8">
+              <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-3xl p-6 border border-green-300 mb-8">
                 <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
                   <span>💰</span> Potential Savings
                 </h3>
@@ -762,7 +762,7 @@ export default function FullRentalReportPage() {
             )}
 
             {/* Price Trend */}
-            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/5 border border-green-100 mb-8">
+            <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/10 border border-green-200 mb-8">
               <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
                 <span>{getTrendIcon(wolseResult.trend.direction)}</span> Price Trend
               </h3>
@@ -785,8 +785,8 @@ export default function FullRentalReportPage() {
                   {wolseResult.negotiationOptions.map((option, index) => (
                     <div
                       key={index}
-                      className={`bg-white rounded-3xl p-6 cursor-pointer transition-all hover:shadow-xl shadow-xl shadow-green-900/5 border ${
-                        option.recommended ? 'border-2 border-green-400 bg-green-50/30' : 'border-green-100'
+                      className={`bg-white rounded-3xl p-6 cursor-pointer transition-all hover:shadow-xl shadow-xl shadow-green-900/10 border ${
+                        option.recommended ? 'border-2 border-green-400 bg-green-50/30' : 'border-green-200'
                       }`}
                       onClick={() => copyToClipboard(option.script, option.name)}
                     >
@@ -814,7 +814,7 @@ export default function FullRentalReportPage() {
                         </div>
                       </div>
 
-                      <div className="bg-green-50 rounded-2xl p-4 text-sm text-[#4A5568] leading-relaxed border border-green-100">
+                      <div className="bg-green-50 rounded-2xl p-4 text-sm text-[#4A5568] leading-relaxed border border-green-200">
                         "{option.script}"
                       </div>
 
@@ -831,7 +831,7 @@ export default function FullRentalReportPage() {
 
             {/* Recent Transactions */}
             {wolseResult.recentTransactions.length > 0 && (
-              <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/5 border border-green-100">
+              <div className="bg-white rounded-3xl p-6 shadow-xl shadow-green-900/10 border border-green-200">
                 <h3 className="text-lg font-bold text-[#1A202C] mb-4 flex items-center gap-2">
                   <span>📊</span> Recent Transactions ({wolseResult.contractCount} contracts)
                 </h3>
