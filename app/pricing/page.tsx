@@ -214,7 +214,7 @@ export default function PricingPage() {
                   <FeatureItem text="Combined comprehensive report" />
                   <FeatureItem text="Deposit + rent analysis together" />
                   <FeatureItem text="One document upload" />
-                  <FeatureItem text="Save ₩4,800 vs separate services" />
+                  <FeatureItem text="Save ₩4,900 vs separate services" />
                   <FeatureItem text="Best for wolse with large deposit" />
                   <FeatureItem text="Complete peace of mind" />
                 </ul>

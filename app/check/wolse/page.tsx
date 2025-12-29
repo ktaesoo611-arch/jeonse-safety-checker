@@ -218,7 +218,7 @@ export default function WolseOptionsPage() {
                   <span className="text-sm text-[#718096] line-through">₩19,900</span>
                   <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">BETA</span>
                 </div>
-                <p className="text-xs text-green-600 mt-2">Save ₩4,800 vs buying separately</p>
+                <p className="text-xs text-green-600 mt-2">Save ₩4,900 vs buying separately</p>
               </div>
               {selectedOption === 'full' && (
                 <div className="absolute top-4 right-4 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
