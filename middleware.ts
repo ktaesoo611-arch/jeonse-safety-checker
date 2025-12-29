@@ -37,19 +37,27 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Protected routes that require authentication
-  const protectedPaths = ['/dashboard', '/profile', '/analyze'];
+  const protectedPaths = ['/dashboard', '/profile'];
+  // Analysis pages with payment/reports require auth
+  const protectedAnalyzePaths = ['/analyze/[id]'];
   const authPaths = ['/auth/login', '/auth/signup'];
 
+  // Check if it's a protected path
   const isProtectedPath = protectedPaths.some(path =>
     request.nextUrl.pathname.startsWith(path)
   );
+
+  // Check if it's a protected analyze path (with ID like /analyze/abc123/...)
+  const isProtectedAnalyzePath = /^\/analyze\/[a-zA-Z0-9-]+/.test(request.nextUrl.pathname) &&
+    !request.nextUrl.pathname.startsWith('/analyze/wolse') &&
+    !request.nextUrl.pathname.startsWith('/analyze/full-rental');
 
   const isAuthPath = authPaths.some(path =>
     request.nextUrl.pathname.startsWith(path)
   );
 
   // Redirect to login if accessing protected route without authentication
-  if (isProtectedPath && !user) {
+  if ((isProtectedPath || isProtectedAnalyzePath) && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/auth/login';
     redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
