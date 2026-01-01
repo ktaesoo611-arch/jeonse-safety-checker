@@ -120,8 +120,8 @@ export default function UploadPage() {
 
       setUploadProgress(100);
 
-      // Redirect to preview page (analysis runs in background)
-      router.push(`/analyze/${type}/${analysisId}/preview`);
+      // Redirect to processing page (shows progress bar while analysis runs)
+      router.push(`/analyze/${type}/${analysisId}/processing`);
 
     } catch (error: any) {
       console.error('Upload error:', error);

@@ -242,8 +242,10 @@ export default function PreviewPage() {
             </div>
             <span className="text-xl font-semibold text-[#2D3748]">K-Rent Safety</span>
           </Link>
-          <div className={`px-4 py-2 bg-${isWolse ? 'orange' : 'amber'}-100 text-${isWolse ? 'orange' : 'amber'}-700 rounded-full text-sm font-semibold`}>
-            Preview Mode
+          <div className={`inline-flex items-center gap-2 px-4 py-2 bg-${isWolse ? 'orange' : 'amber'}-100 text-${isWolse ? 'orange' : 'amber'}-700 rounded-full text-sm font-semibold`}>
+            <span>{isWolse ? 'Wolse' : 'Jeonse'} Check</span>
+            <span className={`text-${isWolse ? 'orange' : 'amber'}-400`}>|</span>
+            <span>Step 4 of 4</span>
           </div>
         </div>
       </header>
