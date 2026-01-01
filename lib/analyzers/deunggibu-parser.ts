@@ -871,8 +871,26 @@ export class DeunggibuParser {
       // Note: Owner name (like 진동성) may appear between 전세권설정 and the date
       const jeonsePattern = /(\d+)\s+전세권설정\s+[^\d]*?(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일[^금]*?전세금\s+금\s*([\d,\s]+)원[^금]*?전세권자\s+((?:(?!대상소유자|\d+\s+근저당권|\d+\s+전세권|\d+\s+임차권|출력일시).)+?)(?=\s+대상소유자|\s+\d+\s+근저당권|\s+\d+\s+전세권|\s+\d+\s+임차권|\s+출력일시|$)/gs;
 
+      // Simplified pattern to capture just the DATE from 전세권설정 (for cases where amount might be crossed out/modified)
+      // This ensures we capture the original registration date even if amount parsing fails
+      const jeonseSetupDatePattern = /(\d+)\s+전세권설정\s+[^\d]*?(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/gs;
+
       // Track jeonse entries by priority to keep only the latest (변경 overrides 설정)
       const jeonseMap = new Map<number, JeonseRightInfo>();
+
+      // First pass: capture dates from all 전세권설정 entries
+      const jeonseSetupDates = new Map<number, string>();
+      let setupMatch;
+      while ((setupMatch = jeonseSetupDatePattern.exec(summarySection)) !== null) {
+        const [, priority, year, month, day] = setupMatch;
+        const priorityNum = parseInt(priority);
+        const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        jeonseSetupDates.set(priorityNum, dateStr);
+        console.log(`Found 전세권설정 #${priority} with date ${dateStr}`);
+      }
+
+      // Reset regex lastIndex for next search
+      jeonsePattern.lastIndex = 0;
 
       let match;
       while ((match = jeonsePattern.exec(summarySection)) !== null) {
@@ -915,13 +933,25 @@ export class DeunggibuParser {
 
         // Get existing entry - KEEP the original registration date if it exists
         const existing = jeonseMap.get(priorityNum);
+        // Also check if we captured the original date in jeonseSetupDates
+        const originalDate = jeonseSetupDates.get(priorityNum);
+
         if (existing) {
           // Update only the amount, keep original registration date
           console.log(`  → Updating existing jeonse #${priority} (original date: ${existing.registrationDate}) with new amount`);
           existing.amount = cleanAmount;
+        } else if (originalDate) {
+          // No full 전세권설정 parsed but we have the original date from simplified pattern
+          console.log(`  → Using original date ${originalDate} from 전세권설정 (amount not parsed)`);
+          jeonseMap.set(priorityNum, {
+            tenant: '전세권자 미상',
+            amount: cleanAmount,
+            registrationDate: originalDate, // Use original date, not amendment date
+            type: '전세권'
+          });
         } else {
-          // No original 전세권설정 found - this 변경 is the only record
-          // Use amendment date as registration date (not ideal but best we can do)
+          // No original 전세권설정 found at all - this 변경 might be for a different jeonse right
+          // Use amendment date as registration date
           console.log(`  → No original 전세권설정 found for #${priority}, creating new entry with amendment date`);
           jeonseMap.set(priorityNum, {
             tenant: '전세권자 미상',
@@ -932,47 +962,10 @@ export class DeunggibuParser {
         }
       }
 
-      // Post-processing: Consolidate multiple 전세권변경 entries that have no corresponding 전세권설정
-      // This handles cases where:
-      // 1. The original 전세권설정 wasn't parsed (old registration from 2014 etc.)
-      // 2. Multiple 전세권변경 entries were parsed with different priority numbers due to OCR issues
-      const jeonseEntries = Array.from(jeonseMap.entries());
-
-      // Check if we have multiple entries that all appear to be standalone 변경 (created without existing 설정)
-      // A standalone 변경 entry has type '전세권' but was created by the 변경 pattern
-      // We identify this by checking if the amount looks like it came from a 변경 (typically larger amounts)
-      // and if the tenant is '전세권자 미상' (unknown, indicating no 설정 was found)
-      const standaloneChanges = jeonseEntries.filter(([, entry]) =>
-        entry.tenant === '전세권자 미상' || entry.type === '전세권변경'
-      );
-
-      if (standaloneChanges.length > 1) {
-        console.log(`⚠️ Found ${standaloneChanges.length} standalone 전세권변경 entries - consolidating as single jeonse right`);
-
-        // Sort by registration date (earliest first) to find the "original" priority date
-        standaloneChanges.sort((a, b) => a[1].registrationDate.localeCompare(b[1].registrationDate));
-
-        // Find the entry with the latest (highest) amount - this is the current amount
-        const latestAmountEntry = standaloneChanges.reduce((max, curr) =>
-          curr[1].amount > max[1].amount ? curr : max
-        );
-
-        // Keep earliest date, latest amount, and any tenant info found
-        const consolidatedEntry: JeonseRightInfo = {
-          tenant: standaloneChanges.find(([, e]) => e.tenant !== '전세권자 미상')?.[1].tenant || '전세권자 미상',
-          amount: latestAmountEntry[1].amount,
-          registrationDate: standaloneChanges[0][1].registrationDate, // Earliest date
-          type: '전세권'
-        };
-
-        console.log(`  → Consolidated: date=${consolidatedEntry.registrationDate}, amount=₩${consolidatedEntry.amount.toLocaleString()}`);
-
-        // Remove all standalone entries and add the consolidated one
-        for (const [priority] of standaloneChanges) {
-          jeonseMap.delete(priority);
-        }
-        jeonseMap.set(standaloneChanges[0][0], consolidatedEntry);
-      }
+      // Note: Each priority number represents a separate jeonse right
+      // Priority 3 and 3-2 are the same jeonse (3-2 is amendment to 3)
+      // Priority 8 is a different jeonse right
+      // The jeonseMap already handles this correctly by using base priority number as key
 
       // Add all jeonse entries to rights array
       rights.push(...Array.from(jeonseMap.values()));
