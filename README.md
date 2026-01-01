@@ -1,103 +1,163 @@
-# Jeonse Safety Checker (전세 안전도 검사)
+# K-Rent Safety (전세안전연구소)
 
-AI-powered comprehensive jeonse deposit safety analysis for Korean rental properties.
+AI-powered rental safety analysis for foreigners in Korea. Protect your deposit and verify fair rent prices with comprehensive English-language reports.
+
+**Live Site:** [krent-safety.vercel.app](https://krent-safety.vercel.app)
 
 ---
 
-## ✅ **CURRENT STATUS: Ready for Beta Testing**
+## Overview
 
-**Last Updated**: 2025-12-03
+K-Rent Safety helps foreigners navigate the Korean rental market by analyzing property registers (등기부등본), detecting risks, and comparing prices against real market data. All reports are delivered in English within minutes.
 
-The MVP is **complete and ready for beta launch**. Core features are working and tested with 15+ sample documents.
+### Services
 
-### 📖 **START HERE:**
-- 👉 **[WHAT-TO-DO-NOW.md](WHAT-TO-DO-NOW.md)** - Quick 5-step troubleshooting guide
-- 📊 **[API-ACTIVATION-STATUS.md](API-ACTIVATION-STATUS.md)** - Detailed activation report
-- 🎯 **[NEXT-STEPS.md](NEXT-STEPS.md)** - Complete roadmap and next tasks
+| Service | Description | Price |
+|---------|-------------|-------|
+| **Jeonse Check** | Deposit safety + market price analysis for jeonse (전세) rentals | FREE (Beta) |
+| **Wolse Check** | Deposit safety + rent price analysis for wolse (월세) rentals | FREE (Beta) |
 
-### Quick Status Check
-```bash
-npm run check-env       # ✅ All environment variables configured
-npm run test:supabase   # ✅ Database working perfectly
-npm run test:parser     # ✅ Document parser working
-npm run test:molit      # ❌ Still 403 Forbidden (waiting for activation)
+### Coverage
+
+- **Seoul**: All 25 districts (구)
+- **Gyeonggi Province**: 31 cities/districts
+- **Total**: 10,800+ apartments in database
+
+---
+
+## Features
+
+### Risk Analysis (20+ Factors)
+- **Mortgage Detection**: 근저당권 with estimated principal (채권최고액 ÷ 1.2)
+- **Legal Issues**: 가압류, 압류, 경매, 가처분, 가등기
+- **Existing Jeonse Rights**: 전세권 analysis
+- **LTV Calculation**: Loan-to-value ratio assessment
+- **소액보증금 Eligibility**: Priority repayment qualification check
+
+### Market Analysis
+- **Expected Price**: Theil-Sen regression on 12 months of MOLIT data
+- **Price Trend**: Rising/stable/declining with percentage
+- **Transaction Scatter Plot**: Visual comparison with market
+- **Potential Savings**: Calculated if overpaying
+
+### Document Processing
+- **OCR**: Google Document AI for Korean document extraction
+- **LLM Parsing**: Claude-powered intelligent data extraction
+- **English Translation**: Full translation of 등기부등본 contents
+
+### Reports
+- **Safety Score**: 0-100 rating based on comprehensive analysis
+- **Risk Breakdown**: Detailed explanation of each risk factor
+- **Recommendations**: Mandatory, recommended, and optional action items
+- **Debt Ranking**: Priority order of all claims on property
+- **PDF Download**: Professional report for your records
+
+---
+
+## Technology Stack
+
+### Frontend
+- Next.js 14 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS
+
+### Backend
+- Next.js API Routes
+- Supabase (PostgreSQL + Auth + Storage)
+
+### AI/ML
+- Google Document AI (OCR)
+- Claude API (LLM parsing)
+- Theil-Sen Regression (price analysis)
+
+### External APIs
+- **MOLIT API** (국토교통부): Real estate transaction data
+- **Building Register API** (건축물대장): Building violation checks
+
+### Payments
+- Toss Payments (Korean payment gateway)
+
+---
+
+## Project Structure
+
+```
+jeonse-safety-checker/
+├── app/
+│   ├── api/
+│   │   ├── analysis/         # Analysis endpoints
+│   │   ├── apartments/       # Apartment search
+│   │   ├── documents/        # Document parsing
+│   │   └── wolse/           # Wolse analysis
+│   ├── analyze/
+│   │   └── [type]/          # Jeonse/Wolse flow
+│   │       └── [id]/
+│   │           ├── page.tsx       # Property input
+│   │           ├── upload/        # Document upload
+│   │           ├── processing/    # Analysis progress
+│   │           └── report/        # Results display
+│   ├── auth/                # Login/signup
+│   ├── dashboard/           # User dashboard
+│   ├── check/              # Service selection
+│   ├── pricing/            # Pricing page
+│   ├── terms/              # Terms of service
+│   └── page.tsx            # Landing page
+├── components/
+│   ├── report/             # Report components
+│   ├── wolse/              # Wolse-specific components
+│   └── ui/                 # Reusable UI components
+├── lib/
+│   ├── analyzers/
+│   │   ├── deunggibu-parser.ts      # Document parser
+│   │   ├── property-valuation.ts    # Price analysis
+│   │   ├── risk-analyzer.ts         # Risk scoring
+│   │   ├── jeonse-price-analyzer.ts # Jeonse market analysis
+│   │   └── wolse-price-analyzer.ts  # Wolse market analysis
+│   ├── apis/
+│   │   └── molit.ts                 # MOLIT API client
+│   ├── data/
+│   │   ├── address-data.ts          # Districts & neighborhoods
+│   │   └── apartment-database.json  # 10,800+ apartments
+│   ├── services/
+│   │   ├── ocr-service.ts           # Google Document AI
+│   │   └── llm-parser.ts            # Claude integration
+│   └── types/
+│       └── index.ts                 # TypeScript definitions
+└── scripts/                 # Utility scripts
 ```
 
 ---
 
-## Project Status: MVP Complete - Ready for Beta
-
-### ✅ Completed
-- ✅ **Next.js 14** project with TypeScript, Tailwind CSS, App Router
-- ✅ **Supabase database** - 5 tables, indexes, RLS policies, storage
-- ✅ **MOLIT API client** - Transaction fetching and parsing (ready, waiting for activation)
-- ✅ **Building Register API client** - Violation checking
-- ✅ **Property valuation calculator** - Time-weighted analysis, Korean floor adjustments
-- ✅ **등기부등본 parser** - 13+ risk types, mortgage calculation (÷ 1.2)
-- ✅ **Google Vision API** - Service account and credentials configured
-- ✅ **Complete test suite** - 5 test scripts covering all components
-- ✅ **Comprehensive documentation** - 7+ detailed guides
-
-### ⏳ Blocked (Waiting for MOLIT API)
-- ⏳ **MOLIT API activation** - 활용신청 approved (자동승인) but still 403 Forbidden
-
-### 🔜 Next (Week 1 Days 4-7)
-- 📋 **Risk analysis engine** - LTV, 소액보증금, safety scoring
-- 🎨 **Frontend UI components** - Search, upload, analysis, reports
-- 🔗 **Integration testing** - End-to-end flow verification
-
-## Features
-
-### Data Analysis
-- **Property Valuation**: Real-time market value estimation using government transaction data
-- **등기부등본 Analysis**: Comprehensive parsing of property registration documents
-- **Building Violations Check**: Automated검 of 건축물대장 for violations
-- **13+ Risk Types Detection**:
-  - 근저당권 (Mortgages)
-  - 가압류/압류 (Liens and Seizures)
-  - 경매개시결정 (Auction proceedings)
-  - 전세권 (Jeonse rights)
-  - 가등기 (Provisional registration)
-  - 가처분 (Provisional disposition)
-  - And more...
-
-### Technology Stack
-- **Frontend**: Next.js 14, React 19, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: Supabase (PostgreSQL)
-- **APIs**:
-  - 국토교통부 (MOLIT) Real Estate Transaction API
-  - 건축물대장 (Building Register) API
-  - Google Vision API (OCR)
-- **Payment**: Toss Payments
-- **Analysis**: Custom AI-powered risk scoring
-
 ## Setup
 
 ### Prerequisites
-1. Node.js 18+ installed
-2. Supabase account
-3. Korean government API key from [data.go.kr](https://data.go.kr)
-4. Google Cloud account with Vision API enabled
-5. Toss Payments account
+- Node.js 18+
+- Supabase account
+- Google Cloud account (Document AI)
+- Anthropic API key (Claude)
+- MOLIT API key from [data.go.kr](https://data.go.kr)
 
 ### Installation
 
 ```bash
+# Clone repository
+git clone https://github.com/ktaesoo611-arch/k-rent-safety.git
+cd k-rent-safety
+
 # Install dependencies
 npm install
 
 # Copy environment template
 cp .env.local.example .env.local
 
-# Edit .env.local with your API keys
-# Then run development server
+# Configure environment variables (see below)
+
+# Run development server
 npm run dev
 ```
 
 ### Environment Variables
-
-Create `.env.local` with:
 
 ```env
 # Supabase
@@ -105,97 +165,108 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# Korean Gov APIs
-MOLIT_API_KEY=your_molit_key
+# Korean Government APIs
+MOLIT_API_KEY=your_molit_api_key
 
-# Google Vision
-GOOGLE_VISION_API_KEY=your_google_key
-GOOGLE_VISION_CREDENTIALS_PATH=./credentials/google-vision.json
+# Google Document AI
+GOOGLE_APPLICATION_CREDENTIALS=./credentials/google-vision.json
+
+# Anthropic (Claude)
+ANTHROPIC_API_KEY=your_anthropic_key
 
 # Toss Payments
-TOSS_PAYMENTS_CLIENT_KEY=your_toss_client_key
-TOSS_PAYMENTS_SECRET_KEY=your_toss_secret_key
+TOSS_PAYMENTS_CLIENT_KEY=your_client_key
+TOSS_PAYMENTS_SECRET_KEY=your_secret_key
 ```
 
-### Database Setup
+---
 
-Run the SQL schema from your plan's Day 1.4 in your Supabase SQL editor.
+## Key Calculations
 
-## Project Structure
-
+### Mortgage Principal Estimation
 ```
-jeonse-safety-checker/
-├── app/
-│   ├── api/              # API routes
-│   ├── analyze/          # Analysis page
-│   ├── layout.tsx
-│   ├── page.tsx          # Landing page
-│   └── globals.css
-├── lib/
-│   ├── apis/
-│   │   ├── molit.ts              # MOLIT API integration
-│   │   └── building-register.ts  # Building register API
-│   ├── analyzers/
-│   │   ├── property-valuation.ts # Property valuation engine
-│   │   └── deunggibu-parser.ts   # Document parser
-│   ├── types/
-│   │   └── index.ts              # TypeScript types
-│   └── supabase.ts               # Supabase client
-├── components/           # React components (TBD)
-└── public/              # Static assets
+Estimated Principal = 채권최고액 (Max Secured Amount) ÷ 1.2
 ```
 
-## API Documentation
+### LTV (Loan-to-Value)
+```
+LTV = (Total Debt + Proposed Deposit) / Property Value
+```
 
-### MOLIT API (국토교통부)
-- Endpoint: `http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev`
-- Provides: Real apartment transaction prices
-- Rate limit: 1000 calls/day (free tier)
+### 소액보증금 Thresholds (2025)
+| Region | Threshold | Protected Amount |
+|--------|-----------|------------------|
+| Seoul | ≤ ₩1.65억 | ₩5,500만 |
+| 수도권 (Gyeonggi) | ≤ ₩1.45억 | ₩4,800만 |
 
-### Building Register API (건축물대장)
-- Endpoint: `http://apis.data.go.kr/1613000/BldRgstService_v2`
-- Provides: Building violations, unauthorized construction
-- Rate limit: Shared with MOLIT API
+### Price Trend Analysis
+- Uses Theil-Sen regression (robust to outliers)
+- 12 months of MOLIT transaction data
+- Area tolerance: ±5㎡ from target
 
-## Development Roadmap
+---
 
-### Week 1 (Current)
-- Core data fetching and analysis engine
-- Property valuation
-- Document parsing
+## Scripts
 
-### Week 2
-- Risk analysis engine
-- Frontend components
-- Payment integration
-- Report generation
+```bash
+# Development
+npm run dev           # Start development server
+npm run build         # Production build
+npm run lint          # Run ESLint
 
-### Week 3
-- Testing and refinement
-- Deploy to production
-- User testing
+# Type checking
+npx tsc --noEmit      # Check TypeScript errors
+```
+
+---
+
+## API Endpoints
+
+### Analysis
+- `POST /api/analysis/create` - Create new analysis
+- `GET /api/analysis/report/[id]` - Get analysis report
+- `GET /api/analysis/status/[id]` - Check analysis progress
+
+### Apartments
+- `GET /api/apartments?q=search&district=강남구` - Search apartments
+
+### Documents
+- `POST /api/documents/upload` - Upload document
+- `POST /api/documents/parse` - Parse uploaded document
+
+### Wolse
+- `POST /api/wolse/analyze` - Analyze wolse rental
+
+---
+
+## Data Sources
+
+| Source | Data Provided |
+|--------|---------------|
+| MOLIT (국토교통부) | Real apartment transaction prices |
+| Building Register API | Building violations, construction info |
+| Google Document AI | OCR text extraction from PDFs |
+| Claude API | Intelligent parsing of Korean legal documents |
+
+---
 
 ## Contributing
 
-This is a personal project currently in active development. Issues and suggestions welcome!
+Issues and suggestions welcome! Please open an issue on GitHub.
 
 ## License
 
 ISC
 
-## Notes
+---
 
-### Corrected Calculations
-- **Mortgage Amount**: 채권최고액 (max secured amount) ÷ 1.2 = estimated principal
-- **Small Amount Priority**: ₩5.5M cap for Seoul (2025)
-- **Floor Adjustments**: Korean-specific floor premium/discount logic
+## Contact
 
-### Data Sources
-- Primary: 국토교통부 실거래가 (Government transaction data)
-- Secondary (Future): KB부동산, 호갱노노 (Market valuations)
-- Building Data: 건축물대장 (Official building register)
+- **Company**: 전세안전연구소 (Jeonse Safety Institute)
+- **Representative**: 김태수 (Kim Tae-soo)
+- **Email**: ktaesoo611@gmail.com
+- **Phone**: 010-2382-8432
 
 ---
 
-Built with ❤️ for safer jeonse rentals in Korea
-
+Built with care for safer rentals in Korea
