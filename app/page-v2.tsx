@@ -309,7 +309,7 @@ export default function LandingPageV2() {
               <StepCardV2
                 number="01"
                 title="Select Property"
-                description="Choose your apartment from our database of 5,398+ Seoul properties with English names."
+                description="Choose your apartment from our database of 10,800+ Seoul & Gyeonggi properties with English names."
                 time="30 sec"
                 align="right"
               />

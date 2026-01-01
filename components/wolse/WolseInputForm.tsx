@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { SEOUL_DISTRICTS, Apartment } from '@/lib/data/address-data';
+import { SUPPORTED_CITIES, getDistrictsByCity, Apartment } from '@/lib/data/address-data';
 
 interface WolseInputFormProps {
   onSubmit: (data: WolseFormData) => void;
@@ -34,12 +34,17 @@ export function WolseInputForm({ onSubmit, loading }: WolseInputFormProps) {
   const [apartmentSearch, setApartmentSearch] = useState('');
   const [filteredApartments, setFilteredApartments] = useState<Apartment[]>([]);
 
+  // Get available districts for selected city
+  const availableDistricts = useMemo(() => {
+    return getDistrictsByCity(formData.city);
+  }, [formData.city]);
+
   // Get available dongs for selected district
   const availableDongs = useMemo(() => {
     if (!formData.district) return [];
-    const selectedDistrict = SEOUL_DISTRICTS.find(d => d.name === formData.district);
+    const selectedDistrict = availableDistricts.find(d => d.name === formData.district);
     return selectedDistrict?.dongs || [];
-  }, [formData.district]);
+  }, [formData.district, availableDistricts]);
 
   // Fetch apartments from API
   useEffect(() => {
@@ -65,6 +70,12 @@ export function WolseInputForm({ onSubmit, loading }: WolseInputFormProps) {
 
     fetchApartments();
   }, [apartmentSearch, formData.dong, formData.district]);
+
+  // Reset district and dong when city changes
+  const handleCityChange = (city: string) => {
+    setFormData({ ...formData, city, district: '', dong: '', building: '' });
+    setApartmentSearch('');
+  };
 
   // Reset dong when district changes
   const handleDistrictChange = (district: string) => {
@@ -162,19 +173,19 @@ export function WolseInputForm({ onSubmit, loading }: WolseInputFormProps) {
 
         {/* City */}
         <Select
-          label="City"
+          label="City / Province"
           value={formData.city}
-          onChange={(value) => setFormData({ ...formData, city: value })}
-          options={[{ value: '서울특별시', label: '서울특별시 (Seoul)' }]}
-          helperText="Currently supporting Seoul only"
+          onChange={handleCityChange}
+          options={SUPPORTED_CITIES.map(c => ({ value: c.name, label: `${c.name} (${c.nameEn})` }))}
+          helperText="Seoul and Gyeonggi Province supported"
         />
 
-        {/* District (구) */}
+        {/* District (구/시) */}
         <Select
-          label="District (구) *"
+          label="District (구/시) *"
           value={formData.district}
           onChange={handleDistrictChange}
-          options={SEOUL_DISTRICTS.map(d => ({ value: d.name, label: `${d.name} (${d.nameEn})` }))}
+          options={availableDistricts.map(d => ({ value: d.name, label: `${d.name} (${d.nameEn})` }))}
           placeholder="Select a district"
           error={errors.district}
         />

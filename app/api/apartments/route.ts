@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { SEOUL_APARTMENTS, searchApartments } from '@/lib/data/address-data';
+import { ALL_APARTMENTS, searchApartments } from '@/lib/data/address-data';
 
 /**
  * GET /api/apartments
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       results = searchApartments(query, dong, district);
     } else {
       // Return filtered or all apartments
-      results = SEOUL_APARTMENTS;
+      results = ALL_APARTMENTS;
 
       // Apply dong filter if provided
       if (dong) {

@@ -433,7 +433,7 @@ export default function LandingPageV3() {
             <ProcessStep
               number="01"
               title="Select your property"
-              description="Choose from 5,398+ Seoul apartments in our database. Search in English or Korean."
+              description="Choose from 10,800+ Seoul & Gyeonggi apartments in our database. Search in English or Korean."
               time="30 seconds"
             />
             <ProcessStep

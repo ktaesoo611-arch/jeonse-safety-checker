@@ -57,15 +57,32 @@ async function fetchPropertyValuation(
     console.log('   Area:', area);
 
     // Parse address to extract city, district, dong
-    const addressMatch = address.match(/(서울특별시|서울)\s+([가-힣]+구)\s*([가-힣0-9]+동)?/);
+    // Supports both Seoul (서울특별시) and Gyeonggi (경기도)
+    const seoulMatch = address.match(/(서울특별시|서울)\s+([가-힣]+구)\s*([가-힣0-9]+동)?/);
+    const gyeonggiMatch = address.match(/(경기도|경기)\s+([가-힣]+시)\s*([가-힣]+구)?\s*([가-힣0-9]+동)?/);
+
+    const addressMatch = seoulMatch || gyeonggiMatch;
     if (!addressMatch) {
       console.warn('Could not parse city/district from address:', address);
       return null;
     }
 
-    const city = addressMatch[1] === '서울' ? '서울특별시' : addressMatch[1];
-    const district = addressMatch[2];
-    const dong = addressMatch[3] || '';
+    let city: string;
+    let district: string;
+    let dong: string;
+
+    if (seoulMatch) {
+      city = seoulMatch[1] === '서울' ? '서울특별시' : seoulMatch[1];
+      district = seoulMatch[2]; // e.g., 강남구
+      dong = seoulMatch[3] || '';
+    } else {
+      city = gyeonggiMatch![1] === '경기' ? '경기도' : gyeonggiMatch![1];
+      // Gyeonggi format: 경기도 성남시 분당구 정자동 or 경기도 하남시 미사동
+      const cityName = gyeonggiMatch![2]; // e.g., 성남시, 하남시
+      const guName = gyeonggiMatch![3]; // e.g., 분당구 (optional)
+      district = guName ? `${cityName} ${guName}` : cityName; // e.g., 성남시 분당구 or 하남시
+      dong = gyeonggiMatch![4] || gyeonggiMatch![3] || ''; // dong if captured, or gu as fallback
+    }
 
     console.log('   Parsed location:', { city, district, dong });
 

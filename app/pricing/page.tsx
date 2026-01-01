@@ -252,7 +252,7 @@ export default function PricingPage() {
               />
               <FAQItem
                 question="What areas do you cover?"
-                answer="Currently we support Seoul apartments during beta. We're working to expand to Gyeonggi Province, Incheon, and other property types (villa, officetel, multi-family) soon."
+                answer="We support apartments in Seoul and Gyeonggi Province (경기도) with over 10,800 properties in our database. We're working to expand to Incheon and other property types (villa, officetel, multi-family) soon."
               />
             </div>
           </div>

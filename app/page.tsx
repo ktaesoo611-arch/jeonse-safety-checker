@@ -458,7 +458,7 @@ export default function LandingPageV4() {
                   2
                 </div>
                 <h3 className="text-xl font-bold text-[#1A202C] mb-2">Enter property details</h3>
-                <p className="text-[#718096]">Search our database of 5,398+ Seoul apartments or upload your contract and property register.</p>
+                <p className="text-[#718096]">Search our database of 10,800+ Seoul & Gyeonggi apartments or upload your contract and property register.</p>
               </div>
 
               {/* Step 3 */}
@@ -537,7 +537,7 @@ export default function LandingPageV4() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <TrustCard number="5,398+" label="Apartments" description="Seoul properties in database" delay={0} />
+            <TrustCard number="10,800+" label="Apartments" description="Seoul & Gyeonggi properties" delay={0} />
             <TrustCard number="20+" label="Risk Checks" description="Comprehensive analysis" delay={100} />
             <TrustCard number="100%" label="English" description="Full translation included" delay={200} />
             <TrustCard number="2 min" label="Results" description="Fast, accurate analysis" delay={300} />

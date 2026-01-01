@@ -212,7 +212,7 @@ export default function LandingPageV4() {
             <StepCard
               number="1"
               title="Select your apartment"
-              description="Search from 5,398+ Seoul apartments in our database. Works in English or Korean."
+              description="Search from 10,800+ Seoul & Gyeonggi apartments in our database. Works in English or Korean."
               icon={<SearchIcon />}
               delay={0}
             />
@@ -281,9 +281,9 @@ export default function LandingPageV4() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <TrustCard
-              number="5,398+"
+              number="10,800+"
               label="Apartments"
-              description="Seoul properties in our database"
+              description="Seoul & Gyeonggi properties"
               delay={0}
             />
             <TrustCard

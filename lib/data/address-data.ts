@@ -1,5 +1,5 @@
 /**
- * Seoul District and Neighborhood Data with English Translations
+ * Seoul and Gyeonggi District and Neighborhood Data with English Translations
  * Used for structured address input in MOLIT API integration
  */
 
@@ -11,6 +11,17 @@ export interface District {
   code: string;
   dongs: Array<{ name: string; nameEn: string }>;
 }
+
+export interface City {
+  name: string;
+  nameEn: string;
+  code: string;
+}
+
+export const SUPPORTED_CITIES: City[] = [
+  { name: '서울특별시', nameEn: 'Seoul', code: '11' },
+  { name: '경기도', nameEn: 'Gyeonggi-do', code: '41' }
+];
 
 export interface Apartment {
   name: string;
@@ -712,8 +723,586 @@ export const SEOUL_DISTRICTS: District[] = [
 ];
 
 /**
+ * Gyeonggi Province Districts with Neighborhoods
+ * Major cities in the Seoul Metropolitan Area
+ */
+export const GYEONGGI_DISTRICTS: District[] = [
+  // 성남시 (Seongnam) - Major jeonse market
+  {
+    name: '성남시 분당구',
+    nameEn: 'Seongnam-si Bundang-gu',
+    code: '41135',
+    dongs: [
+      { name: '분당동', nameEn: 'Bundang-dong' },
+      { name: '수내동', nameEn: 'Sunae-dong' },
+      { name: '정자동', nameEn: 'Jeongja-dong' },
+      { name: '서현동', nameEn: 'Seohyeon-dong' },
+      { name: '이매동', nameEn: 'Imae-dong' },
+      { name: '야탑동', nameEn: 'Yatap-dong' },
+      { name: '판교동', nameEn: 'Pangyo-dong' },
+      { name: '삼평동', nameEn: 'Sampyeong-dong' },
+      { name: '백현동', nameEn: 'Baekhyeon-dong' },
+      { name: '금곡동', nameEn: 'Geumgok-dong' },
+      { name: '궁내동', nameEn: 'Gungnae-dong' },
+      { name: '동원동', nameEn: 'Dongwon-dong' },
+      { name: '구미동', nameEn: 'Gumi-dong' },
+      { name: '운중동', nameEn: 'Unjung-dong' },
+      { name: '대장동', nameEn: 'Daejang-dong' }
+    ]
+  },
+  {
+    name: '성남시 수정구',
+    nameEn: 'Seongnam-si Sujeong-gu',
+    code: '41131',
+    dongs: [
+      { name: '신흥동', nameEn: 'Sinheung-dong' },
+      { name: '태평동', nameEn: 'Taepyeong-dong' },
+      { name: '수진동', nameEn: 'Sujin-dong' },
+      { name: '단대동', nameEn: 'Dandae-dong' },
+      { name: '산성동', nameEn: 'Sanseong-dong' },
+      { name: '양지동', nameEn: 'Yangji-dong' },
+      { name: '복정동', nameEn: 'Bokjeong-dong' },
+      { name: '창곡동', nameEn: 'Changgok-dong' },
+      { name: '금토동', nameEn: 'Geumto-dong' },
+      { name: '시흥동', nameEn: 'Siheung-dong' },
+      { name: '고등동', nameEn: 'Godeung-dong' }
+    ]
+  },
+  {
+    name: '성남시 중원구',
+    nameEn: 'Seongnam-si Jungwon-gu',
+    code: '41133',
+    dongs: [
+      { name: '성남동', nameEn: 'Seongnam-dong' },
+      { name: '중앙동', nameEn: 'Jungang-dong' },
+      { name: '금광동', nameEn: 'Geumgwang-dong' },
+      { name: '은행동', nameEn: 'Eunhaeng-dong' },
+      { name: '상대원동', nameEn: 'Sangdaewon-dong' },
+      { name: '하대원동', nameEn: 'Hadaewon-dong' },
+      { name: '도촌동', nameEn: 'Dochon-dong' },
+      { name: '여수동', nameEn: 'Yeosu-dong' },
+      { name: '갈현동', nameEn: 'Galhyeon-dong' }
+    ]
+  },
+  // 수원시 (Suwon)
+  {
+    name: '수원시 영통구',
+    nameEn: 'Suwon-si Yeongtong-gu',
+    code: '41117',
+    dongs: [
+      { name: '영통동', nameEn: 'Yeongtong-dong' },
+      { name: '망포동', nameEn: 'Mangpo-dong' },
+      { name: '원천동', nameEn: 'Woncheon-dong' },
+      { name: '이의동', nameEn: 'Iui-dong' },
+      { name: '하동', nameEn: 'Ha-dong' },
+      { name: '신동', nameEn: 'Sin-dong' },
+      { name: '광교동', nameEn: 'Gwanggyo-dong' }
+    ]
+  },
+  {
+    name: '수원시 장안구',
+    nameEn: 'Suwon-si Jangan-gu',
+    code: '41111',
+    dongs: [
+      { name: '파장동', nameEn: 'Pajang-dong' },
+      { name: '정자동', nameEn: 'Jeongja-dong' },
+      { name: '이목동', nameEn: 'Imok-dong' },
+      { name: '율전동', nameEn: 'Yuljeon-dong' },
+      { name: '천천동', nameEn: 'Cheoncheon-dong' },
+      { name: '영화동', nameEn: 'Yeonghwa-dong' },
+      { name: '송죽동', nameEn: 'Songjuk-dong' },
+      { name: '조원동', nameEn: 'Jowon-dong' },
+      { name: '연무동', nameEn: 'Yeonmu-dong' }
+    ]
+  },
+  {
+    name: '수원시 권선구',
+    nameEn: 'Suwon-si Gwonseon-gu',
+    code: '41113',
+    dongs: [
+      { name: '권선동', nameEn: 'Gwonseon-dong' },
+      { name: '세류동', nameEn: 'Seryu-dong' },
+      { name: '평동', nameEn: 'Pyeong-dong' },
+      { name: '서둔동', nameEn: 'Seodun-dong' },
+      { name: '구운동', nameEn: 'Guun-dong' },
+      { name: '금곡동', nameEn: 'Geumgok-dong' },
+      { name: '호매실동', nameEn: 'Homaesil-dong' },
+      { name: '탑동', nameEn: 'Tap-dong' },
+      { name: '입북동', nameEn: 'Ipbuk-dong' }
+    ]
+  },
+  {
+    name: '수원시 팔달구',
+    nameEn: 'Suwon-si Paldal-gu',
+    code: '41115',
+    dongs: [
+      { name: '팔달로1가', nameEn: 'Paldal-ro 1-ga' },
+      { name: '팔달로2가', nameEn: 'Paldal-ro 2-ga' },
+      { name: '팔달로3가', nameEn: 'Paldal-ro 3-ga' },
+      { name: '인계동', nameEn: 'Ingye-dong' },
+      { name: '매산로1가', nameEn: 'Maesan-ro 1-ga' },
+      { name: '매산로2가', nameEn: 'Maesan-ro 2-ga' },
+      { name: '매산로3가', nameEn: 'Maesan-ro 3-ga' },
+      { name: '우만동', nameEn: 'Uman-dong' },
+      { name: '매교동', nameEn: 'Maegyo-dong' },
+      { name: '지동', nameEn: 'Ji-dong' },
+      { name: '고등동', nameEn: 'Godeung-dong' },
+      { name: '화서동', nameEn: 'Hwaseo-dong' }
+    ]
+  },
+  // 용인시 (Yongin)
+  {
+    name: '용인시 수지구',
+    nameEn: 'Yongin-si Suji-gu',
+    code: '41465',
+    dongs: [
+      { name: '풍덕천동', nameEn: 'Pungdeokcheon-dong' },
+      { name: '죽전동', nameEn: 'Jukjeon-dong' },
+      { name: '동천동', nameEn: 'Dongcheon-dong' },
+      { name: '고기동', nameEn: 'Gogi-dong' },
+      { name: '신봉동', nameEn: 'Sinbong-dong' },
+      { name: '성복동', nameEn: 'Seongbok-dong' },
+      { name: '상현동', nameEn: 'Sanghyeon-dong' }
+    ]
+  },
+  {
+    name: '용인시 기흥구',
+    nameEn: 'Yongin-si Giheung-gu',
+    code: '41463',
+    dongs: [
+      { name: '기흥동', nameEn: 'Giheung-dong' },
+      { name: '구갈동', nameEn: 'Gugal-dong' },
+      { name: '상갈동', nameEn: 'Sanggal-dong' },
+      { name: '보라동', nameEn: 'Bora-dong' },
+      { name: '신갈동', nameEn: 'Singal-dong' },
+      { name: '영덕동', nameEn: 'Yeongdeok-dong' },
+      { name: '언남동', nameEn: 'Eonnam-dong' },
+      { name: '마북동', nameEn: 'Mabuk-dong' },
+      { name: '동백동', nameEn: 'Dongbaek-dong' },
+      { name: '중동', nameEn: 'Jung-dong' },
+      { name: '서천동', nameEn: 'Seocheon-dong' }
+    ]
+  },
+  {
+    name: '용인시 처인구',
+    nameEn: 'Yongin-si Cheoin-gu',
+    code: '41461',
+    dongs: [
+      { name: '김량장동', nameEn: 'Gimnyangjiang-dong' },
+      { name: '역북동', nameEn: 'Yeokbuk-dong' },
+      { name: '삼가동', nameEn: 'Samga-dong' },
+      { name: '유방동', nameEn: 'Yubang-dong' },
+      { name: '고림동', nameEn: 'Gorim-dong' },
+      { name: '마평동', nameEn: 'Mapyeong-dong' },
+      { name: '운학동', nameEn: 'Unhak-dong' },
+      { name: '호동', nameEn: 'Ho-dong' }
+    ]
+  },
+  // 고양시 (Goyang)
+  {
+    name: '고양시 일산동구',
+    nameEn: 'Goyang-si Ilsandong-gu',
+    code: '41285',
+    dongs: [
+      { name: '백석동', nameEn: 'Baekseok-dong' },
+      { name: '마두동', nameEn: 'Madu-dong' },
+      { name: '장항동', nameEn: 'Janghang-dong' },
+      { name: '정발산동', nameEn: 'Jeongbalsan-dong' },
+      { name: '풍동', nameEn: 'Pung-dong' },
+      { name: '식사동', nameEn: 'Siksa-dong' },
+      { name: '중산동', nameEn: 'Jungsan-dong' },
+      { name: '산황동', nameEn: 'Sanhwang-dong' }
+    ]
+  },
+  {
+    name: '고양시 일산서구',
+    nameEn: 'Goyang-si Ilsanseo-gu',
+    code: '41287',
+    dongs: [
+      { name: '주엽동', nameEn: 'Juyeop-dong' },
+      { name: '대화동', nameEn: 'Daehwa-dong' },
+      { name: '일산동', nameEn: 'Ilsan-dong' },
+      { name: '탄현동', nameEn: 'Tanhyeon-dong' },
+      { name: '덕이동', nameEn: 'Deogi-dong' },
+      { name: '가좌동', nameEn: 'Gajwa-dong' }
+    ]
+  },
+  {
+    name: '고양시 덕양구',
+    nameEn: 'Goyang-si Deogyang-gu',
+    code: '41281',
+    dongs: [
+      { name: '행신동', nameEn: 'Haengsin-dong' },
+      { name: '화정동', nameEn: 'Hwajeong-dong' },
+      { name: '능곡동', nameEn: 'Neunggok-dong' },
+      { name: '삼송동', nameEn: 'Samsong-dong' },
+      { name: '원흥동', nameEn: 'Wonheung-dong' },
+      { name: '주교동', nameEn: 'Jugyo-dong' },
+      { name: '대장동', nameEn: 'Daejang-dong' },
+      { name: '성사동', nameEn: 'Seongsa-dong' },
+      { name: '향동동', nameEn: 'Hyangdong-dong' }
+    ]
+  },
+  // 하남시 (Hanam)
+  {
+    name: '하남시',
+    nameEn: 'Hanam-si',
+    code: '41450',
+    dongs: [
+      { name: '신장동', nameEn: 'Sinjang-dong' },
+      { name: '덕풍동', nameEn: 'Deokpung-dong' },
+      { name: '풍산동', nameEn: 'Pungsan-dong' },
+      { name: '미사동', nameEn: 'Misa-dong' },
+      { name: '감일동', nameEn: 'Gamil-dong' },
+      { name: '망월동', nameEn: 'Mangwol-dong' },
+      { name: '감북동', nameEn: 'Gambuk-dong' },
+      { name: '천현동', nameEn: 'Cheonhyeon-dong' },
+      { name: '창우동', nameEn: 'Changu-dong' },
+      { name: '위례동', nameEn: 'Wirye-dong' }
+    ]
+  },
+  // 과천시 (Gwacheon)
+  {
+    name: '과천시',
+    nameEn: 'Gwacheon-si',
+    code: '41290',
+    dongs: [
+      { name: '중앙동', nameEn: 'Jungang-dong' },
+      { name: '부림동', nameEn: 'Burim-dong' },
+      { name: '별양동', nameEn: 'Byeoryang-dong' },
+      { name: '갈현동', nameEn: 'Galhyeon-dong' },
+      { name: '문원동', nameEn: 'Munwon-dong' },
+      { name: '과천동', nameEn: 'Gwacheon-dong' },
+      { name: '주암동', nameEn: 'Juam-dong' },
+      { name: '막계동', nameEn: 'Makgye-dong' }
+    ]
+  },
+  // 남양주시 (Namyangju)
+  {
+    name: '남양주시',
+    nameEn: 'Namyangju-si',
+    code: '41360',
+    dongs: [
+      { name: '호평동', nameEn: 'Hopyeong-dong' },
+      { name: '평내동', nameEn: 'Pyeongnae-dong' },
+      { name: '금곡동', nameEn: 'Geumgok-dong' },
+      { name: '양정동', nameEn: 'Yangjeong-dong' },
+      { name: '다산동', nameEn: 'Dasan-dong' },
+      { name: '별내동', nameEn: 'Byeollae-dong' },
+      { name: '퇴계원동', nameEn: 'Toegyewon-dong' },
+      { name: '오남동', nameEn: 'Onam-dong' },
+      { name: '진접읍', nameEn: 'Jinjeop-eup' },
+      { name: '화도읍', nameEn: 'Hwado-eup' }
+    ]
+  },
+  // 부천시 (Bucheon)
+  {
+    name: '부천시',
+    nameEn: 'Bucheon-si',
+    code: '41190',
+    dongs: [
+      { name: '상동', nameEn: 'Sang-dong' },
+      { name: '중동', nameEn: 'Jung-dong' },
+      { name: '송내동', nameEn: 'Songnae-dong' },
+      { name: '역곡동', nameEn: 'Yeokgok-dong' },
+      { name: '심곡동', nameEn: 'Simgok-dong' },
+      { name: '원미동', nameEn: 'Wonmi-dong' },
+      { name: '춘의동', nameEn: 'Chunui-dong' },
+      { name: '도당동', nameEn: 'Dodang-dong' },
+      { name: '약대동', nameEn: 'Yakdae-dong' },
+      { name: '오정동', nameEn: 'Ojeong-dong' },
+      { name: '고강동', nameEn: 'Gogang-dong' },
+      { name: '작동', nameEn: 'Jak-dong' },
+      { name: '소사동', nameEn: 'Sosa-dong' },
+      { name: '범박동', nameEn: 'Beombak-dong' }
+    ]
+  },
+  // 광명시 (Gwangmyeong)
+  {
+    name: '광명시',
+    nameEn: 'Gwangmyeong-si',
+    code: '41210',
+    dongs: [
+      { name: '철산동', nameEn: 'Cheolsan-dong' },
+      { name: '광명동', nameEn: 'Gwangmyeong-dong' },
+      { name: '하안동', nameEn: 'Haan-dong' },
+      { name: '소하동', nameEn: 'Soha-dong' },
+      { name: '일직동', nameEn: 'Iljik-dong' },
+      { name: '가학동', nameEn: 'Gahak-dong' },
+      { name: '노온사동', nameEn: 'Noonsa-dong' }
+    ]
+  },
+  // 안양시 (Anyang)
+  {
+    name: '안양시 동안구',
+    nameEn: 'Anyang-si Dongan-gu',
+    code: '41173',
+    dongs: [
+      { name: '비산동', nameEn: 'Bisan-dong' },
+      { name: '관양동', nameEn: 'Gwanyang-dong' },
+      { name: '평촌동', nameEn: 'Pyeongchon-dong' },
+      { name: '호계동', nameEn: 'Hogye-dong' },
+      { name: '달안동', nameEn: 'Dalan-dong' },
+      { name: '귀인동', nameEn: 'Gwiin-dong' }
+    ]
+  },
+  {
+    name: '안양시 만안구',
+    nameEn: 'Anyang-si Manan-gu',
+    code: '41171',
+    dongs: [
+      { name: '안양동', nameEn: 'Anyang-dong' },
+      { name: '석수동', nameEn: 'Seoksu-dong' },
+      { name: '박달동', nameEn: 'Bakdal-dong' },
+      { name: '신촌동', nameEn: 'Sinchon-dong' }
+    ]
+  },
+  // 화성시 (Hwaseong)
+  {
+    name: '화성시',
+    nameEn: 'Hwaseong-si',
+    code: '41590',
+    dongs: [
+      { name: '동탄동', nameEn: 'Dongtan-dong' },
+      { name: '반송동', nameEn: 'Bansong-dong' },
+      { name: '석우동', nameEn: 'Seoku-dong' },
+      { name: '영천동', nameEn: 'Yeongcheon-dong' },
+      { name: '장지동', nameEn: 'Jangji-dong' },
+      { name: '오산동', nameEn: 'Osan-dong' },
+      { name: '청계동', nameEn: 'Cheonggye-dong' },
+      { name: '병점동', nameEn: 'Byeongjeom-dong' },
+      { name: '진안동', nameEn: 'Jinan-dong' },
+      { name: '반월동', nameEn: 'Banwol-dong' },
+      { name: '기배동', nameEn: 'Gibae-dong' },
+      { name: '목동', nameEn: 'Mok-dong' },
+      { name: '산척동', nameEn: 'Sancheok-dong' },
+      { name: '송산동', nameEn: 'Songsan-dong' }
+    ]
+  },
+  // 김포시 (Gimpo)
+  {
+    name: '김포시',
+    nameEn: 'Gimpo-si',
+    code: '41570',
+    dongs: [
+      { name: '장기동', nameEn: 'Janggi-dong' },
+      { name: '구래동', nameEn: 'Gurae-dong' },
+      { name: '마산동', nameEn: 'Masan-dong' },
+      { name: '운양동', nameEn: 'Unyang-dong' },
+      { name: '풍무동', nameEn: 'Pungmu-dong' },
+      { name: '사우동', nameEn: 'Sau-dong' },
+      { name: '걸포동', nameEn: 'Geolpo-dong' },
+      { name: '북변동', nameEn: 'Bukbyeon-dong' },
+      { name: '감정동', nameEn: 'Gamjeong-dong' },
+      { name: '고촌읍', nameEn: 'Gochon-eup' }
+    ]
+  },
+  // 안산시 (Ansan)
+  {
+    name: '안산시 단원구',
+    nameEn: 'Ansan-si Danwon-gu',
+    code: '41273',
+    dongs: [
+      { name: '고잔동', nameEn: 'Gojan-dong' },
+      { name: '와동', nameEn: 'Wa-dong' },
+      { name: '원곡동', nameEn: 'Wongok-dong' },
+      { name: '선부동', nameEn: 'Seonbu-dong' },
+      { name: '초지동', nameEn: 'Choji-dong' },
+      { name: '원시동', nameEn: 'Wonsi-dong' }
+    ]
+  },
+  {
+    name: '안산시 상록구',
+    nameEn: 'Ansan-si Sangnok-gu',
+    code: '41271',
+    dongs: [
+      { name: '본오동', nameEn: 'Bono-dong' },
+      { name: '사동', nameEn: 'Sa-dong' },
+      { name: '이동', nameEn: 'I-dong' },
+      { name: '부곡동', nameEn: 'Bugok-dong' },
+      { name: '성포동', nameEn: 'Seongpo-dong' },
+      { name: '월피동', nameEn: 'Wolpi-dong' },
+      { name: '일동', nameEn: 'Il-dong' }
+    ]
+  },
+  // 의정부시 (Uijeongbu)
+  {
+    name: '의정부시',
+    nameEn: 'Uijeongbu-si',
+    code: '41150',
+    dongs: [
+      { name: '의정부동', nameEn: 'Uijeongbu-dong' },
+      { name: '호원동', nameEn: 'Howon-dong' },
+      { name: '장암동', nameEn: 'Jangam-dong' },
+      { name: '신곡동', nameEn: 'Singok-dong' },
+      { name: '민락동', nameEn: 'Millak-dong' },
+      { name: '가능동', nameEn: 'Ganeung-dong' },
+      { name: '금오동', nameEn: 'Geumo-dong' },
+      { name: '녹양동', nameEn: 'Nokyang-dong' }
+    ]
+  },
+  // 구리시 (Guri)
+  {
+    name: '구리시',
+    nameEn: 'Guri-si',
+    code: '41310',
+    dongs: [
+      { name: '교문동', nameEn: 'Gyomun-dong' },
+      { name: '인창동', nameEn: 'Inchang-dong' },
+      { name: '갈매동', nameEn: 'Galmae-dong' },
+      { name: '수택동', nameEn: 'Sutaek-dong' },
+      { name: '토평동', nameEn: 'Topyeong-dong' }
+    ]
+  },
+  // 군포시 (Gunpo)
+  {
+    name: '군포시',
+    nameEn: 'Gunpo-si',
+    code: '41410',
+    dongs: [
+      { name: '산본동', nameEn: 'Sanbon-dong' },
+      { name: '금정동', nameEn: 'Geumjeong-dong' },
+      { name: '군포동', nameEn: 'Gunpo-dong' },
+      { name: '당동', nameEn: 'Dang-dong' },
+      { name: '당정동', nameEn: 'Dangjeong-dong' },
+      { name: '부곡동', nameEn: 'Bugok-dong' }
+    ]
+  },
+  // 시흥시 (Siheung)
+  {
+    name: '시흥시',
+    nameEn: 'Siheung-si',
+    code: '41390',
+    dongs: [
+      { name: '정왕동', nameEn: 'Jeongwang-dong' },
+      { name: '대야동', nameEn: 'Daeya-dong' },
+      { name: '신천동', nameEn: 'Sincheon-dong' },
+      { name: '은행동', nameEn: 'Eunhaeng-dong' },
+      { name: '매화동', nameEn: 'Maehwa-dong' },
+      { name: '목감동', nameEn: 'Mokgam-dong' },
+      { name: '배곧동', nameEn: 'Baegot-dong' },
+      { name: '능곡동', nameEn: 'Neunggok-dong' },
+      { name: '거모동', nameEn: 'Geomo-dong' }
+    ]
+  },
+  // 의왕시 (Uiwang)
+  {
+    name: '의왕시',
+    nameEn: 'Uiwang-si',
+    code: '41430',
+    dongs: [
+      { name: '내손동', nameEn: 'Naeson-dong' },
+      { name: '오전동', nameEn: 'Ojeon-dong' },
+      { name: '학의동', nameEn: 'Hagui-dong' },
+      { name: '포일동', nameEn: 'Poil-dong' },
+      { name: '월암동', nameEn: 'Woram-dong' },
+      { name: '청계동', nameEn: 'Cheonggye-dong' }
+    ]
+  },
+  // 파주시 (Paju)
+  {
+    name: '파주시',
+    nameEn: 'Paju-si',
+    code: '41480',
+    dongs: [
+      { name: '금촌동', nameEn: 'Geumchon-dong' },
+      { name: '교하동', nameEn: 'Gyoha-dong' },
+      { name: '야당동', nameEn: 'Yadang-dong' },
+      { name: '문발동', nameEn: 'Munbal-dong' },
+      { name: '다율동', nameEn: 'Dayul-dong' },
+      { name: '야당동', nameEn: 'Yadang-dong' },
+      { name: '운정동', nameEn: 'Unjeong-dong' },
+      { name: '목동동', nameEn: 'Mokdong-dong' }
+    ]
+  },
+  // 이천시 (Icheon)
+  {
+    name: '이천시',
+    nameEn: 'Icheon-si',
+    code: '41500',
+    dongs: [
+      { name: '중리동', nameEn: 'Jungni-dong' },
+      { name: '관고동', nameEn: 'Gwango-dong' },
+      { name: '창전동', nameEn: 'Changjeon-dong' },
+      { name: '증포동', nameEn: 'Jeungpo-dong' },
+      { name: '사음동', nameEn: 'Saeum-dong' }
+    ]
+  },
+  // 오산시 (Osan)
+  {
+    name: '오산시',
+    nameEn: 'Osan-si',
+    code: '41370',
+    dongs: [
+      { name: '오산동', nameEn: 'Osan-dong' },
+      { name: '원동', nameEn: 'Won-dong' },
+      { name: '세교동', nameEn: 'Segyo-dong' },
+      { name: '청학동', nameEn: 'Cheonghak-dong' },
+      { name: '부산동', nameEn: 'Busan-dong' }
+    ]
+  },
+  // 평택시 (Pyeongtaek)
+  {
+    name: '평택시',
+    nameEn: 'Pyeongtaek-si',
+    code: '41220',
+    dongs: [
+      { name: '비전동', nameEn: 'Bijeon-dong' },
+      { name: '소사동', nameEn: 'Sosa-dong' },
+      { name: '지산동', nameEn: 'Jisan-dong' },
+      { name: '합정동', nameEn: 'Hapjeong-dong' },
+      { name: '용이동', nameEn: 'Yongi-dong' },
+      { name: '동삭동', nameEn: 'Dongsak-dong' },
+      { name: '세교동', nameEn: 'Segyo-dong' },
+      { name: '이충동', nameEn: 'Ichung-dong' },
+      { name: '청북동', nameEn: 'Cheongbuk-dong' }
+    ]
+  },
+  // 광주시 (Gwangju - Gyeonggi)
+  {
+    name: '광주시',
+    nameEn: 'Gwangju-si (Gyeonggi)',
+    code: '41610',
+    dongs: [
+      { name: '경안동', nameEn: 'Gyeongan-dong' },
+      { name: '송정동', nameEn: 'Songjeong-dong' },
+      { name: '쌍령동', nameEn: 'Ssangnyeong-dong' },
+      { name: '역동', nameEn: 'Yeok-dong' },
+      { name: '태전동', nameEn: 'Taejeon-dong' },
+      { name: '목동', nameEn: 'Mok-dong' }
+    ]
+  },
+  // 양주시 (Yangju)
+  {
+    name: '양주시',
+    nameEn: 'Yangju-si',
+    code: '41630',
+    dongs: [
+      { name: '옥정동', nameEn: 'Okjeong-dong' },
+      { name: '회천동', nameEn: 'Hoecheon-dong' },
+      { name: '고읍동', nameEn: 'Goeup-dong' },
+      { name: '덕계동', nameEn: 'Deokgye-dong' },
+      { name: '백석읍', nameEn: 'Baekseok-eup' },
+      { name: '남면', nameEn: 'Nam-myeon' }
+    ]
+  }
+];
+
+/**
+ * Combined districts for both Seoul and Gyeonggi
+ */
+export function getDistrictsByCity(cityName: string): District[] {
+  if (cityName === '서울특별시' || cityName === '서울') {
+    return SEOUL_DISTRICTS;
+  } else if (cityName === '경기도' || cityName === '경기') {
+    return GYEONGGI_DISTRICTS;
+  }
+  return [];
+}
+
+/**
  * Load comprehensive apartment database from generated JSON file
- * This contains ALL apartments in Seoul with recent transactions
+ * This contains ALL apartments in Seoul and Gyeonggi with recent transactions
  */
 function loadApartmentDatabase(): Apartment[] {
   try {
@@ -883,10 +1472,121 @@ const SEOUL_APARTMENTS_FALLBACK: Apartment[] = [
 ];
 
 /**
+ * Fallback list of common Gyeonggi apartments
+ */
+const GYEONGGI_APARTMENTS_FALLBACK: Apartment[] = [
+  // 성남시 분당구
+  { name: '파크뷰', nameEn: 'Park View', district: '성남시 분당구', dong: '정자동' },
+  { name: '한솔마을', nameEn: 'Hansol Village', district: '성남시 분당구', dong: '서현동' },
+  { name: '시범단지', nameEn: 'Sibeom Danji', district: '성남시 분당구', dong: '수내동' },
+  { name: '샛별마을', nameEn: 'Saetbyeol Village', district: '성남시 분당구', dong: '야탑동' },
+  { name: '판교원마을', nameEn: 'Pangyo Wonmaeul', district: '성남시 분당구', dong: '삼평동' },
+  { name: '판교푸르지오그랑블', nameEn: 'Pangyo Prugio Grand Ville', district: '성남시 분당구', dong: '삼평동' },
+  { name: '판교알파리움', nameEn: 'Pangyo Alpharim', district: '성남시 분당구', dong: '삼평동' },
+  { name: '봇들마을', nameEn: 'Botdeul Village', district: '성남시 분당구', dong: '야탑동' },
+  { name: '무지개마을', nameEn: 'Rainbow Village', district: '성남시 분당구', dong: '야탑동' },
+  { name: '이매촌', nameEn: 'Imaechon', district: '성남시 분당구', dong: '이매동' },
+
+  // 수원시
+  { name: '광교호반베르디움', nameEn: 'Gwanggyo Hoban Verdium', district: '수원시 영통구', dong: '광교동' },
+  { name: '광교자연앤힐스테이트', nameEn: 'Gwanggyo Jayeon and Hillstate', district: '수원시 영통구', dong: '광교동' },
+  { name: '광교더샵레이크시티', nameEn: 'Gwanggyo The Sharp Lake City', district: '수원시 영통구', dong: '광교동' },
+  { name: '영통아이파크캐슬', nameEn: 'Yeongtong I-Park Castle', district: '수원시 영통구', dong: '영통동' },
+  { name: '매탄위브하늘채', nameEn: 'Maetan Weve Hanulchae', district: '수원시 영통구', dong: '망포동' },
+  { name: '수원래미안', nameEn: 'Suwon Raemian', district: '수원시 팔달구', dong: '인계동' },
+
+  // 용인시
+  { name: '수지래미안이스트팰리스', nameEn: 'Suji Raemian East Palace', district: '용인시 수지구', dong: '풍덕천동' },
+  { name: '죽전자이', nameEn: 'Jukjeon Xi', district: '용인시 수지구', dong: '죽전동' },
+  { name: '성복역롯데캐슬골드타운', nameEn: 'Seongbok Lotte Castle Gold Town', district: '용인시 수지구', dong: '성복동' },
+  { name: '동백롯데캐슬', nameEn: 'Dongbaek Lotte Castle', district: '용인시 기흥구', dong: '동백동' },
+  { name: '기흥역센트럴푸르지오', nameEn: 'Giheung Central Prugio', district: '용인시 기흥구', dong: '신갈동' },
+  { name: '보라동양우내안애', nameEn: 'Bora Dongyang Woo Nae-An-Ae', district: '용인시 기흥구', dong: '보라동' },
+
+  // 고양시
+  { name: '킨텍스꿈에그린', nameEn: 'Kintex Kkum-e-Green', district: '고양시 일산동구', dong: '장항동' },
+  { name: '일산자이위시티', nameEn: 'Ilsan Xi We City', district: '고양시 일산동구', dong: '중산동' },
+  { name: '산들마을', nameEn: 'Sandle Village', district: '고양시 일산동구', dong: '풍동' },
+  { name: '강선마을', nameEn: 'Kangseon Village', district: '고양시 일산동구', dong: '마두동' },
+  { name: '주엽역한화꿈에그린', nameEn: 'Juyeop Hanwha Kkum-e-Green', district: '고양시 일산서구', dong: '주엽동' },
+  { name: '탄현마을', nameEn: 'Tanhyeon Village', district: '고양시 일산서구', dong: '탄현동' },
+  { name: '삼송역세권센트럴파크', nameEn: 'Samsong Central Park', district: '고양시 덕양구', dong: '삼송동' },
+  { name: '향동지구', nameEn: 'Hyangdong District', district: '고양시 덕양구', dong: '향동동' },
+
+  // 하남시
+  { name: '미사강변센트럴자이', nameEn: 'Misa Gangbyeon Central Xi', district: '하남시', dong: '미사동' },
+  { name: '미사강변도시', nameEn: 'Misa Riverside City', district: '하남시', dong: '미사동' },
+  { name: '미사역스카이폴리스', nameEn: 'Misa Station Sky Polis', district: '하남시', dong: '미사동' },
+  { name: '감일지구', nameEn: 'Gamil District', district: '하남시', dong: '감일동' },
+  { name: '위례신도시', nameEn: 'Wirye New Town', district: '하남시', dong: '위례동' },
+
+  // 과천시
+  { name: '래미안슈르', nameEn: 'Raemian Sure', district: '과천시', dong: '별양동' },
+  { name: '과천자이', nameEn: 'Gwacheon Xi', district: '과천시', dong: '중앙동' },
+  { name: '과천센트럴파크푸르지오써밋', nameEn: 'Gwacheon Central Park Prugio Summit', district: '과천시', dong: '과천동' },
+
+  // 남양주시
+  { name: '다산신도시자연앤자이', nameEn: 'Dasan Jayeon and Xi', district: '남양주시', dong: '다산동' },
+  { name: '다산신도시e편한세상', nameEn: 'Dasan e-Pyeonhansesang', district: '남양주시', dong: '다산동' },
+  { name: '별내자이더스타', nameEn: 'Byeollae Xi The Star', district: '남양주시', dong: '별내동' },
+  { name: '평내호평역모아', nameEn: 'Pyeongnae Hopyeong Moa', district: '남양주시', dong: '호평동' },
+
+  // 부천시
+  { name: '중동신도시', nameEn: 'Jungdong New Town', district: '부천시', dong: '중동' },
+  { name: '상동호반베르디움', nameEn: 'Sangdong Hoban Verdium', district: '부천시', dong: '상동' },
+  { name: '송내역트리플타워', nameEn: 'Songnae Triple Tower', district: '부천시', dong: '송내동' },
+
+  // 광명시
+  { name: '광명역센트럴자이', nameEn: 'Gwangmyeong Central Xi', district: '광명시', dong: '일직동' },
+  { name: '철산래미안자이', nameEn: 'Cheolsan Raemian Xi', district: '광명시', dong: '철산동' },
+  { name: '하안동래미안', nameEn: 'Haan-dong Raemian', district: '광명시', dong: '하안동' },
+
+  // 안양시
+  { name: '평촌래미안', nameEn: 'Pyeongchon Raemian', district: '안양시 동안구', dong: '평촌동' },
+  { name: '평촌자이', nameEn: 'Pyeongchon Xi', district: '안양시 동안구', dong: '평촌동' },
+  { name: '인덕원자이', nameEn: 'Indeokwon Xi', district: '안양시 동안구', dong: '관양동' },
+  { name: '호계동래미안', nameEn: 'Hogye-dong Raemian', district: '안양시 동안구', dong: '호계동' },
+
+  // 화성시
+  { name: '동탄역롯데캐슬', nameEn: 'Dongtan Lotte Castle', district: '화성시', dong: '동탄동' },
+  { name: '동탄레이크파크자연앤자이', nameEn: 'Dongtan Lake Park Xi', district: '화성시', dong: '동탄동' },
+  { name: '동탄2신도시', nameEn: 'Dongtan 2 New Town', district: '화성시', dong: '동탄동' },
+  { name: '메타폴리스', nameEn: 'Metapolis', district: '화성시', dong: '반송동' },
+
+  // 김포시
+  { name: '한강신도시', nameEn: 'Hangang New Town', district: '김포시', dong: '구래동' },
+  { name: '풍무역센트럴푸르지오', nameEn: 'Pungmu Central Prugio', district: '김포시', dong: '풍무동' },
+  { name: '마산역푸르지오', nameEn: 'Masan Prugio', district: '김포시', dong: '마산동' },
+  { name: '장기동센트럴파크', nameEn: 'Janggi Central Park', district: '김포시', dong: '장기동' },
+
+  // 의정부시
+  { name: '민락2지구', nameEn: 'Millak 2 District', district: '의정부시', dong: '민락동' },
+  { name: '신곡동래미안', nameEn: 'Singok Raemian', district: '의정부시', dong: '신곡동' },
+
+  // 시흥시
+  { name: '배곧신도시', nameEn: 'Baegot New Town', district: '시흥시', dong: '배곧동' },
+  { name: '목감지구', nameEn: 'Mokgam District', district: '시흥시', dong: '목감동' },
+
+  // 파주시
+  { name: '운정신도시', nameEn: 'Unjeong New Town', district: '파주시', dong: '운정동' },
+  { name: '힐스테이트운정', nameEn: 'Hillstate Unjeong', district: '파주시', dong: '운정동' },
+
+  // 구리시
+  { name: '갈매역자이', nameEn: 'Galmae Xi', district: '구리시', dong: '갈매동' },
+  { name: '인창동래미안', nameEn: 'Inchang Raemian', district: '구리시', dong: '인창동' }
+];
+
+/**
  * Get comprehensive apartment list
  * Loads from database file if available, otherwise uses fallback
+ * Includes both Seoul and Gyeonggi apartments
  */
 export const SEOUL_APARTMENTS: Apartment[] = loadApartmentDatabase();
+
+/**
+ * Combined list of all apartments (Seoul + Gyeonggi fallback)
+ */
+export const ALL_APARTMENTS: Apartment[] = [...SEOUL_APARTMENTS, ...GYEONGGI_APARTMENTS_FALLBACK];
 
 export function getDistrictByCode(code: string): District | undefined {
   return SEOUL_DISTRICTS.find(d => d.code === code);
@@ -898,7 +1598,7 @@ export function getDistrictByName(name: string): District | undefined {
 
 export function searchApartments(query: string, dong?: string, district?: string): Apartment[] {
   const lowerQuery = query.toLowerCase();
-  return SEOUL_APARTMENTS.filter(apt => {
+  return ALL_APARTMENTS.filter(apt => {
     // Match query against apartment name, district, and dong
     const matchesName = apt.name.toLowerCase().includes(lowerQuery) ||
       (apt.nameEn && apt.nameEn.toLowerCase().includes(lowerQuery));
@@ -941,7 +1641,7 @@ export function searchApartments(query: string, dong?: string, district?: string
  */
 export function getBuildingNameVariants(buildingName: string): string[] {
   // Find the apartment in our database
-  const apartment = SEOUL_APARTMENTS.find(apt => apt.name === buildingName);
+  const apartment = ALL_APARTMENTS.find(apt => apt.name === buildingName);
 
   if (apartment?.molitNames) {
     // Return original name + MOLIT variants
