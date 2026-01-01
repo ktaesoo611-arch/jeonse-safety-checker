@@ -131,7 +131,7 @@ Need this for a jeonse contract? Here's the step-by-step:
 1. Go to iros.go.kr
 2. Click 부동산 on main page
 3. Search by address
-4. Pay ₩700, and MUST check 등기사항요약 checkbox before downloading PDF
+4. Pay ₩1,000, and MUST check 등기사항요약 checkbox before downloading PDF
 5. Download PDF
 
 ⏱️ Takes 5 minutes total
@@ -379,7 +379,7 @@ After seeing countless posts about jeonse concerns, I wanted to share a comprehe
 
 1. **Get the 등기부등본 (Property Register)**
    - Go to iros.go.kr
-   - Costs ₩700
+   - Costs ₩1,000
    - Shows all mortgages, liens, and ownership info
 
 2. **Check These RED FLAGS:**

@@ -93,15 +93,15 @@ export default function WolseOptionsPage() {
                 <ul className="text-sm text-[#4A5568] space-y-1.5 mb-4 flex-1">
                   <li className="flex items-center gap-2">
                     <CheckIcon className="w-4 h-4 text-orange-500" />
-                    Market rate comparison
+                    Expected rent from market data
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon className="w-4 h-4 text-orange-500" />
-                    Price rating
+                    Transaction scatter plot
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon className="w-4 h-4 text-orange-500" />
-                    Negotiation tips
+                    Negotiation scripts included
                   </li>
                 </ul>
                 <div className="flex items-baseline gap-2">
@@ -210,7 +210,7 @@ export default function WolseOptionsPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon className="w-4 h-4 text-green-500" />
-                    Combined PDF report
+                    Price trend with negotiation advice
                   </li>
                 </ul>
                 <div className="flex items-baseline gap-2 flex-wrap">
@@ -262,7 +262,7 @@ export default function WolseOptionsPage() {
                 </Link>
               )}
               {selectedOption === 'deposit' && (
-                <Link href="/analyze">
+                <Link href="/analyze/full">
                   <button
                     onClick={(e) => haptic.medium(e.currentTarget)}
                     className="group px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3"

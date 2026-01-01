@@ -122,7 +122,7 @@ export default function Header() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                   {/* Active dot indicator */}
-                  {(isActive('/analyze') || isActive('/analyze/wolse')) && (
+                  {(isActive('/analyze/jeonse') || isActive('/analyze/wolse')) && (
                     <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-amber-500 rounded-full" />
                   )}
                 </button>
@@ -142,9 +142,9 @@ export default function Header() {
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45 border-l border-t border-amber-100 rounded-tl-sm" />
 
                   <div className="relative bg-white rounded-2xl shadow-2xl shadow-amber-200/40 border border-amber-100 overflow-hidden">
-                    {/* Jeonse Service */}
+                    {/* Jeonse Check */}
                     <Link
-                      href="/analyze"
+                      href="/analyze/jeonse"
                       className="flex items-center gap-4 px-5 py-4 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 transition-all duration-300 group/item border-b border-amber-50"
                     >
                       <div className="relative">
@@ -157,17 +157,17 @@ export default function Header() {
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-[#1A202C] text-sm group-hover/item:text-amber-700 transition-colors flex items-center gap-2">
-                          Jeonse Safety Check
-                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md uppercase">Popular</span>
+                          Jeonse Check
+                          <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-md uppercase">Free</span>
                         </div>
-                        <div className="text-xs text-[#718096] mt-0.5">Analyze deposit safety with AI</div>
+                        <div className="text-xs text-[#718096] mt-0.5">Deposit safety + price analysis</div>
                       </div>
                       <svg className="w-4 h-4 text-amber-400 opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </Link>
 
-                    {/* Wolse Service */}
+                    {/* Wolse Check */}
                     <Link
                       href="/analyze/wolse"
                       className="flex items-center gap-4 px-5 py-4 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50 transition-all duration-300 group/item"
@@ -182,10 +182,10 @@ export default function Header() {
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-[#1A202C] text-sm group-hover/item:text-orange-700 transition-colors flex items-center gap-2">
-                          Wolse Price Check
+                          Wolse Check
                           <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-md uppercase">Free</span>
                         </div>
-                        <div className="text-xs text-[#718096] mt-0.5">Verify if rent is fair</div>
+                        <div className="text-xs text-[#718096] mt-0.5">Deposit safety + rent analysis</div>
                       </div>
                       <svg className="w-4 h-4 text-orange-400 opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -285,7 +285,7 @@ export default function Header() {
                   <span className="flex-1 h-px bg-amber-300" />
                 </div>
                 <Link
-                  href="/analyze"
+                  href="/analyze/jeonse"
                   className="flex items-center gap-3 px-3 py-3 hover:bg-white rounded-xl transition-all mb-2 group"
                   onClick={(e) => {
                     haptic.navigation(e.currentTarget);
@@ -298,8 +298,8 @@ export default function Header() {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-[#1A202C] text-sm">Jeonse Safety Check</div>
-                    <div className="text-xs text-[#718096]">Deposit safety analysis</div>
+                    <div className="font-semibold text-[#1A202C] text-sm">Jeonse Check</div>
+                    <div className="text-xs text-[#718096]">Deposit safety + price analysis</div>
                   </div>
                 </Link>
                 <Link
@@ -316,8 +316,8 @@ export default function Header() {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-[#1A202C] text-sm">Wolse Price Check</div>
-                    <div className="text-xs text-[#718096]">Monthly rent verification</div>
+                    <div className="font-semibold text-[#1A202C] text-sm">Wolse Check</div>
+                    <div className="text-xs text-[#718096]">Deposit safety + rent analysis</div>
                   </div>
                 </Link>
               </div>

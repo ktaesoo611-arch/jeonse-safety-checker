@@ -14,7 +14,7 @@ import { WolseAnalysisResult } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { result, inputData, paymentKey, paymentAmount } = body;
+    const { result, inputData, paymentKey, paymentAmount, analysisId: existingAnalysisId } = body;
 
     if (!result || !inputData) {
       return NextResponse.json(
@@ -76,23 +76,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create analysis record
-    const analysisId = await analysisService.createAnalysis(
-      'wolse_price',
-      propertyId,
-      user?.id
-    );
+    // Use existing analysisId or create new one
+    let analysisId: string;
 
-    // Update payment info
+    if (existingAnalysisId) {
+      // Use existing analysis ID (from unified flow)
+      analysisId = existingAnalysisId;
+      console.log(`Using existing analysis ID: ${analysisId}`);
+    } else {
+      // Create new analysis record
+      analysisId = await analysisService.createAnalysis(
+        'wolse_price',
+        propertyId,
+        user?.id
+      );
+    }
+
+    // Update payment info in analyses table
     await supabaseAdmin
       .from('analyses')
-      .update({
+      .upsert({
+        id: analysisId,
+        type: 'wolse_price',
+        property_id: propertyId,
+        user_id: user?.id,
         payment_status: paymentKey ? 'approved' : 'free-beta',
         payment_key: paymentKey || 'free-beta',
         payment_amount: paymentAmount || 0,
-        status: 'processing'
-      })
-      .eq('id', analysisId);
+        status: 'processing',
+        created_at: new Date().toISOString()
+      });
 
     // Save wolse price data
     await analysisService.saveWolsePriceData(analysisId, {

@@ -18,11 +18,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { analysisService } from '@/lib/services/analysis-service';
+import { JeonsePriceAnalyzer } from '@/lib/analyzers/jeonse-price-analyzer';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Helper to regenerate verdict with recalculated score
+function generateVerdict(riskLevel: string, score: number): string {
+  const verdicts: Record<string, string> = {
+    'SAFE': `SAFE TO PROCEED - Score: ${score}/100. This property shows good fundamentals with manageable risk.`,
+    'MODERATE': `MODERATE RISK - Score: ${score}/100. Can proceed with mandatory protections and careful monitoring.`,
+    'HIGH': `HIGH RISK - Score: ${score}/100. Significant concerns. Only proceed if you can accept substantial risk.`,
+    'CRITICAL': `CRITICAL RISK - Score: ${score}/100. DO NOT PROCEED. Too dangerous for your deposit.`,
+    'UNKNOWN': 'Safety analysis not available. Upload 등기부등본 for complete analysis.',
+  };
+  return verdicts[riskLevel] || verdicts['UNKNOWN'];
+}
 
 export async function GET(
   request: NextRequest,
@@ -41,6 +54,156 @@ export async function GET(
       );
     }
 
+    // Try wolse_price_full first (for wolse reports)
+    const wolseResult = await analysisService.getWolsePriceFull(analysisId);
+    if (wolseResult && wolseResult.status === 'completed') {
+      // Fetch property info
+      const { data: propertyData } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('id', wolseResult.property_id)
+        .single();
+
+      // Also fetch safety analysis data from analysis_results (if 등기부등본 was uploaded)
+      const { data: safetyData } = await supabase
+        .from('analysis_results')
+        .select('*, properties(*)')
+        .eq('id', analysisId)
+        .single();
+
+      const riskAnalysis = safetyData?.deunggibu_data || null;
+      const hasSafetyData = riskAnalysis && riskAnalysis.overallScore !== undefined;
+
+      // Recalculate overall score with new weights (LTV 40%, Legal 30%, Market 15%, Building 15%)
+      // This ensures consistency even for old analyses stored with different weights
+      const recalculateScore = (data: any) => {
+        if (!data) return 0;
+        const ltvScore = data.scores?.ltvScore ?? data.ltvScore ?? 0;
+        const legalScore = data.scores?.legalScore ?? data.legalScore ?? 0;
+        const marketScore = data.scores?.marketScore ?? data.marketScore ?? 0;
+        const buildingScore = data.scores?.buildingScore ?? data.buildingScore ?? 0;
+        return Math.round(
+          ltvScore * 0.40 +
+          legalScore * 0.30 +
+          marketScore * 0.15 +
+          buildingScore * 0.15
+        );
+      };
+      const recalculatedScore = hasSafetyData ? recalculateScore(riskAnalysis) : 0;
+
+      const report = {
+        analysisId: wolseResult.id,
+        analysisType: 'wolse',
+        generatedAt: new Date().toISOString(),
+        completedAt: wolseResult.completed_at,
+
+        property: {
+          // Always include building name in address
+          address: propertyData?.building_name
+            ? `${propertyData?.city || '서울특별시'} ${propertyData?.district || ''} ${propertyData?.dong || ''} ${propertyData?.building_name}`.trim()
+            : propertyData?.address || 'N/A',
+          buildingName: propertyData?.building_name || null,
+          proposedJeonse: wolseResult.user_deposit,
+          estimatedValue: riskAnalysis?.valuation?.valueMid || null,
+          area: propertyData?.exclusive_area || riskAnalysis?.deunggibu?.area || null,
+          valuation: riskAnalysis?.valuation || {},
+        },
+
+        // Risk analysis from 등기부등본 (if available)
+        riskAnalysis: hasSafetyData ? {
+          overallScore: recalculatedScore,
+          riskLevel: riskAnalysis.riskLevel,
+          verdict: generateVerdict(riskAnalysis.riskLevel, recalculatedScore),
+          scores: {
+            ltvScore: riskAnalysis.scores?.ltvScore || riskAnalysis.ltvScore || 0,
+            debtScore: riskAnalysis.scores?.debtScore || riskAnalysis.debtScore || 0,
+            legalScore: riskAnalysis.scores?.legalScore || riskAnalysis.legalScore || 0,
+            marketScore: riskAnalysis.scores?.marketScore || riskAnalysis.marketScore || 0,
+            buildingScore: riskAnalysis.scores?.buildingScore || riskAnalysis.buildingScore || 0,
+          },
+          metrics: {
+            ltv: riskAnalysis.ltv || (riskAnalysis.ltvRatio ? riskAnalysis.ltvRatio * 100 : 0),
+            totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
+            availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
+            debtCount: riskAnalysis.debtRanking?.length || 0,
+          },
+          risks: riskAnalysis.risks || [],
+          debtRanking: riskAnalysis.debtRanking || [],
+          smallAmountPriority: riskAnalysis.smallAmountPriority || null,
+        } : {
+          overallScore: 0,
+          riskLevel: 'UNKNOWN',
+          verdict: 'Safety analysis not available. Upload 등기부등본 for complete analysis.',
+          scores: { ltvScore: 0, debtScore: 0, legalScore: 0, marketScore: 0, buildingScore: 0 },
+          metrics: { ltv: 0, totalDebt: 0, availableEquity: 0, debtCount: 0 },
+          risks: [],
+          debtRanking: [],
+          smallAmountPriority: null,
+        },
+
+        // Wolse-specific analysis
+        wolseAnalysis: {
+          userDeposit: wolseResult.user_deposit || safetyData?.proposed_jeonse || 0,
+          userMonthlyRent: wolseResult.user_monthly_rent || safetyData?.monthly_rent || 0,
+          userRate: wolseResult.user_implied_rate || 0,
+          marketRate: wolseResult.market_rate || 0,
+          marketRateRange: {
+            low: wolseResult.market_rate_low || 0,
+            high: wolseResult.market_rate_high || 0,
+          },
+          legalRate: wolseResult.legal_rate || 4.5,
+          expectedRent: wolseResult.expected_rent || 0,
+          rentDifference: wolseResult.rent_difference || 0,
+          rentDifferencePercent: wolseResult.rent_difference_percent || 0,
+          assessment: wolseResult.assessment || 'FAIR',
+          assessmentDetails: wolseResult.assessment_details || null,
+          contractCount: wolseResult.contract_count || 0,
+          confidenceLevel: wolseResult.confidence_level || null,
+          savingsPotential: {
+            vsMarket: wolseResult.savings_vs_market || 0,
+            vsLegal: wolseResult.savings_vs_legal || 0,
+          },
+          trend: wolseResult.trend_direction ? {
+            direction: wolseResult.trend_direction,
+            percentage: wolseResult.trend_percentage || 0,
+            advice: wolseResult.trend_advice || '',
+          } : null,
+          recentTransactions: wolseResult.recent_transactions || [],
+          negotiationOptions: wolseResult.negotiation_options || [],
+        },
+
+        recommendations: hasSafetyData ? {
+          mandatory: riskAnalysis.recommendations?.mandatory || [],
+          recommended: riskAnalysis.recommendations?.recommended || [],
+          optional: riskAnalysis.recommendations?.optional || [],
+        } : {
+          mandatory: [],
+          recommended: [],
+          optional: [],
+        },
+
+        summary: hasSafetyData ? {
+          safetyScore: recalculatedScore,
+          riskLevel: riskAnalysis.riskLevel,
+          isSafe: riskAnalysis.riskLevel === 'SAFE',
+          isModerate: riskAnalysis.riskLevel === 'MODERATE',
+          isHigh: riskAnalysis.riskLevel === 'HIGH',
+          isCritical: riskAnalysis.riskLevel === 'CRITICAL',
+          verdict: generateVerdict(riskAnalysis.riskLevel, recalculatedScore),
+        } : {
+          safetyScore: 0,
+          riskLevel: 'UNKNOWN',
+          isSafe: false,
+          isModerate: false,
+          isHigh: false,
+          isCritical: false,
+          verdict: null,
+        },
+      };
+
+      return NextResponse.json(report, { status: 200 });
+    }
+
     // Try new schema first (jeonse_safety_full view)
     const newSchemaResult = await analysisService.getJeonseSafetyFull(analysisId);
     if (newSchemaResult && newSchemaResult.status === 'completed' && newSchemaResult.deunggibu_data) {
@@ -56,13 +219,48 @@ export async function GET(
 
       // Build report from new schema
       const riskAnalysis = newSchemaResult.deunggibu_data;
+
+      // Recalculate overall score with new weights (LTV 40%, Legal 30%, Market 15%, Building 15%)
+      const recalculateJeonseScore = () => {
+        const ltvScore = newSchemaResult.ltv_score || riskAnalysis.scores?.ltvScore || 0;
+        const legalScore = newSchemaResult.legal_score || riskAnalysis.scores?.legalScore || 0;
+        const marketScore = newSchemaResult.market_score || riskAnalysis.scores?.marketScore || 0;
+        const buildingScore = newSchemaResult.building_score || riskAnalysis.scores?.buildingScore || 0;
+        return Math.round(
+          ltvScore * 0.40 +
+          legalScore * 0.30 +
+          marketScore * 0.15 +
+          buildingScore * 0.15
+        );
+      };
+      const recalculatedJeonseScore = recalculateJeonseScore();
+
+      // Run jeonse price analysis if we have JEONSE transaction data (not sale data)
+      let jeonseAnalysis = null;
+      const allJeonseTransactions = newSchemaResult.valuation_data?.allJeonseTransactions || riskAnalysis.valuation?.allJeonseTransactions;
+      if (allJeonseTransactions && allJeonseTransactions.length > 0) {
+        const analyzer = new JeonsePriceAnalyzer();
+        const userArea = riskAnalysis.deunggibu?.area || null;
+        jeonseAnalysis = analyzer.analyze(
+          newSchemaResult.proposed_jeonse,
+          allJeonseTransactions,
+          userArea
+        );
+        console.log('📊 Jeonse analysis (new schema): Using jeonse transactions');
+      } else {
+        console.log('📊 Jeonse analysis (new schema): No jeonse transactions available');
+      }
+
       const report = {
         analysisId: newSchemaResult.id,
         generatedAt: new Date().toISOString(),
         completedAt: newSchemaResult.completed_at,
 
         property: {
-          address: newSchemaResult.address || 'N/A',
+          // Always include building name in address
+          address: newSchemaResult.building_name
+            ? `${newSchemaResult.city || '서울특별시'} ${newSchemaResult.district || ''} ${newSchemaResult.dong || ''} ${newSchemaResult.building_name}`.trim()
+            : newSchemaResult.address || 'N/A',
           buildingName: newSchemaResult.building_name || null,
           proposedJeonse: newSchemaResult.proposed_jeonse,
           estimatedValue: newSchemaResult.valuation_data?.valueMid || riskAnalysis.valuation?.valueMid || null,
@@ -81,9 +279,9 @@ export async function GET(
         owner: { name: null, phone: null },
 
         riskAnalysis: {
-          overallScore: riskAnalysis.overallScore || newSchemaResult.safety_score,
+          overallScore: recalculatedJeonseScore,
           riskLevel: riskAnalysis.riskLevel || newSchemaResult.risk_level,
-          verdict: riskAnalysis.verdict,
+          verdict: generateVerdict(riskAnalysis.riskLevel || newSchemaResult.risk_level, recalculatedJeonseScore),
           scores: {
             ltvScore: newSchemaResult.ltv_score || riskAnalysis.scores?.ltvScore || 0,
             debtScore: newSchemaResult.debt_score || riskAnalysis.scores?.debtScore || 0,
@@ -109,13 +307,13 @@ export async function GET(
         },
 
         summary: {
-          safetyScore: riskAnalysis.overallScore || newSchemaResult.safety_score,
+          safetyScore: recalculatedJeonseScore,
           riskLevel: riskAnalysis.riskLevel || newSchemaResult.risk_level,
           isSafe: (riskAnalysis.riskLevel || newSchemaResult.risk_level) === 'SAFE',
           isModerate: (riskAnalysis.riskLevel || newSchemaResult.risk_level) === 'MODERATE',
           isHigh: (riskAnalysis.riskLevel || newSchemaResult.risk_level) === 'HIGH',
           isCritical: (riskAnalysis.riskLevel || newSchemaResult.risk_level) === 'CRITICAL',
-          verdict: riskAnalysis.verdict,
+          verdict: generateVerdict(riskAnalysis.riskLevel || newSchemaResult.risk_level, recalculatedJeonseScore),
           criticalIssues: (newSchemaResult.risks || riskAnalysis.risks)?.filter((r: any) => r.severity === 'CRITICAL').length || 0,
           highIssues: (newSchemaResult.risks || riskAnalysis.risks)?.filter((r: any) => r.severity === 'HIGH').length || 0,
           moderateIssues: (newSchemaResult.risks || riskAnalysis.risks)?.filter((r: any) => r.severity === 'MODERATE').length || 0,
@@ -126,6 +324,21 @@ export async function GET(
           effectiveDate: '2025. 3. 1.',
           decree: '대통령령 제35161호, 2024. 12. 31., 일부개정',
         },
+
+        // Jeonse price analysis (if transaction data available)
+        jeonseAnalysis: jeonseAnalysis ? {
+          proposedJeonse: jeonseAnalysis.proposedJeonse,
+          expectedJeonse: jeonseAnalysis.expectedJeonse,
+          jeonseDifference: jeonseAnalysis.jeonseDifference,
+          jeonseDifferencePercent: jeonseAnalysis.jeonseDifferencePercent,
+          assessment: jeonseAnalysis.assessment,
+          assessmentDetails: jeonseAnalysis.assessmentDetails,
+          potentialSavings: jeonseAnalysis.potentialSavings,
+          trend: jeonseAnalysis.trend,
+          transactionData: jeonseAnalysis.transactionData,
+          regressionLine: jeonseAnalysis.regressionLine,
+          contractCount: jeonseAnalysis.contractCount,
+        } : null,
 
         documents: documents?.map((d: any) => ({
           id: d.id,
@@ -222,6 +435,37 @@ export async function GET(
     // Build comprehensive report
     const riskAnalysis = analysis.deunggibu_data;
 
+    // Recalculate overall score with new weights (LTV 40%, Legal 30%, Market 15%, Building 15%)
+    const recalculateFallbackScore = () => {
+      const ltvScore = riskAnalysis.scores?.ltvScore || riskAnalysis.ltvScore || 0;
+      const legalScore = riskAnalysis.scores?.legalScore || riskAnalysis.legalScore || 0;
+      const marketScore = riskAnalysis.scores?.marketScore || riskAnalysis.marketScore || 0;
+      const buildingScore = riskAnalysis.scores?.buildingScore || riskAnalysis.buildingScore || 0;
+      return Math.round(
+        ltvScore * 0.40 +
+        legalScore * 0.30 +
+        marketScore * 0.15 +
+        buildingScore * 0.15
+      );
+    };
+    const recalculatedFallbackScore = recalculateFallbackScore();
+
+    // Run jeonse price analysis if we have JEONSE transaction data (not sale data)
+    let jeonseAnalysisFallback = null;
+    const allJeonseTransactionsFallback = riskAnalysis.valuation?.allJeonseTransactions;
+    if (allJeonseTransactionsFallback && allJeonseTransactionsFallback.length > 0) {
+      const analyzer = new JeonsePriceAnalyzer();
+      const userArea = riskAnalysis.deunggibu?.area || null;
+      jeonseAnalysisFallback = analyzer.analyze(
+        analysis.proposed_jeonse,
+        allJeonseTransactionsFallback,
+        userArea
+      );
+      console.log('📊 Jeonse analysis (fallback): Using jeonse transactions -', jeonseAnalysisFallback ? 'completed' : 'no result');
+    } else {
+      console.log('📊 Jeonse analysis (fallback): No jeonse transactions available');
+    }
+
     // Debug logging
     console.log('Report API Debug:', {
       analysisId,
@@ -237,7 +481,14 @@ export async function GET(
 
       // Property Information
       property: {
-        address: (Array.isArray(analysis.properties) ? analysis.properties[0]?.address : analysis.properties?.address) || 'N/A',
+        // Always include building name in address
+        address: (() => {
+          const prop = Array.isArray(analysis.properties) ? analysis.properties[0] : analysis.properties;
+          if (prop?.building_name) {
+            return `${prop?.city || '서울특별시'} ${prop?.district || ''} ${prop?.dong || ''} ${prop?.building_name}`.trim();
+          }
+          return prop?.address || 'N/A';
+        })(),
         buildingName: (Array.isArray(analysis.properties) ? analysis.properties[0]?.building_name : analysis.properties?.building_name) || null,
         proposedJeonse: analysis.proposed_jeonse,
         estimatedValue: riskAnalysis.valuation?.valueMid || null,
@@ -261,9 +512,9 @@ export async function GET(
 
       // Risk Analysis Results
       riskAnalysis: {
-        overallScore: riskAnalysis.overallScore,
+        overallScore: recalculatedFallbackScore,
         riskLevel: riskAnalysis.riskLevel,
-        verdict: riskAnalysis.verdict,
+        verdict: generateVerdict(riskAnalysis.riskLevel, recalculatedFallbackScore),
 
         // Component Scores
         scores: {
@@ -301,13 +552,13 @@ export async function GET(
 
       // Summary for Quick View
       summary: {
-        safetyScore: riskAnalysis.overallScore,
+        safetyScore: recalculatedFallbackScore,
         riskLevel: riskAnalysis.riskLevel,
         isSafe: riskAnalysis.riskLevel === 'SAFE',
         isModerate: riskAnalysis.riskLevel === 'MODERATE',
         isHigh: riskAnalysis.riskLevel === 'HIGH',
         isCritical: riskAnalysis.riskLevel === 'CRITICAL',
-        verdict: riskAnalysis.verdict,
+        verdict: generateVerdict(riskAnalysis.riskLevel, recalculatedFallbackScore),
         criticalIssues: riskAnalysis.risks?.filter((r: any) => r.severity === 'CRITICAL').length || 0,
         highIssues: riskAnalysis.risks?.filter((r: any) => r.severity === 'HIGH').length || 0,
         moderateIssues: riskAnalysis.risks?.filter((r: any) => r.severity === 'MODERATE').length || 0,
@@ -319,6 +570,21 @@ export async function GET(
         effectiveDate: '2025. 3. 1.',
         decree: '대통령령 제35161호, 2024. 12. 31., 일부개정',
       },
+
+      // Jeonse price analysis (if transaction data available)
+      jeonseAnalysis: jeonseAnalysisFallback ? {
+        proposedJeonse: jeonseAnalysisFallback.proposedJeonse,
+        expectedJeonse: jeonseAnalysisFallback.expectedJeonse,
+        jeonseDifference: jeonseAnalysisFallback.jeonseDifference,
+        jeonseDifferencePercent: jeonseAnalysisFallback.jeonseDifferencePercent,
+        assessment: jeonseAnalysisFallback.assessment,
+        assessmentDetails: jeonseAnalysisFallback.assessmentDetails,
+        potentialSavings: jeonseAnalysisFallback.potentialSavings,
+        trend: jeonseAnalysisFallback.trend,
+        transactionData: jeonseAnalysisFallback.transactionData,
+        regressionLine: jeonseAnalysisFallback.regressionLine,
+        contractCount: jeonseAnalysisFallback.contractCount,
+      } : null,
 
       // Documents
       documents: documents?.map((d: any) => ({

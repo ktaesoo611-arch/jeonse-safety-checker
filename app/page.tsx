@@ -88,17 +88,6 @@ export default function LandingPageV4() {
             </div>
           </Link>
           <div className="hidden md:flex items-center gap-2">
-            {/* Navigation Links */}
-            <a href="#services" className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all">
-              Services
-            </a>
-            <a href="#how-it-works" className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all">
-              How It Works
-            </a>
-            <Link href="/pricing" className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all">
-              Pricing
-            </Link>
-
             {/* Primary CTA */}
             <Link href="/check">
               <button className="group px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-200/50 transition-all hover:-translate-y-0.5 flex items-center gap-2">
@@ -191,38 +180,6 @@ export default function LandingPageV4() {
               }}
             >
               Check My Rental
-            </Link>
-
-            {/* Navigation Links */}
-            <a
-              href="#services"
-              className="block px-6 py-3 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all"
-              onClick={(e) => {
-                haptic.navigation(e.currentTarget);
-                setMobileMenuOpen(false);
-              }}
-            >
-              Services
-            </a>
-            <a
-              href="#how-it-works"
-              className="block px-6 py-3 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all"
-              onClick={(e) => {
-                haptic.navigation(e.currentTarget);
-                setMobileMenuOpen(false);
-              }}
-            >
-              How It Works
-            </a>
-            <Link
-              href="/pricing"
-              className="block px-6 py-3 rounded-xl text-sm font-medium text-[#4A5568] hover:text-amber-700 hover:bg-amber-50 transition-all"
-              onClick={(e) => {
-                haptic.navigation(e.currentTarget);
-                setMobileMenuOpen(false);
-              }}
-            >
-              Pricing
             </Link>
 
             {/* Auth Links */}
@@ -367,65 +324,45 @@ export default function LandingPageV4() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Deposit Safety Check */}
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Jeonse Check */}
             <ServiceCard
               icon={<ShieldCheckIcon className="w-8 h-8" />}
-              title="Deposit Safety Check"
-              subtitle="Is your deposit protected?"
-              description="We analyze the property register, verify ownership, detect liens and mortgages, and assess whether your deposit is safe. Works for any Korean rental contract."
+              title="Jeonse Check"
+              subtitle="Complete jeonse protection"
+              description="Full jeonse analysis including deposit safety and market price comparison. We analyze the property register, compare your jeonse to recent transactions, and verify you're paying a fair price."
               features={[
-                "20+ risk factor analysis",
-                "등기부등본 translation & analysis",
-                "Deposit-to-value assessment",
-                "Safety score (0-100)",
-                "PDF report in English"
+                "20+ deposit risk factor analysis",
+                "Expected jeonse from market data",
+                "Price trend analysis with advice",
+                "Transaction scatter plot",
+                "Safety score (0-100)"
               ]}
-              price="14,900"
+              price="39,900"
               betaPrice="FREE"
-              href="/analyze"
+              href="/analyze/jeonse"
               color="amber"
               delay={0}
             />
 
-            {/* Wolse Price Check */}
+            {/* Wolse Check */}
             <ServiceCard
               icon={<CurrencyIcon className="w-8 h-8" />}
-              title="Wolse Price Check"
-              subtitle="Is your rent fair?"
-              description="We compare your monthly rent against actual market transactions in your building and neighborhood. Know if you're overpaying before you sign."
+              title="Wolse Check"
+              subtitle="Complete wolse protection"
+              description="Full wolse analysis including deposit safety and rent price comparison. We verify your deposit is protected and check if your monthly rent is fair based on real market data."
               features={[
-                "Market rate comparison",
-                "Price rating (Fair / High / Overpriced)",
-                "Recent transaction data",
-                "Negotiation tips if overpriced"
+                "20+ deposit risk factor analysis",
+                "Expected rent from market data",
+                "Price trend with negotiation advice",
+                "Transaction scatter plot",
+                "Negotiation scripts included"
               ]}
-              price="9,900"
+              price="39,900"
               betaPrice="FREE"
               href="/analyze/wolse"
               color="orange"
               delay={200}
-              tip="💡 Want deposit protection too? Choose Full Wolse Check"
-            />
-
-            {/* Full Wolse Check */}
-            <ServiceCard
-              icon={<CheckCircleIcon className="w-8 h-8" />}
-              title="Full Wolse Check"
-              subtitle="Complete protection for wolse renters"
-              description="Get both deposit safety analysis AND rent price comparison in one report. Know your deposit is protected and your rent is fair — before you sign."
-              features={[
-                "Everything in Deposit Safety Check",
-                "Everything in Wolse Price Check",
-                "One combined report",
-                "Single form submission"
-              ]}
-              price="19,900"
-              betaPrice="FREE"
-              href="/analyze/full"
-              color="green"
-              delay={400}
-              badge="Best Value"
             />
           </div>
         </div>
@@ -688,9 +625,8 @@ export default function LandingPageV4() {
             <div>
               <div className="text-white/40 text-sm uppercase tracking-wider mb-4">Services</div>
               <div className="space-y-3">
-                <Link href="/analyze/full" className="block text-white/70 hover:text-white transition-colors">Full Wolse Check</Link>
-                <Link href="/analyze" className="block text-white/70 hover:text-white transition-colors">Deposit Safety Check</Link>
-                <Link href="/analyze/wolse" className="block text-white/70 hover:text-white transition-colors">Wolse Price Check</Link>
+                <Link href="/analyze/jeonse" className="block text-white/70 hover:text-white transition-colors">Jeonse Check</Link>
+                <Link href="/analyze/wolse" className="block text-white/70 hover:text-white transition-colors">Wolse Check</Link>
                 <Link href="/pricing" className="block text-white/70 hover:text-white transition-colors">Pricing</Link>
               </div>
             </div>

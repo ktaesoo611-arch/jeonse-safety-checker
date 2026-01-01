@@ -35,13 +35,13 @@ export default function PricingPage() {
           </Link>
           <div className="flex items-center gap-2">
             {/* Service Links */}
-            <Link href="/analyze" className="group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden">
+            <Link href="/analyze/jeonse" className="group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden">
               <span className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
               <span className="relative text-[#4A5568] group-hover:text-white flex items-center gap-2 transition-colors">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
-                Deposit Safety
+                Jeonse Check
               </span>
             </Link>
 
@@ -51,18 +51,7 @@ export default function PricingPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Wolse Price
-              </span>
-            </Link>
-
-            <Link href="/analyze/full" className="group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden">
-              <span className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
-              <span className="relative text-[#4A5568] group-hover:text-white flex items-center gap-2 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                Full Check
-                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[9px] font-bold rounded group-hover:bg-white/20 group-hover:text-white transition-colors">BEST</span>
+                Wolse Check
               </span>
             </Link>
           </div>
@@ -101,24 +90,24 @@ export default function PricingPage() {
           {/* Service Categories */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-[#1A202C] text-center mb-2">Our Services</h2>
-            <p className="text-[#4A5568] text-center">Three powerful tools to protect your rental investment</p>
+            <p className="text-[#4A5568] text-center">Two comprehensive services to protect your rental investment</p>
           </div>
 
           {/* Product/Service Offerings */}
-          <div className="grid md:grid-cols-3 gap-6 mb-16 mt-4">
-            {/* Deposit Safety Check */}
+          <div className="grid md:grid-cols-2 gap-8 mb-16 mt-4 max-w-4xl mx-auto">
+            {/* Jeonse Check */}
             <div className="bg-white rounded-3xl border-2 border-amber-200 shadow-xl shadow-amber-100/50 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
               <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-6 text-white">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-bold">Deposit Safety Check</h3>
+                  <h3 className="text-2xl font-bold">Jeonse Check</h3>
                   <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold">
                     FREE BETA
                   </span>
                 </div>
-                <p className="text-amber-50 mb-4">Comprehensive deposit safety analysis</p>
+                <p className="text-amber-50 mb-4">Complete jeonse protection</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-bold">₩0</span>
-                  <span className="text-amber-100 line-through">₩14,900</span>
+                  <span className="text-amber-100 line-through">₩39,900</span>
                 </div>
               </div>
 
@@ -126,17 +115,16 @@ export default function PricingPage() {
                 <ul className="space-y-4 mb-8">
                   <FeatureItem text="English translation of property register" />
                   <FeatureItem text="20+ comprehensive risk checks" />
-                  <FeatureItem text="AI-powered property valuation" />
+                  <FeatureItem text="Expected jeonse from market data" />
+                  <FeatureItem text="Price trend analysis with advice" />
+                  <FeatureItem text="Transaction scatter plot" />
                   <FeatureItem text="Safety score (0-100)" />
-                  <FeatureItem text="Detailed PDF report" />
-                  <FeatureItem text="Legal risk analysis" />
                   <FeatureItem text="Actionable recommendations" />
-                  <FeatureItem text="2-minute analysis time" />
                 </ul>
 
-                <Link href="/analyze">
+                <Link href="/analyze/jeonse">
                   <button className="w-full px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all group-hover:-translate-y-1 flex items-center justify-center gap-2">
-                    Start Deposit Analysis
+                    Start Jeonse Check
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
@@ -145,83 +133,36 @@ export default function PricingPage() {
               </div>
             </div>
 
-            {/* Wolse Price Check */}
-            <div className="bg-white rounded-3xl border-2 border-amber-200 shadow-xl shadow-amber-100/50 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
+            {/* Wolse Check */}
+            <div className="bg-white rounded-3xl border-2 border-orange-200 shadow-xl shadow-orange-100/50 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
               <div className="bg-gradient-to-br from-orange-400 to-amber-600 p-6 text-white">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-bold">Wolse Price Check</h3>
+                  <h3 className="text-2xl font-bold">Wolse Check</h3>
                   <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold">
                     FREE BETA
                   </span>
                 </div>
-                <p className="text-orange-50 mb-4">Verify if your monthly rent is fair</p>
+                <p className="text-orange-50 mb-4">Complete wolse protection</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-bold">₩0</span>
-                  <span className="text-orange-100 line-through">₩9,900</span>
+                  <span className="text-orange-100 line-through">₩39,900</span>
                 </div>
               </div>
 
               <div className="p-8">
                 <ul className="space-y-4 mb-8">
-                  <FeatureItem text="Market rate analysis from MOLIT data" />
-                  <FeatureItem text="Legal rate compliance check" />
-                  <FeatureItem text="Fair price assessment" />
-                  <FeatureItem text="Savings calculation" />
-                  <FeatureItem text="Ready-to-use negotiation scripts" />
-                  <FeatureItem text="Instant results" />
-                  <FeatureItem text="No document upload needed" />
-                  <FeatureItem text="Unlimited checks during beta" />
+                  <FeatureItem text="English translation of property register" />
+                  <FeatureItem text="20+ comprehensive risk checks" />
+                  <FeatureItem text="Expected rent from market data" />
+                  <FeatureItem text="Price trend with negotiation advice" />
+                  <FeatureItem text="Transaction scatter plot" />
+                  <FeatureItem text="Negotiation scripts included" />
+                  <FeatureItem text="Safety score (0-100)" />
                 </ul>
 
                 <Link href="/analyze/wolse">
-                  <button className="w-full px-6 py-4 bg-gradient-to-r from-orange-400 to-amber-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all group-hover:-translate-y-1 flex items-center justify-center gap-2">
-                    Start Wolse Price Analysis
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                  </button>
-                </Link>
-              </div>
-            </div>
-
-            {/* Full Wolse Check - Best Value */}
-            <div className="bg-white rounded-3xl border-2 border-green-400 shadow-xl shadow-green-100/50 overflow-visible hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group relative">
-              {/* Best Value Badge */}
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                <span className="px-4 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold rounded-full shadow-lg">
-                  Best Value
-                </span>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 text-white rounded-t-3xl">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-bold">Full Wolse Check</h3>
-                  <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold">
-                    FREE BETA
-                  </span>
-                </div>
-                <p className="text-green-50 mb-4">Complete protection for wolse renters</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold">₩0</span>
-                  <span className="text-green-100 line-through">₩19,900</span>
-                </div>
-              </div>
-
-              <div className="p-8">
-                <ul className="space-y-4 mb-8">
-                  <FeatureItem text="Everything in Deposit Safety Check" />
-                  <FeatureItem text="Everything in Wolse Price Check" />
-                  <FeatureItem text="Combined comprehensive report" />
-                  <FeatureItem text="Deposit + rent analysis together" />
-                  <FeatureItem text="One document upload" />
-                  <FeatureItem text="Save ₩4,900 vs separate services" />
-                  <FeatureItem text="Best for wolse with large deposit" />
-                  <FeatureItem text="Complete peace of mind" />
-                </ul>
-
-                <Link href="/analyze/full">
-                  <button className="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-green-200/50 transition-all group-hover:-translate-y-1 flex items-center justify-center gap-2">
-                    Start Full Wolse Check
+                  <button className="w-full px-6 py-4 bg-gradient-to-r from-orange-400 to-amber-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-orange-200/50 transition-all group-hover:-translate-y-1 flex items-center justify-center gap-2">
+                    Start Wolse Check
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
@@ -331,17 +272,9 @@ export default function PricingPage() {
                 Join hundreds of expats who have safely navigated the Korean rental market.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
-                <Link href="/analyze/full">
-                  <button className="px-10 py-5 bg-white text-green-600 font-bold text-lg rounded-2xl hover:shadow-2xl transition-all hover:-translate-y-1 flex items-center gap-3">
-                    Full Wolse Check
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                  </button>
-                </Link>
-                <Link href="/analyze">
-                  <button className="px-10 py-5 bg-white/20 text-white font-bold text-lg rounded-2xl hover:bg-white/30 transition-all hover:-translate-y-1 flex items-center gap-3 border border-white/30">
-                    Deposit Safety
+                <Link href="/analyze/jeonse">
+                  <button className="px-10 py-5 bg-white text-amber-600 font-bold text-lg rounded-2xl hover:shadow-2xl transition-all hover:-translate-y-1 flex items-center gap-3">
+                    Jeonse Check
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
@@ -349,7 +282,7 @@ export default function PricingPage() {
                 </Link>
                 <Link href="/analyze/wolse">
                   <button className="px-10 py-5 bg-white/20 text-white font-bold text-lg rounded-2xl hover:bg-white/30 transition-all hover:-translate-y-1 flex items-center gap-3 border border-white/30">
-                    Wolse Price
+                    Wolse Check
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>

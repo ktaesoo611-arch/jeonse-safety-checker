@@ -84,19 +84,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify file exists in storage
-    const { data: fileData, error: fileError } = await supabase.storage
-      .from('documents')
-      .list(analysisId, {
-        search: filePath.split('/').pop(),
-      });
-
-    if (fileError || !fileData || fileData.length === 0) {
-      return NextResponse.json(
-        { error: 'File not found in storage' },
-        { status: 404 }
-      );
-    }
+    // Note: Skip storage verification since client upload already succeeded
+    // The client receives an error if upload fails, so if we reach this point,
+    // the file should exist in storage
 
     // Create document record in database
     const { data: documentData, error: documentError } = await supabase

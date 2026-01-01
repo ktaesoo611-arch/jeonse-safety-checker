@@ -40,9 +40,24 @@ export class PropertyValuationEngine {
       return monthsAgo <= 6;
     });
 
-    console.log(`📊 Transaction data: 6M=${transactions6M.length} txns, 12M=${recentTransactions.length} txns`);
+    console.log(`📊 Sale transaction data: 6M=${transactions6M.length} txns, 12M=${recentTransactions.length} txns`);
     if (recentTransactions.length >= transactions6M.length * 1.5) {
       console.log(`   ✅ 12-month period provides ${((recentTransactions.length / Math.max(1, transactions6M.length) - 1) * 100).toFixed(0)}% more data points`);
+    }
+
+    // Step 1b: Fetch JEONSE (전세) transactions for jeonse price analysis
+    let jeonseTransactions: MolitTransaction[] = [];
+    try {
+      jeonseTransactions = await this.molitAPI.getRecentJeonseTransactionsForApartment(
+        lawdCd,
+        property.buildingName,
+        property.exclusiveArea,
+        12 // Last 12 months
+      );
+      console.log(`📊 Jeonse transaction data: ${jeonseTransactions.length} txns`);
+    } catch (error) {
+      console.error('Failed to fetch jeonse transactions:', error);
+      // Continue without jeonse data
     }
 
     // Step 2: Calculate base value from recent sales
@@ -86,7 +101,9 @@ export class PropertyValuationEngine {
           weight: 100
         }
         // Future: Add KB, 호갱노노, etc.
-      ]
+      ],
+      allTransactions: recentTransactions, // Include all SALE transactions for price analysis
+      allJeonseTransactions: jeonseTransactions // Include all JEONSE transactions for jeonse price analysis
     };
   }
 

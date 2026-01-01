@@ -141,12 +141,13 @@ export class RiskAnalyzer {
     );
 
     // Calculate overall score (weighted average)
+    // Note: Debt score removed - creditor count is not a direct risk factor
+    // LTV already captures total debt exposure, Debt Rank shows repayment priority
     const overallScore = Math.round(
-      ltvScore * 0.30 +      // 30% - LTV is critical
-      debtScore * 0.25 +     // 25% - Total debt burden
-      legalScore * 0.25 +    // 25% - Legal issues
-      marketScore * 0.10 +   // 10% - Market conditions
-      buildingScore * 0.10   // 10% - Building condition
+      ltvScore * 0.40 +      // 40% - LTV is most critical for deposit safety
+      legalScore * 0.30 +    // 30% - Legal issues are serious
+      marketScore * 0.15 +   // 15% - Market conditions
+      buildingScore * 0.15   // 15% - Building condition
     );
 
     // Determine risk level
@@ -856,7 +857,7 @@ export class RiskAnalyzer {
       'SAFE': `SAFE TO PROCEED - Score: ${score}/100. This property shows good fundamentals with manageable risk.`,
       'MODERATE': `MODERATE RISK - Score: ${score}/100. Can proceed with mandatory protections and careful monitoring.`,
       'HIGH': `HIGH RISK - Score: ${score}/100. Significant concerns. Only proceed if you can accept substantial risk.`,
-      'CRITICAL': `CRITICAL RISK - Score: ${score}/100. DO NOT PROCEED. Too dangerous for jeonse deposit.`
+      'CRITICAL': `CRITICAL RISK - Score: ${score}/100. DO NOT PROCEED. Too dangerous for your deposit.`
     };
 
     return verdicts[riskLevel];

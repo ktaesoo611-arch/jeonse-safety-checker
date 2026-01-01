@@ -1,24 +1,36 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { SEOUL_DISTRICTS, Apartment } from '@/lib/data/address-data';
 import { useHaptic } from '@/lib/hooks/useHaptic';
+import { analytics } from '@/lib/analytics';
 
-/**
- * Full Wolse Check - Form Page (Step 1)
- * Collects all data needed for both deposit safety and wolse price analysis
- */
-export default function FullRentalCheckPage() {
+type RentalType = 'jeonse' | 'wolse';
+
+export default function PropertyInfoPage() {
   const router = useRouter();
+  const params = useParams();
   const haptic = useHaptic();
+
+  const type = params.type as string;
+
+  // Validate type
+  if (type !== 'jeonse' && type !== 'wolse') {
+    notFound();
+  }
+
+  const rentalType: RentalType = type as RentalType;
+  const isWolse = rentalType === 'wolse';
+  const accentColor = isWolse ? 'orange' : 'amber';
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Form data
   const [formData, setFormData] = useState({
     city: '서울특별시',
     district: '',
@@ -31,6 +43,10 @@ export default function FullRentalCheckPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apartmentSearch, setApartmentSearch] = useState('');
   const [filteredApartments, setFilteredApartments] = useState<Apartment[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Get available dongs for selected district
   const availableDongs = useMemo(() => {
@@ -64,30 +80,25 @@ export default function FullRentalCheckPage() {
     fetchApartments();
   }, [apartmentSearch, formData.dong, formData.district]);
 
-  // Reset dong when district changes
   const handleDistrictChange = (district: string) => {
     setFormData({ ...formData, district, dong: '' });
   };
 
-  // Handle apartment selection
   const handleApartmentSelect = (apartmentName: string) => {
     setFormData({ ...formData, building: apartmentName });
     setApartmentSearch('');
   };
 
-  // Format number with commas
   const formatNumber = (value: string) => {
     const num = value.replace(/,/g, '');
     if (!num || isNaN(parseInt(num))) return value;
     return parseInt(num).toLocaleString();
   };
 
-  // Parse formatted number
   const parseNumber = (value: string) => {
     return value.replace(/,/g, '');
   };
 
-  // Format Korean amount
   const formatKoreanAmount = (value: string) => {
     const num = parseInt(value);
     if (isNaN(num) || num <= 0) return null;
@@ -105,7 +116,6 @@ export default function FullRentalCheckPage() {
     return `${num.toLocaleString()}원`;
   };
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     haptic.medium();
@@ -115,9 +125,12 @@ export default function FullRentalCheckPage() {
     if (!formData.district) newErrors.district = 'Please select a district';
     if (!formData.dong) newErrors.dong = 'Please select a neighborhood';
     if (!formData.building) newErrors.building = 'Please enter building name';
-    if (!formData.exclusiveArea) newErrors.exclusiveArea = 'Please enter area';
     if (!formData.deposit) newErrors.deposit = 'Please enter deposit amount';
-    if (!formData.monthlyRent) newErrors.monthlyRent = 'Please enter monthly rent';
+
+    if (isWolse) {
+      if (!formData.exclusiveArea) newErrors.exclusiveArea = 'Please enter area';
+      if (!formData.monthlyRent) newErrors.monthlyRent = 'Please enter monthly rent';
+    }
 
     const exclusiveArea = parseFloat(formData.exclusiveArea);
     const deposit = parseInt(parseNumber(formData.deposit));
@@ -129,7 +142,7 @@ export default function FullRentalCheckPage() {
     if (formData.deposit && (isNaN(deposit) || deposit <= 0)) {
       newErrors.deposit = 'Please enter a valid deposit amount';
     }
-    if (formData.monthlyRent && (isNaN(monthlyRent) || monthlyRent <= 0)) {
+    if (isWolse && formData.monthlyRent && (isNaN(monthlyRent) || monthlyRent <= 0)) {
       newErrors.monthlyRent = 'Please enter a valid rent amount';
     }
 
@@ -143,43 +156,43 @@ export default function FullRentalCheckPage() {
     setError(null);
 
     try {
-      // Create analysis record (reusing jeonse analysis creation with wolse fields)
       const address = `${formData.city} ${formData.district} ${formData.dong}`;
 
       const response = await fetch('/api/analysis/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Explicitly include cookies
         body: JSON.stringify({
           address,
           city: formData.city,
           district: formData.district,
           dong: formData.dong,
           building: formData.building,
-          proposedJeonse: deposit, // Use deposit as the jeonse amount for safety analysis
-          // Additional wolse-specific fields stored in metadata
-          analysisType: 'full-rental',
-          exclusiveArea,
-          monthlyRent
+          proposedJeonse: deposit,
+          analysisType: rentalType,
+          exclusiveArea: exclusiveArea || undefined,
+          monthlyRent: isWolse ? monthlyRent : undefined
         })
       });
 
       const data = await response.json();
 
       if (response.ok && data.analysisId) {
-        // Store wolse data in session storage for later use
-        sessionStorage.setItem(`full-rental-${data.analysisId}`, JSON.stringify({
+        // Store form data in session storage for later use
+        sessionStorage.setItem(`analysis-${data.analysisId}`, JSON.stringify({
+          type: rentalType,
           city: formData.city,
           district: formData.district,
           dong: formData.dong,
-          apartmentName: formData.building,
-          exclusiveArea,
+          building: formData.building,
+          exclusiveArea: exclusiveArea || null,
           deposit,
-          monthlyRent
+          monthlyRent: isWolse ? monthlyRent : null
         }));
 
+        analytics.analysisStarted(rentalType, data.analysisId);
         haptic.success();
-        // Redirect to upload page
-        router.push(`/analyze/full/${data.analysisId}/upload`);
+        router.push(`/analyze/${rentalType}/${data.analysisId}/upload`);
       } else {
         throw new Error(data.error || 'Failed to create analysis');
       }
@@ -196,42 +209,28 @@ export default function FullRentalCheckPage() {
       {/* Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-b from-[#FEF7ED] via-[#FDFBF7] to-[#F5F0E8]" />
-        <div className="absolute top-20 right-[10%] w-96 h-96 bg-green-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-[20%] left-[5%] w-72 h-72 bg-emerald-200/20 rounded-full blur-3xl" />
+        <div className={`absolute top-20 right-[10%] w-96 h-96 ${isWolse ? 'bg-orange-200/20' : 'bg-amber-200/20'} rounded-full blur-3xl`} />
+        <div className={`absolute bottom-[20%] left-[5%] w-72 h-72 ${isWolse ? 'bg-amber-200/20' : 'bg-orange-200/20'} rounded-full blur-3xl`} />
       </div>
 
       {/* Header */}
-      <header className="relative z-10 bg-[#FDFBF7]/80 backdrop-blur-md border-b border-green-100">
+      <header className={`relative z-10 bg-[#FDFBF7]/80 backdrop-blur-md border-b border-${accentColor}-100`}>
         <div className="container mx-auto px-6 py-4 max-w-7xl flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-200 group-hover:scale-105 transition-transform">
+            <div className={`w-10 h-10 bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-600' : 'from-amber-500 to-orange-600'} rounded-xl flex items-center justify-center shadow-lg shadow-${accentColor}-200 group-hover:scale-105 transition-transform`}>
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
             <span className="text-xl font-semibold text-[#2D3748]">K-Rent Safety</span>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/analyze"
-              className="text-[#4A5568] hover:text-amber-600 font-medium transition-colors"
-            >
-              Deposit Safety
-            </Link>
-            <Link
-              href="/analyze/wolse"
-              className="text-[#4A5568] hover:text-orange-600 font-medium transition-colors"
-            >
-              Wolse Price
-            </Link>
-          </div>
         </div>
       </header>
 
-      <div className="relative z-10 container mx-auto px-6 py-12 max-w-3xl">
+      <div className={`relative z-10 container mx-auto px-6 py-12 max-w-3xl transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         {/* Breadcrumb */}
         <div className="mb-8">
-          <Link href="/check/wolse" className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-2 group">
+          <Link href="/check" className={`text-${accentColor}-600 hover:text-${accentColor}-700 font-medium inline-flex items-center gap-2 group`}>
             <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -241,16 +240,18 @@ export default function FullRentalCheckPage() {
 
         {/* Page Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-semibold mb-6 border border-green-200">
-            <span>Full Wolse Check</span>
-            <span className="text-green-400">|</span>
-            <span>Step 1 of 3</span>
+          <div className={`inline-flex items-center gap-2 px-4 py-2 bg-${accentColor}-50 text-${accentColor}-700 rounded-full text-sm font-semibold mb-6 border border-${accentColor}-200`}>
+            <span>{isWolse ? 'Wolse' : 'Jeonse'} Check</span>
+            <span className={`text-${accentColor}-400`}>|</span>
+            <span>Step 1 of 4</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A202C] mb-4 tracking-tight">
-            Full Wolse Check
+            Property Information
           </h1>
           <p className="text-xl text-[#4A5568] max-w-2xl mx-auto">
-            Check your deposit safety and rent price together in one comprehensive report
+            {isWolse
+              ? 'Enter your property details and rental terms for a complete analysis'
+              : 'Enter your property details for deposit safety analysis'}
           </p>
         </div>
 
@@ -263,12 +264,12 @@ export default function FullRentalCheckPage() {
         )}
 
         {/* Form Card */}
-        <div className="bg-white rounded-3xl p-8 mb-8 shadow-xl shadow-green-900/5 border border-green-100">
+        <div className={`bg-white rounded-3xl p-8 mb-8 shadow-xl shadow-${accentColor}-900/5 border border-${accentColor}-100`}>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Location Section */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-[#1A202C] flex items-center gap-2">
-                <span className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm">1</span>
+                <span className={`w-8 h-8 bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm`}>1</span>
                 Property Location
               </h3>
 
@@ -301,9 +302,9 @@ export default function FullRentalCheckPage() {
             </div>
 
             {/* Building Section */}
-            <div className="space-y-4 pt-4 border-t border-green-100">
+            <div className={`space-y-4 pt-4 border-t border-${accentColor}-100`}>
               <h3 className="text-lg font-semibold text-[#1A202C] flex items-center gap-2">
-                <span className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm">2</span>
+                <span className={`w-8 h-8 bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm`}>2</span>
                 Building Details
               </h3>
 
@@ -324,7 +325,7 @@ export default function FullRentalCheckPage() {
                 />
 
                 {apartmentSearch && !formData.building && (
-                  <div className="absolute z-10 w-full mt-2 bg-white border-2 border-green-200 rounded-2xl shadow-xl shadow-green-900/10 max-h-64 overflow-y-auto">
+                  <div className={`absolute z-10 w-full mt-2 bg-white border-2 border-${accentColor}-200 rounded-2xl shadow-xl max-h-64 overflow-y-auto`}>
                     {filteredApartments.length > 0 ? (
                       <>
                         {filteredApartments.map((apt, index) => (
@@ -332,7 +333,7 @@ export default function FullRentalCheckPage() {
                             key={index}
                             type="button"
                             onClick={() => handleApartmentSelect(apt.name)}
-                            className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors border-b border-green-100 last:border-0"
+                            className={`w-full px-4 py-3 text-left hover:bg-${accentColor}-50 transition-colors border-b border-${accentColor}-100 last:border-0`}
                           >
                             <div className="font-semibold text-[#1A202C]">{apt.name}</div>
                             <div className="text-sm text-[#718096]">{apt.nameEn}</div>
@@ -341,18 +342,18 @@ export default function FullRentalCheckPage() {
                         <button
                           type="button"
                           onClick={() => handleApartmentSelect(apartmentSearch)}
-                          className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors border-t-2 border-green-200 bg-green-50/50"
+                          className={`w-full px-4 py-3 text-left hover:bg-${accentColor}-50 transition-colors border-t-2 border-${accentColor}-200 bg-${accentColor}-50/50`}
                         >
-                          <div className="font-semibold text-green-600">Use custom: "{apartmentSearch}"</div>
+                          <div className={`font-semibold text-${accentColor}-600`}>Use custom: "{apartmentSearch}"</div>
                         </button>
                       </>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleApartmentSelect(apartmentSearch)}
-                        className="w-full px-4 py-4 text-left hover:bg-green-50 transition-colors"
+                        className={`w-full px-4 py-4 text-left hover:bg-${accentColor}-50 transition-colors`}
                       >
-                        <div className="font-semibold text-green-600">Use "{apartmentSearch}"</div>
+                        <div className={`font-semibold text-${accentColor}-600`}>Use "{apartmentSearch}"</div>
                         <div className="text-sm text-[#718096]">No matches found</div>
                       </button>
                     )}
@@ -360,56 +361,60 @@ export default function FullRentalCheckPage() {
                 )}
               </div>
 
-              <Input
-                label="Exclusive Area (㎡) *"
-                type="number"
-                step="0.01"
-                placeholder="84.5"
-                value={formData.exclusiveArea}
-                onChange={(e) => setFormData({ ...formData, exclusiveArea: e.target.value })}
-                error={errors.exclusiveArea}
-                helperText="전용면적 - Check your contract or building register"
-              />
+              {isWolse && (
+                <Input
+                  label="Exclusive Area (㎡) *"
+                  type="number"
+                  step="0.01"
+                  placeholder="84.5"
+                  value={formData.exclusiveArea}
+                  onChange={(e) => setFormData({ ...formData, exclusiveArea: e.target.value })}
+                  error={errors.exclusiveArea}
+                  helperText="전용면적 - Check your contract or building register"
+                />
+              )}
             </div>
 
-            {/* Rent Quote Section */}
-            <div className="space-y-4 pt-4 border-t border-green-100">
+            {/* Rental Terms Section */}
+            <div className={`space-y-4 pt-4 border-t border-${accentColor}-100`}>
               <h3 className="text-lg font-semibold text-[#1A202C] flex items-center gap-2">
-                <span className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm">3</span>
-                Your Rental Quote
+                <span className={`w-8 h-8 bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm`}>3</span>
+                {isWolse ? 'Your Rental Quote' : 'Deposit Amount'}
               </h3>
 
               <div>
                 <Input
-                  label="Deposit (보증금) *"
-                  placeholder="50,000,000"
+                  label={isWolse ? "Deposit (보증금) *" : "Deposit Amount (KRW) *"}
+                  placeholder={isWolse ? "50,000,000" : "500,000,000"}
                   value={formatNumber(formData.deposit)}
                   onChange={(e) => setFormData({ ...formData, deposit: parseNumber(e.target.value) })}
                   error={errors.deposit}
-                  helperText="Enter in won (₩). This is analyzed for both deposit safety and rent calculation."
+                  helperText="Enter in Korean won (₩)"
                 />
                 {formData.deposit && formatKoreanAmount(formData.deposit) && (
-                  <p className="mt-1 text-sm text-green-600 font-medium">
+                  <p className={`mt-1 text-sm text-${accentColor}-600 font-medium`}>
                     = {formatKoreanAmount(formData.deposit)}
                   </p>
                 )}
               </div>
 
-              <div>
-                <Input
-                  label="Monthly Rent (월세) *"
-                  placeholder="1,500,000"
-                  value={formatNumber(formData.monthlyRent)}
-                  onChange={(e) => setFormData({ ...formData, monthlyRent: parseNumber(e.target.value) })}
-                  error={errors.monthlyRent}
-                  helperText="Enter in won (₩)"
-                />
-                {formData.monthlyRent && formatKoreanAmount(formData.monthlyRent) && (
-                  <p className="mt-1 text-sm text-green-600 font-medium">
-                    = {formatKoreanAmount(formData.monthlyRent)}/month
-                  </p>
-                )}
-              </div>
+              {isWolse && (
+                <div>
+                  <Input
+                    label="Monthly Rent (월세) *"
+                    placeholder="1,500,000"
+                    value={formatNumber(formData.monthlyRent)}
+                    onChange={(e) => setFormData({ ...formData, monthlyRent: parseNumber(e.target.value) })}
+                    error={errors.monthlyRent}
+                    helperText="Enter in Korean won (₩)"
+                  />
+                  {formData.monthlyRent && formatKoreanAmount(formData.monthlyRent) && (
+                    <p className={`mt-1 text-sm text-${accentColor}-600 font-medium`}>
+                      = {formatKoreanAmount(formData.monthlyRent)}/month
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Submit Button */}
@@ -417,7 +422,7 @@ export default function FullRentalCheckPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold text-lg rounded-2xl hover:shadow-xl hover:shadow-green-200/50 transition-all hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center justify-center gap-2"
+                className={`w-full px-8 py-4 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white font-semibold text-lg rounded-2xl hover:shadow-xl hover:shadow-${accentColor}-200/50 transition-all hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center justify-center gap-2`}
               >
                 {loading ? (
                   <>
@@ -437,40 +442,14 @@ export default function FullRentalCheckPage() {
           </form>
         </div>
 
-        {/* Info Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl p-6 border border-green-100 shadow-sm">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-[#2D3748] mb-2 text-lg">Deposit Safety Check</h3>
-            <p className="text-[#718096] text-sm leading-relaxed">
-              We'll analyze your 등기부등본 to check for hidden debts, liens, and risks to your deposit.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 border border-green-100 shadow-sm">
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-[#2D3748] mb-2 text-lg">Rent Price Check</h3>
-            <p className="text-[#718096] text-sm leading-relaxed">
-              We'll compare your rent to market rates and give you negotiation tips if overpriced.
-            </p>
-          </div>
-        </div>
-
-        {/* What's Next */}
-        <div className="mt-8 p-6 bg-green-50 rounded-2xl border border-green-100">
-          <h4 className="font-semibold text-[#1A202C] mb-3">What's next?</h4>
-          <div className="space-y-2 text-sm text-[#4A5568]">
-            <p><strong>Step 2:</strong> Upload your 등기부등본 (property register) PDF document</p>
-            <p><strong>Step 3:</strong> Receive your comprehensive report with deposit safety analysis AND rent price analysis</p>
-          </div>
+        {/* Price Info */}
+        <div className={`text-center p-4 bg-${accentColor}-50 rounded-2xl border border-${accentColor}-100`}>
+          <p className="text-[#4A5568]">
+            Full analysis for <span className={`font-bold text-${accentColor}-700`}>₩39,900</span>
+          </p>
+          <p className="text-sm text-[#718096] mt-1">
+            Includes risk analysis, market position, and action items
+          </p>
         </div>
       </div>
     </div>

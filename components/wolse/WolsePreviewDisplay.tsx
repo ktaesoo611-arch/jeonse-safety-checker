@@ -111,12 +111,12 @@ export function WolsePreviewDisplay({ result, onUnlock, isLoading }: WolsePrevie
         {/* Expected Rent - BLURRED */}
         <div className="bg-white rounded-3xl p-6 text-center shadow-xl shadow-amber-900/5 border border-amber-100 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-amber-50/80 pointer-events-none" />
-          <p className="text-sm text-[#718096] mb-2">Expected Rent (Market)</p>
+          <p className="text-sm text-[#718096] mb-2">Expected Rent</p>
           <p className="text-3xl font-bold text-amber-600">
             <BlurredValue hint="154만원" />
           </p>
           <p className="text-sm text-[#718096] mt-2">
-            at <BlurredValue hint="5.0" />% market rate
+            at your deposit level
           </p>
         </div>
 
@@ -139,7 +139,7 @@ export function WolsePreviewDisplay({ result, onUnlock, isLoading }: WolsePrevie
           <span>💰</span> Potential Savings
         </h3>
         <div className="flex items-center justify-between">
-          <p className="text-[#4A5568]">If negotiated to market rate:</p>
+          <p className="text-[#4A5568]">If negotiated to expected rent:</p>
           <p className="text-2xl font-bold text-amber-600">
             <BlurredValue hint="188만원" />/year
           </p>
@@ -148,13 +148,7 @@ export function WolsePreviewDisplay({ result, onUnlock, isLoading }: WolsePrevie
 
       {/* Data Quality - PARTIAL */}
       <div className="bg-white rounded-3xl p-6 shadow-xl shadow-amber-900/5 border border-amber-100">
-        <div className="grid md:grid-cols-3 gap-6 text-center">
-          <div>
-            <p className="text-sm text-[#718096] mb-1">Market Rate</p>
-            <p className="text-xl font-bold text-[#1A202C]">
-              <BlurredValue hint="5.02" />%
-            </p>
-          </div>
+        <div className="grid md:grid-cols-2 gap-6 text-center">
           <div>
             <p className="text-sm text-[#718096] mb-1">Data Quality</p>
             <p className="text-xl font-bold text-[#1A202C]">{result.confidenceLevel}</p>

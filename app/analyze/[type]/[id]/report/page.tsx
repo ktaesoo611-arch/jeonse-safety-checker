@@ -1,0 +1,264 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, notFound } from 'next/navigation';
+import Link from 'next/link';
+import {
+  ReportHero,
+  RiskAnalysisSection,
+  MarketPositionSection,
+  ActionItemsSection
+} from '@/components/report';
+
+export default function ReportPage() {
+  const params = useParams();
+  const type = params.type as string;
+  const analysisId = params.id as string;
+
+  if (type !== 'jeonse' && type !== 'wolse') {
+    notFound();
+  }
+
+  const isWolse = type === 'wolse';
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<any>(null);
+
+  useEffect(() => {
+    async function fetchReport() {
+      try {
+        const response = await fetch(`/api/analysis/report/${analysisId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch report');
+        }
+        const data = await response.json();
+        setReportData(data);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching report:', err);
+        setError('Failed to load report. Please try again.');
+        setIsLoading(false);
+      }
+    }
+
+    fetchReport();
+  }, [analysisId]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading Report</h2>
+          <p className="text-gray-600">Please wait...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Report</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link href="/dashboard" className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-semibold rounded-xl hover:bg-amber-600 transition-colors">
+            Go to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Transform API data to component props
+  // API structure: { property, riskAnalysis, recommendations, summary, ... }
+  const property = reportData?.property || {};
+  const riskAnalysis = reportData?.riskAnalysis || {};
+  const summary = reportData?.summary || {};
+  const valuation = property?.valuation || {};
+  const wolseAnalysis = reportData?.wolseAnalysis || {};
+  const jeonseAnalysis = reportData?.jeonseAnalysis || null;
+
+  const heroProps = {
+    address: property?.address || 'Address not available',
+    riskLevel: (riskAnalysis?.riskLevel || summary?.riskLevel || 'UNKNOWN') as 'SAFE' | 'MODERATE' | 'HIGH' | 'CRITICAL' | 'UNKNOWN',
+    safetyScore: riskAnalysis?.overallScore || summary?.safetyScore || 0,
+    deposit: property?.proposedJeonse || wolseAnalysis?.userDeposit || 0,
+    monthlyRent: isWolse ? wolseAnalysis?.userMonthlyRent : undefined,
+    estimatedValue: property?.estimatedValue || valuation?.valueMid || null,
+    verdict: riskAnalysis?.verdict || summary?.verdict || generateVerdict(reportData),
+    reportDate: new Date(reportData?.completedAt || reportData?.generatedAt || Date.now()).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }),
+    reportType: type as 'jeonse' | 'wolse',
+  };
+
+  const riskProps = {
+    scores: {
+      ltvScore: riskAnalysis?.scores?.ltvScore || 0,
+      debtScore: riskAnalysis?.scores?.debtScore || 0,
+      legalScore: riskAnalysis?.scores?.legalScore || 0,
+      marketScore: riskAnalysis?.scores?.marketScore || 0,
+      buildingScore: riskAnalysis?.scores?.buildingScore || 0,
+    },
+    metrics: {
+      ltv: riskAnalysis?.metrics?.ltv || 0,
+      totalDebt: riskAnalysis?.metrics?.totalDebt || 0,
+      availableEquity: riskAnalysis?.metrics?.availableEquity || 0,
+      debtCount: riskAnalysis?.metrics?.debtCount || 0,
+    },
+    debtRanking: riskAnalysis?.debtRanking || [],
+    smallAmountPriority: riskAnalysis?.smallAmountPriority || null,
+    risks: riskAnalysis?.risks || [],
+    proposedDeposit: property?.proposedJeonse || wolseAnalysis?.userDeposit || 0,
+    estimatedValue: property?.estimatedValue || valuation?.valueMid || null,
+    reportType: type as 'jeonse' | 'wolse',
+  };
+
+  const marketProps = {
+    reportType: type as 'jeonse' | 'wolse',
+    jeonseData: !isWolse ? {
+      marketTrend: valuation?.marketTrend || 'stable',
+      confidence: valuation?.confidence || null,
+      valueLow: valuation?.valueLow || null,
+      valueMid: valuation?.valueMid || null,
+      valueHigh: valuation?.valueHigh || null,
+      proposedJeonse: property?.proposedJeonse || 0,
+      estimatedValue: property?.estimatedValue || valuation?.valueMid || null,
+      // New jeonse analysis data
+      expectedJeonse: jeonseAnalysis?.expectedJeonse || null,
+      jeonseDifference: jeonseAnalysis?.jeonseDifference || null,
+      jeonseDifferencePercent: jeonseAnalysis?.jeonseDifferencePercent || null,
+      assessment: jeonseAnalysis?.assessment || null,
+      assessmentDetails: jeonseAnalysis?.assessmentDetails || null,
+      potentialSavings: jeonseAnalysis?.potentialSavings || 0,
+      trend: jeonseAnalysis?.trend || null,
+      transactionData: jeonseAnalysis?.transactionData || [],
+      regressionLine: jeonseAnalysis?.regressionLine || null,
+      contractCount: jeonseAnalysis?.contractCount || 0,
+    } : undefined,
+    wolseData: isWolse ? {
+      userDeposit: wolseAnalysis?.userDeposit || 0,
+      userMonthlyRent: wolseAnalysis?.userMonthlyRent || 0,
+      userRate: wolseAnalysis?.userRate || 0,
+      marketRate: wolseAnalysis?.marketRate || 0,
+      marketRateRange: wolseAnalysis?.marketRateRange || { low: 0, high: 0 },
+      legalRate: wolseAnalysis?.legalRate || 4.5,
+      expectedRent: wolseAnalysis?.expectedRent || 0,
+      rentDifference: wolseAnalysis?.rentDifference || 0,
+      rentDifferencePercent: wolseAnalysis?.rentDifferencePercent || 0,
+      assessment: wolseAnalysis?.assessment || 'FAIR',
+      assessmentDetails: wolseAnalysis?.assessmentDetails,
+      contractCount: wolseAnalysis?.contractCount || 0,
+      confidenceLevel: wolseAnalysis?.confidenceLevel,
+      savingsPotential: wolseAnalysis?.savingsPotential || { vsMarket: 0, vsLegal: 0 },
+      trend: wolseAnalysis?.trend,
+      recentTransactions: wolseAnalysis?.recentTransactions,
+    } : undefined,
+  };
+
+  const actionProps = {
+    reportType: type as 'jeonse' | 'wolse',
+    recommendations: reportData?.recommendations || {
+      mandatory: [],
+      recommended: [],
+      optional: [],
+    },
+    negotiationOptions: isWolse ? wolseAnalysis?.negotiationOptions : undefined,
+    rentDifference: isWolse ? wolseAnalysis?.rentDifference : undefined,
+    marketRate: isWolse ? wolseAnalysis?.marketRate : undefined,
+    userRate: isWolse ? wolseAnalysis?.userRate : undefined,
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FDFBF7]">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-[#FDFBF7]/80 backdrop-blur-md border-b border-amber-100 print:hidden">
+        <div className="container mx-auto px-6 py-4 max-w-7xl flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <div className={`w-10 h-10 bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-600' : 'from-amber-500 to-orange-600'} rounded-xl flex items-center justify-center shadow-lg`}>
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <span className="text-xl font-semibold text-[#2D3748]">K-Rent Safety</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print
+            </button>
+            <Link
+              href="/dashboard"
+              className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white rounded-xl hover:shadow-lg transition-all font-medium`}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              Dashboard
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Report Content */}
+      <div className="container mx-auto px-6 py-8 max-w-4xl">
+        <ReportHero {...heroProps} />
+        <RiskAnalysisSection {...riskProps} />
+        <MarketPositionSection {...marketProps} />
+        <ActionItemsSection {...actionProps} />
+
+        {/* New Analysis Button */}
+        <div className="mt-12 flex justify-center print:hidden">
+          <Link
+            href={`/analyze/${type}`}
+            className={`flex items-center gap-3 px-8 py-4 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white rounded-2xl hover:shadow-xl hover:scale-105 transition-all font-semibold text-lg`}
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New {isWolse ? 'Wolse' : 'Jeonse'} Analysis
+          </Link>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-12 pt-8 border-t border-gray-200 text-center text-sm text-gray-500 print:mt-8">
+          <p>Report generated by K-Rent Safety</p>
+          <p className="mt-1">This report is for informational purposes only and does not constitute legal or financial advice.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Helper function to generate verdict based on risk level
+function generateVerdict(data: any): string {
+  const riskLevel = data?.riskAnalysis?.riskLevel || data?.summary?.riskLevel || 'MODERATE';
+  const safetyScore = data?.riskAnalysis?.overallScore || data?.summary?.safetyScore || 50;
+
+  switch (riskLevel) {
+    case 'SAFE':
+      return `Your deposit safety analysis shows a score of ${safetyScore}/100, indicating low risk. The property appears to have adequate equity and no significant legal issues. You may proceed with caution while following our recommended actions.`;
+    case 'MODERATE':
+      return `Your deposit safety analysis shows a score of ${safetyScore}/100, indicating moderate risk. There are some factors to consider before proceeding. Review the detailed breakdown below for specific concerns and recommendations.`;
+    case 'HIGH':
+      return `Your deposit safety analysis shows a score of ${safetyScore}/100, indicating elevated risk. We recommend carefully reviewing the risk factors below and considering alternatives before proceeding with this property.`;
+    case 'CRITICAL':
+      return `Your deposit safety analysis shows a score of ${safetyScore}/100, indicating critical risk. We strongly recommend reconsidering this property due to significant safety concerns identified in the analysis.`;
+    default:
+      return `Your deposit safety analysis is complete. Review the detailed breakdown below for a comprehensive understanding of your rental situation.`;
+  }
+}

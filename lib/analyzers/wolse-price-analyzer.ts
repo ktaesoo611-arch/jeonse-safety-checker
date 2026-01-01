@@ -7,6 +7,14 @@ import {
 } from '../types';
 
 /**
+ * BOK Rate and Conversion Rate Constants
+ * Legal conversion rate = min(10%, BOK base rate + 2%)
+ * Current BOK rate: 2.5% (as of Dec 2024)
+ */
+const CURRENT_BOK_RATE = 2.5;
+const CURRENT_CONVERSION_RATE = Math.min(10, CURRENT_BOK_RATE + 2) / 100; // 4.5% as decimal
+
+/**
  * Result of user rent comparison against market expectation
  */
 interface UserRentComparison {
@@ -18,6 +26,58 @@ interface UserRentComparison {
   meanRent: number;            // Mean rent from clean transactions
   cleanTransactionCount: number; // Number of transactions after outlier removal
   outliersRemoved: number;     // Number of outliers removed
+  // Jeonse-centric data
+  impliedJeonseToday: number;  // Regression-derived jeonse price at today
+  userImpliedJeonse: number;   // User's implied jeonse from their quote
+  jeonseSlope: number;         // Jeonse trend slope (원/month)
+}
+
+/**
+ * Calculate implied jeonse from a wolse transaction
+ * jeonse = deposit + rent × 12 / rate
+ *
+ * Uses CURRENT rate for all transactions to avoid rate-change noise
+ */
+function getImpliedJeonse(deposit: number, rent: number): number {
+  return deposit + rent * 12 / CURRENT_CONVERSION_RATE;
+}
+
+/**
+ * Theil-Sen Regression for time trend
+ * Returns slope (원/day) and intercept (value at daysAgo=0, i.e., today)
+ */
+function theilSenTimeRegression(data: { daysAgo: number; value: number }[]): {
+  slope: number;
+  intercept: number;
+} {
+  const n = data.length;
+  if (n < 2) return { slope: 0, intercept: data[0]?.value || 0 };
+
+  // Calculate all pairwise slopes
+  const slopes: number[] = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const dx = data[i].daysAgo - data[j].daysAgo; // older - newer
+      if (Math.abs(dx) > 7) { // At least 1 week difference
+        const dy = data[i].value - data[j].value;
+        slopes.push(dy / dx);
+      }
+    }
+  }
+
+  if (slopes.length === 0) {
+    return { slope: 0, intercept: data.reduce((s, d) => s + d.value, 0) / n };
+  }
+
+  slopes.sort((a, b) => a - b);
+  const slope = slopes[Math.floor(slopes.length / 2)];
+
+  // Intercept at daysAgo = 0 (today)
+  const intercepts = data.map(d => d.value - slope * d.daysAgo);
+  intercepts.sort((a, b) => a - b);
+  const intercept = intercepts[Math.floor(intercepts.length / 2)];
+
+  return { slope, intercept };
 }
 
 /**
@@ -134,8 +194,41 @@ export class WolsePriceAnalyzer {
       marketData.marketRate
     );
 
-    // Step 6: Generate trend advice
-    const trendAdvice = this.generateTrendAdvice(marketData.trend);
+    // Step 6: Calculate trend from jeonse slope (jeonseSlope is 원/month)
+    // Slope sign convention in our regression:
+    //   - Negative slope = as daysAgo decreases (moving to today), value INCREASES = RISING
+    //   - Positive slope = as daysAgo decreases (moving to today), value DECREASES = DECLINING
+    // So we negate the slope to get intuitive direction (positive = rising)
+    const jeonseSlope = rentComparison.jeonseSlope; // 원/month
+
+    // Calculate percentage change over 12 months relative to jeonse 12 months ago
+    // jeonse_12mo_ago = intercept + slope * 12 (since slope is per month, and daysAgo=~365 days)
+    const jeonse12MonthsAgo = rentComparison.impliedJeonseToday + jeonseSlope * 12;
+    const jeonseTrendPercentage = jeonse12MonthsAgo > 0
+      ? ((rentComparison.impliedJeonseToday - jeonse12MonthsAgo) / jeonse12MonthsAgo) * 100
+      : 0;
+
+    // Determine trend direction based on percentage change
+    // Positive percentage = prices rising, Negative = declining
+    let trendDirection: 'RISING' | 'LIKELY_RISING' | 'STABLE' | 'LIKELY_DECLINING' | 'DECLINING';
+    if (jeonseTrendPercentage > 5) {
+      trendDirection = 'RISING';
+    } else if (jeonseTrendPercentage > 2) {
+      trendDirection = 'LIKELY_RISING';
+    } else if (jeonseTrendPercentage < -5) {
+      trendDirection = 'DECLINING';
+    } else if (jeonseTrendPercentage < -2) {
+      trendDirection = 'LIKELY_DECLINING';
+    } else {
+      trendDirection = 'STABLE';
+    }
+
+    const jeonseTrend = {
+      direction: trendDirection,
+      percentage: Math.abs(jeonseTrendPercentage),
+    };
+
+    const trendAdvice = this.generateTrendAdvice(jeonseTrend);
 
     // Step 7: Generate negotiation options
     const negotiationOptions = this.generateNegotiationOptionsFromComparison(
@@ -156,6 +249,10 @@ export class WolsePriceAnalyzer {
       expectedRent: rentComparison.expectedRent,
       rentDifference: rentComparison.rentDifference,
       rentDifferencePercent: rentComparison.rentDifferencePercent,
+      // Jeonse-centric data
+      impliedJeonseToday: rentComparison.impliedJeonseToday,
+      userImpliedJeonse: rentComparison.userImpliedJeonse,
+      jeonseSlope: rentComparison.jeonseSlope,
       marketRate: marketData.marketRate,
       marketRateRange: {
         low: marketData.rate25thPercentile,
@@ -172,37 +269,38 @@ export class WolsePriceAnalyzer {
       assessmentDetails: assessment.details,
       savingsPotential,
       trend: {
-        direction: marketData.trend.direction,
-        percentage: marketData.trend.percentage,
+        direction: jeonseTrend.direction,
+        percentage: jeonseTrend.percentage,
         advice: trendAdvice
       },
       negotiationOptions,
-      recentTransactions: marketData.transactions.slice(0, 10),
+      recentTransactions: marketData.transactions, // Include all transactions for 12-month chart
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
     };
 
     console.log('\n✅ Analysis Complete:');
-    console.log(`   User Rent: ${(quote.monthlyRent / 10000).toLocaleString()}만원`);
-    console.log(`   Expected Rent: ${(rentComparison.expectedRent / 10000).toLocaleString()}만원`);
-    console.log(`   Difference: ${rentComparison.rentDifference >= 0 ? '+' : ''}${(rentComparison.rentDifference / 10000).toLocaleString()}만원`);
-    console.log(`   Market Rate: ${marketData.marketRate.toFixed(2)}%`);
+    console.log(`   Today's Jeonse: ${(rentComparison.impliedJeonseToday / 100000000).toFixed(2)}억`);
+    console.log(`   User's Jeonse: ${(rentComparison.userImpliedJeonse / 100000000).toFixed(2)}억`);
+    console.log(`   Expected Rent: ${(rentComparison.expectedRent / 10000).toFixed(1)}만원`);
+    console.log(`   User's Rent: ${(quote.monthlyRent / 10000).toFixed(1)}만원`);
+    console.log(`   Difference: ${rentComparison.rentDifference >= 0 ? '+' : ''}${(rentComparison.rentDifference / 10000).toFixed(1)}만원 (${rentComparison.rentDifferencePercent >= 0 ? '+' : ''}${rentComparison.rentDifferencePercent.toFixed(1)}%)`);
+    console.log(`   Trend: ${jeonseTrend.direction} (${jeonseTrend.percentage.toFixed(1)}% annually)`);
     console.log(`   Assessment: ${assessment.level}`);
 
     return result;
   }
 
   /**
-   * Compare user's rent against market expectation using linear regression
+   * Compare user's rent against market expectation using Jeonse-Centric approach
    *
-   * Methodology (Option B: Raw Regression + Mann-Kendall Adjustment):
+   * Methodology:
    * 1. Remove outliers from transactions
-   * 2. Fit Theil-Sen median regression using RAW rents (no time adjustment)
-   *    - This gives "midpoint" expected rent (represents ~6 months ago)
-   * 3. Apply Mann-Kendall trend adjustment to bring to "today"
-   *    - If trend is RISING/DECLINING, add (slopePerMonth × 6)
-   *    - If trend is STABLE, no adjustment
-   * 4. Compare user's actual rent vs expected rent
+   * 2. Calculate implied jeonse for each transaction: jeonse = deposit + rent × 12 / rate
+   *    - Uses CURRENT rate (BOK + 2%) for all transactions to avoid rate-change noise
+   * 3. Regress jeonse over time using Theil-Sen to find today's expected jeonse
+   * 4. Calculate expected rent: (jeonseToday - userDeposit) × currentRate / 12
+   * 5. Compare user's actual rent vs expected rent
    */
   private compareUserRentToMarket(
     quote: WolseQuote,
@@ -212,12 +310,17 @@ export class WolsePriceAnalyzer {
     timeAdjustedTransactions?: TimeAdjustedTransaction[],
     trend?: { direction: 'RISING' | 'LIKELY_RISING' | 'STABLE' | 'LIKELY_DECLINING' | 'DECLINING'; slopePerMonth: number; pValue: number }
   ): UserRentComparison {
+    const now = new Date();
+
     console.log('\n' + '='.repeat(60));
-    console.log('📊 COMPARING USER RENT TO MARKET EXPECTATION');
+    console.log('📊 JEONSE-CENTRIC MARKET COMPARISON');
     console.log('='.repeat(60));
     console.log(`   User Quote: ${(quote.deposit / 10000).toLocaleString()}만원 보증금 / ${(quote.monthlyRent / 10000).toLocaleString()}만원 월세`);
-    console.log(`   Market Rate: ${marketRate.toFixed(2)}%`);
+    console.log(`   Conversion Rate: ${(CURRENT_CONVERSION_RATE * 100).toFixed(1)}% (BOK ${CURRENT_BOK_RATE}% + 2%)`);
     console.log(`   Transactions available: ${transactions.length}`);
+
+    // User's implied jeonse from their quote
+    const userImpliedJeonse = getImpliedJeonse(quote.deposit, quote.monthlyRent);
 
     // Default result for insufficient data
     const defaultResult: UserRentComparison = {
@@ -228,7 +331,10 @@ export class WolsePriceAnalyzer {
       meanDeposit: quote.deposit,
       meanRent: quote.monthlyRent,
       cleanTransactionCount: 0,
-      outliersRemoved: 0
+      outliersRemoved: 0,
+      impliedJeonseToday: userImpliedJeonse,
+      userImpliedJeonse,
+      jeonseSlope: 0
     };
 
     if (transactions.length === 0) {
@@ -251,19 +357,24 @@ export class WolsePriceAnalyzer {
     }
 
     if (clean.length < 3) {
-      console.log('   ⚠️ Not enough clean transactions - using all data with simple average');
-      const allMeanRent = transactions.reduce((sum, t) => sum + t.monthlyRent, 0) / transactions.length;
-      const rentDiff = quote.monthlyRent - allMeanRent;
+      console.log('   ⚠️ Not enough clean transactions - using simple average');
+      const allMeanJeonse = transactions.reduce((sum, t) =>
+        sum + getImpliedJeonse(t.deposit, t.monthlyRent), 0) / transactions.length;
+      const expectedRent = (allMeanJeonse - quote.deposit) * CURRENT_CONVERSION_RATE / 12;
+      const rentDiff = quote.monthlyRent - expectedRent;
 
       return {
-        expectedRent: Math.round(allMeanRent),
+        expectedRent: Math.round(expectedRent),
         actualRent: quote.monthlyRent,
         rentDifference: Math.round(rentDiff),
-        rentDifferencePercent: allMeanRent > 0 ? (rentDiff / allMeanRent) * 100 : 0,
+        rentDifferencePercent: expectedRent > 0 ? (rentDiff / expectedRent) * 100 : 0,
         meanDeposit: transactions.reduce((sum, t) => sum + t.deposit, 0) / transactions.length,
-        meanRent: allMeanRent,
+        meanRent: transactions.reduce((sum, t) => sum + t.monthlyRent, 0) / transactions.length,
         cleanTransactionCount: transactions.length,
-        outliersRemoved: 0
+        outliersRemoved: 0,
+        impliedJeonseToday: allMeanJeonse,
+        userImpliedJeonse,
+        jeonseSlope: 0
       };
     }
 
@@ -271,129 +382,87 @@ export class WolsePriceAnalyzer {
     const meanDeposit = clean.reduce((sum, t) => sum + t.deposit, 0) / clean.length;
     const meanRent = clean.reduce((sum, t) => sum + t.monthlyRent, 0) / clean.length;
 
-    // Option B: Use RAW rents for regression (no time adjustment)
-    // Time adjustment is applied after regression via Mann-Kendall slope
+    // Step 3: Calculate implied jeonse for each transaction
+    console.log(`\n   📐 STEP 1: CALCULATE IMPLIED JEONSE`);
+    console.log('   ' + '-'.repeat(50));
+    console.log(`   Formula: jeonse = deposit + rent × 12 / ${(CURRENT_CONVERSION_RATE * 100).toFixed(1)}%`);
+    console.log('   ' + '-'.repeat(50));
 
-    // Log clean transactions for reference
-    console.log(`\n   📋 CLEAN TRANSACTIONS (sorted by deposit) [RAW - Option B]:`);
-    const sortedClean = [...clean].sort((a, b) => a.deposit - b.deposit);
+    const jeonseData: { daysAgo: number; value: number; dateStr: string }[] = [];
 
-    sortedClean.forEach((t, idx) => {
-      console.log(`      ${idx + 1}. ${t.year}.${t.month}.${t.day} | ${(t.deposit / 10000).toLocaleString()}만원 / ${(t.monthlyRent / 10000).toLocaleString()}만원`);
-    });
+    for (const t of clean) {
+      const txDate = new Date(t.year, t.month - 1, t.day);
+      const daysAgo = Math.floor((now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24));
+      const impliedJeonse = getImpliedJeonse(t.deposit, t.monthlyRent);
 
-    // Step 3: Theil-Sen median regression on RAW rents (Option B)
-    // 1. Calculate slopes between all pairs of points
-    // 2. Take median of all slopes
-    // 3. Calculate intercept using median
-    // 4. This gives "midpoint" expected rent (represents ~6 months ago)
-    const n = clean.length;
-    let midpointExpectedRent: number;
-    let slope = 0;
-    let intercept = 0;
-
-    if (n < 2) {
-      console.log('\n   ⚠️ Not enough points for regression - using mean rent');
-      midpointExpectedRent = meanRent;
-    } else {
-      // Calculate all pairwise slopes using RAW rents
-      const slopes: number[] = [];
-      for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-          const dx = clean[j].deposit - clean[i].deposit;
-          if (Math.abs(dx) > 1000000) { // At least 100만원 difference
-            const dy = clean[j].monthlyRent - clean[i].monthlyRent;
-            slopes.push(dy / dx);
-          }
-        }
-      }
-
-      if (slopes.length === 0) {
-        console.log('\n   ⚠️ Cannot calculate slopes - using mean rent');
-        midpointExpectedRent = meanRent;
-      } else {
-        // Median slope
-        slopes.sort((a, b) => a - b);
-        slope = slopes[Math.floor(slopes.length / 2)];
-
-        // Calculate intercepts for all points and take median (using RAW rents)
-        const intercepts = clean.map(t => t.monthlyRent - slope * t.deposit);
-        intercepts.sort((a, b) => a - b);
-        intercept = intercepts[Math.floor(intercepts.length / 2)];
-
-        midpointExpectedRent = intercept + slope * quote.deposit;
-
-        // Calculate R-squared for reference
-        const yMean = clean.reduce((sum, t) => sum + t.monthlyRent, 0) / n;
-        const ssTotal = clean.reduce((sum, t) => sum + Math.pow(t.monthlyRent - yMean, 2), 0);
-        const ssResidual = clean.reduce((sum, t) => {
-          const predicted = intercept + slope * t.deposit;
-          return sum + Math.pow(t.monthlyRent - predicted, 2);
-        }, 0);
-        const rSquared = ssTotal > 0 ? Math.max(0, 1 - ssResidual / ssTotal) : 0;
-
-        // Slope in 만원 per 1억 deposit: slope (원/원) × 1억 / 1만 = slope × 10000
-        const slopePerEok = slope * 10000;
-
-        console.log(`\n   📐 STEP 1: RAW REGRESSION (Theil-Sen, Option B):`);
-        console.log('   ' + '-'.repeat(50));
-        console.log(`      Pairwise slopes calculated: ${slopes.length}`);
-        console.log(`      Formula: Rent = ${(intercept / 10000).toFixed(2)}만원 + (${slopePerEok.toFixed(2)}만원/1억) × Deposit`);
-        console.log(`      Slope: ${slopePerEok.toFixed(2)}만원 per 1억 deposit`);
-        console.log(`      Intercept: ${(intercept / 10000).toFixed(2)}만원 (rent at 0 deposit)`);
-        console.log(`      R²: ${(rSquared * 100).toFixed(1)}% (goodness of fit)`);
-        console.log('   ' + '-'.repeat(50));
-        console.log(`      At user's deposit (${(quote.deposit / 10000).toLocaleString()}만원):`);
-        console.log(`      Midpoint Rent = ${(intercept / 10000).toFixed(2)} + (${slopePerEok.toFixed(2)} × ${(quote.deposit / 100000000).toFixed(2)})`);
-        console.log(`                    = ${(midpointExpectedRent / 10000).toFixed(2)}만원 (represents ~6 months ago)`);
-        console.log('   ' + '-'.repeat(50));
-
-        // Sanity check: if expected rent is negative, fall back
-        if (midpointExpectedRent < 0) {
-          console.log('   ⚠️ Regression produced negative rent - using mean rent');
-          midpointExpectedRent = meanRent;
-        }
-      }
+      jeonseData.push({
+        daysAgo,
+        value: impliedJeonse,
+        dateStr: `${t.year}-${String(t.month).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`
+      });
     }
 
-    // Step 4: Apply Mann-Kendall trend adjustment (Option B)
-    // Bring midpoint expected rent to "today" by adding trend slope × 6 months
-    const MONTHS_FORWARD = 6; // Midpoint to today
-    let expectedRent = midpointExpectedRent;
-    let trendAdjustment = 0;
+    // Sort by date (newest first) and log
+    jeonseData.sort((a, b) => a.daysAgo - b.daysAgo);
 
-    if (trend && trend.direction !== 'STABLE') {
-      // slopePerMonth is in 만원/month, convert to 원
-      trendAdjustment = trend.slopePerMonth * MONTHS_FORWARD * 10000;
-      expectedRent = midpointExpectedRent + trendAdjustment;
-
-      console.log(`\n   📈 STEP 2: MANN-KENDALL TREND ADJUSTMENT:`);
-      console.log('   ' + '-'.repeat(50));
-      console.log(`      Trend: ${trend.direction} (p=${trend.pValue.toFixed(4)})`);
-      console.log(`      Slope: ${trend.slopePerMonth.toFixed(2)}만원/month`);
-      console.log(`      Adjustment: ${trend.slopePerMonth.toFixed(2)} × ${MONTHS_FORWARD} months = ${(trendAdjustment / 10000).toFixed(1)}만원`);
-      console.log(`      Expected Rent (today) = ${(midpointExpectedRent / 10000).toFixed(1)} + ${(trendAdjustment / 10000).toFixed(1)} = ${(expectedRent / 10000).toFixed(1)}만원`);
-      console.log('   ' + '-'.repeat(50));
-    } else {
-      console.log(`\n   📈 STEP 2: TREND ADJUSTMENT: None (trend is STABLE)`);
-      console.log(`      Expected Rent = ${(expectedRent / 10000).toFixed(1)}만원`);
+    console.log('\n   | Date       | Deposit   | Rent    | Implied Jeonse |');
+    console.log('   |------------|-----------|---------|----------------|');
+    for (let i = 0; i < Math.min(jeonseData.length, 8); i++) {
+      const d = jeonseData[i];
+      const t = clean.find(tx =>
+        `${tx.year}-${String(tx.month).padStart(2, '0')}-${String(tx.day).padStart(2, '0')}` === d.dateStr
+      );
+      if (t) {
+        console.log(`   | ${d.dateStr} | ${(t.deposit / 10000).toFixed(0).padStart(7)}만 | ${(t.monthlyRent / 10000).toFixed(0).padStart(5)}만 | ${(d.value / 100000000).toFixed(2).padStart(12)}억 |`);
+      }
+    }
+    if (jeonseData.length > 8) {
+      console.log(`   | ... ${jeonseData.length - 8} more transactions ...`);
     }
 
-    // Step 4: Compare user's actual rent vs expected rent
+    // Step 4: Regress jeonse over time (Theil-Sen)
+    console.log(`\n   📈 STEP 2: REGRESS JEONSE OVER TIME (Theil-Sen)`);
+    console.log('   ' + '-'.repeat(50));
+
+    const { slope: jeonseSlope, intercept: jeonseToday } = theilSenTimeRegression(jeonseData);
+    const slopePerMonth = jeonseSlope * 30;
+
+    console.log(`      Data points: ${jeonseData.length}`);
+    console.log(`      Slope: ${(slopePerMonth / 100000000).toFixed(4)}억/month`);
+    console.log(`      Intercept (today's jeonse): ${(jeonseToday / 100000000).toFixed(2)}억`);
+    console.log('   ' + '-'.repeat(50));
+
+    // Step 5: Calculate expected rent
+    console.log(`\n   💰 STEP 3: CALCULATE EXPECTED RENT`);
+    console.log('   ' + '-'.repeat(50));
+    console.log(`   Formula: expectedRent = (jeonse_today - userDeposit) × rate / 12`);
+
+    const expectedRent = (jeonseToday - quote.deposit) * CURRENT_CONVERSION_RATE / 12;
+
+    console.log(`\n      expectedRent = (${(jeonseToday / 100000000).toFixed(2)}억 - ${(quote.deposit / 100000000).toFixed(1)}억) × ${(CURRENT_CONVERSION_RATE * 100).toFixed(1)}% / 12`);
+    console.log(`                   = ${((jeonseToday - quote.deposit) / 100000000).toFixed(2)}억 × ${(CURRENT_CONVERSION_RATE * 100).toFixed(1)}% / 12`);
+    console.log(`                   = ${(expectedRent / 10000).toFixed(1)}만원`);
+    console.log('   ' + '-'.repeat(50));
+
+    // Step 6: Compare user's actual rent vs expected rent
     const rentDifference = quote.monthlyRent - expectedRent;
     const rentDifferencePercent = expectedRent > 0 ? (rentDifference / expectedRent) * 100 : 0;
 
     console.log(`\n   📊 COMPARISON RESULT:`);
     console.log('   ' + '='.repeat(50));
-    console.log(`      User's Rent: ${(quote.monthlyRent / 10000).toLocaleString()}만원`);
-    console.log(`      Expected Rent: ${(expectedRent / 10000).toLocaleString()}만원`);
-    console.log(`      Difference: ${rentDifference >= 0 ? '+' : ''}${(rentDifference / 10000).toLocaleString()}만원 (${rentDifferencePercent >= 0 ? '+' : ''}${rentDifferencePercent.toFixed(1)}%)`);
+    console.log(`      Today's Jeonse:  ${(jeonseToday / 100000000).toFixed(2)}억`);
+    console.log(`      User's Deposit:  ${(quote.deposit / 100000000).toFixed(1)}억`);
+    console.log(`      User's Jeonse:   ${(userImpliedJeonse / 100000000).toFixed(2)}억 (from quote)`);
+    console.log('   ' + '-'.repeat(50));
+    console.log(`      Expected Rent:   ${(expectedRent / 10000).toFixed(1)}만원`);
+    console.log(`      User's Rent:     ${(quote.monthlyRent / 10000).toFixed(1)}만원`);
+    console.log(`      Difference:      ${rentDifference >= 0 ? '+' : ''}${(rentDifference / 10000).toFixed(1)}만원 (${rentDifferencePercent >= 0 ? '+' : ''}${rentDifferencePercent.toFixed(1)}%)`);
     console.log('   ' + '='.repeat(50));
 
     if (rentDifference > 0) {
-      console.log(`      ⚠️ User paying ${(rentDifference / 10000).toLocaleString()}만원 MORE than market expectation`);
+      console.log(`      ⚠️ User paying ${(rentDifference / 10000).toFixed(1)}만원 MORE than market expectation`);
     } else if (rentDifference < 0) {
-      console.log(`      ✅ User paying ${(Math.abs(rentDifference) / 10000).toLocaleString()}만원 LESS than market expectation`);
+      console.log(`      ✅ User paying ${(Math.abs(rentDifference) / 10000).toFixed(1)}만원 LESS than market expectation`);
     } else {
       console.log(`      ✅ User paying exactly at market expectation`);
     }
@@ -406,7 +475,10 @@ export class WolsePriceAnalyzer {
       meanDeposit,
       meanRent,
       cleanTransactionCount: clean.length,
-      outliersRemoved: removed.length
+      outliersRemoved: removed.length,
+      impliedJeonseToday: jeonseToday,
+      userImpliedJeonse,
+      jeonseSlope: slopePerMonth
     };
   }
 
@@ -457,7 +529,7 @@ export class WolsePriceAnalyzer {
     if (rentDifferencePercent <= -10 || rentDifference <= -MIN_GOOD_DEAL_SAVINGS) {
       return {
         level: 'GOOD_DEAL',
-        details: `Great find! You're paying ${formatWon(Math.abs(rentDifference))}/month less than the market expectation of ${formatWon(expectedRent)}. Consider locking in this rate with a longer lease and negotiating other terms like repairs or appliances.`
+        details: `You're paying ${formatWon(Math.abs(rentDifference))}/month less than the market expectation of ${formatWon(expectedRent)}. However, prices below market often have reasons - verify the property condition, check the landlord's financial status via 등기부등본, and review contract terms carefully before signing.`
       };
     }
 
@@ -609,21 +681,21 @@ export class WolsePriceAnalyzer {
       return options;
     }
 
-    // Option A: Market Rate (negotiate down to expected rent)
+    // Option A: Expected Rent (negotiate down to expected rent)
     if (rentDifference > 0) {
       options.push({
-        name: 'Market Rate',
+        name: 'Expected Rent',
         rate: marketRate,
         deposit: quote.deposit,
         monthlyRent: expectedRent,
         monthlySavings: rentDifference,
         yearlySavings: rentDifference * 12,
-        script: `Based on ${marketData.contractCount} recent contracts in this building, the market rate is ${marketRate.toFixed(1)}%. At my deposit of ${formatWon(quote.deposit)}, the expected rent is ${formatWon(expectedRent)}. I'd like to adjust to this market rate.`,
+        script: `Based on ${marketData.contractCount} recent contracts in this building, the expected rent at my deposit of ${formatWon(quote.deposit)} is ${formatWon(expectedRent)}. I'd like to adjust to this expected rent level.`,
         recommended: true
       });
     }
 
-    // Option B: Slight discount (5% below market)
+    // Option B: Slight discount (5% below expected)
     const discountedRent = Math.round(expectedRent * 0.95);
     const discountSavings = quote.monthlyRent - discountedRent;
     if (discountSavings > rentDifference) {
@@ -634,7 +706,7 @@ export class WolsePriceAnalyzer {
         monthlyRent: discountedRent,
         monthlySavings: discountSavings,
         yearlySavings: discountSavings * 12,
-        script: `I've researched recent transactions and the market average is ${formatWon(expectedRent)}. Given current market conditions, I'm hoping for ${formatWon(discountedRent)} - a modest 5% discount. I'm a reliable tenant and ready to sign immediately.`
+        script: `I've researched recent transactions and the expected rent is ${formatWon(expectedRent)}. Given current market conditions, I'm hoping for ${formatWon(discountedRent)} - a modest 5% discount. I'm a reliable tenant and ready to sign immediately.`
       });
     }
 
@@ -650,7 +722,7 @@ export class WolsePriceAnalyzer {
           monthlyRent: aggressiveRent,
           monthlySavings: aggressiveSavings,
           yearlySavings: aggressiveSavings * 12,
-          script: `Market rents have declined ${trend.percentage.toFixed(0)}% over the past 6 months. Given this trend, I'm proposing ${formatWon(aggressiveRent)} - 10% below current market. I'm flexible on move-in date if this works for you.`
+          script: `Rents have declined ${trend.percentage.toFixed(0)}% over the past 6 months. Given this trend, I'm proposing ${formatWon(aggressiveRent)} - 10% below expected rent. I'm flexible on move-in date if this works for you.`
         });
       }
     }

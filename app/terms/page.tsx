@@ -39,19 +39,31 @@ export default function TermsPage() {
             </h2>
             <div className="prose prose-gray max-w-none">
               <p className="text-gray-700 leading-relaxed mb-4">
-                K-Rent Safety provides digital property analysis reports for Korean real estate, specifically designed for foreigners. Our service includes:
+                K-Rent Safety provides digital property analysis reports for Korean real estate, specifically designed for foreigners. We offer two services:
               </p>
-              <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-                <li>English translation of Korean property registers (등기부등본)</li>
-                <li>Automated risk analysis covering 20+ safety factors</li>
-                <li>Property valuation based on government transaction data</li>
-                <li>Comprehensive safety score and actionable recommendations</li>
-                <li>Downloadable PDF report delivered instantly</li>
-              </ul>
+              <div className="mb-4">
+                <p className="text-gray-700 font-semibold mb-2">Jeonse Check (전세 체크):</p>
+                <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4 mb-3">
+                  <li>20+ deposit risk factor analysis</li>
+                  <li>Expected jeonse price from market data</li>
+                  <li>Price trend analysis with advice</li>
+                  <li>Transaction scatter plot visualization</li>
+                </ul>
+                <p className="text-gray-700 font-semibold mb-2">Wolse Check (월세 체크):</p>
+                <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4 mb-3">
+                  <li>20+ deposit risk factor analysis</li>
+                  <li>Expected rent from market data</li>
+                  <li>Price trend with negotiation advice</li>
+                  <li>Negotiation scripts included</li>
+                </ul>
+              </div>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                Both services include English translation of Korean property registers (등기부등본), comprehensive safety scores (0-100), and downloadable PDF reports delivered instantly.
+              </p>
               <p className="text-gray-700 leading-relaxed">
                 전세안전연구소는 외국인을 위한 한국 부동산 분석 리포트를 제공하는 디지털 서비스입니다.
-                등기부등본 영문 번역, 20개 이상의 위험 요소 분석, 정부 실거래가 기반 시세 평가,
-                안전도 점수 및 실행 가능한 조언을 포함한 PDF 리포트를 즉시 제공합니다.
+                전세 체크와 월세 체크 두 가지 서비스를 제공하며, 등기부등본 영문 번역, 20개 이상의 위험 요소 분석,
+                시장 데이터 기반 예상 가격 분석, 안전도 점수 및 실행 가능한 조언을 포함한 PDF 리포트를 즉시 제공합니다.
               </p>
             </div>
           </section>
@@ -64,14 +76,18 @@ export default function TermsPage() {
             <div className="prose prose-gray max-w-none">
               <h3 className="text-xl font-semibold text-gray-800 mb-3">2.1 Pricing</h3>
               <p className="text-gray-700 leading-relaxed mb-4">
-                <strong>Current Beta Period:</strong> The service is currently FREE during our beta testing period.
+                <strong>Current Beta Period:</strong> All services are FREE during our beta testing period.
                 <br />
-                <strong>Future Pricing:</strong> Standard pricing will be ₩29,000 - ₩50,000 per report after the beta period ends.
+                <strong>Future Pricing:</strong> After the beta period ends:
               </p>
+              <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+                <li><strong>Jeonse Check:</strong> ₩39,900 per report (deposit safety + jeonse price analysis)</li>
+                <li><strong>Wolse Check:</strong> ₩39,900 per report (deposit safety + rent price analysis)</li>
+              </ul>
               <p className="text-gray-700 leading-relaxed mb-4">
-                <strong>베타 기간:</strong> 현재 베타 테스트 기간 동안 무료로 제공됩니다.
+                <strong>베타 기간:</strong> 현재 베타 테스트 기간 동안 모든 서비스가 무료로 제공됩니다.
                 <br />
-                <strong>향후 가격:</strong> 베타 기간 종료 후 리포트당 ₩29,000 - ₩50,000의 요금이 부과됩니다.
+                <strong>향후 가격:</strong> 베타 기간 종료 후 전세 체크 ₩39,900, 월세 체크 ₩39,900의 요금이 부과됩니다.
               </p>
 
               <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-6">2.2 Payment Methods</h3>

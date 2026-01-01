@@ -3,14 +3,15 @@ import { MolitTransaction } from '../types';
 
 export class MolitAPI {
   private apiKey: string;
-  private baseUrl = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade';
+  private baseUrlTrade = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade';
+  private baseUrlRent = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent';
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
   }
 
   /**
-   * Get apartment transaction data
+   * Get apartment SALE (매매) transaction data
    * @param lawdCd - Legal district code (법정동코드)
    * @param dealYmd - Year-month (YYYYMM)
    */
@@ -20,7 +21,7 @@ export class MolitAPI {
   ): Promise<MolitTransaction[]> {
     try {
       const response = await axios.get(
-        `${this.baseUrl}/getRTMSDataSvcAptTrade`,
+        `${this.baseUrlTrade}/getRTMSDataSvcAptTrade`,
         {
           params: {
             serviceKey: this.apiKey,
@@ -59,7 +60,135 @@ export class MolitAPI {
   }
 
   /**
-   * Get recent transactions for specific apartment
+   * Get apartment JEONSE (전세) transaction data
+   * @param lawdCd - Legal district code (법정동코드)
+   * @param dealYmd - Year-month (YYYYMM)
+   */
+  async getApartmentJeonseTransactions(
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<MolitTransaction[]> {
+    try {
+      const response = await axios.get(
+        `${this.baseUrlRent}/getRTMSDataSvcAptRent`,
+        {
+          params: {
+            serviceKey: this.apiKey,
+            pageNo: 1,
+            numOfRows: 1000,
+            LAWD_CD: lawdCd,
+            DEAL_YMD: dealYmd
+          },
+          timeout: 30000
+        }
+      );
+
+      const result = response.data;
+      const items = result.response?.body?.items?.item || [];
+      const transactions = Array.isArray(items) ? items : [items];
+
+      console.log(`MOLIT Jeonse API: Found ${transactions.length} jeonse transactions for ${lawdCd} ${dealYmd}`);
+
+      return transactions.map((item: any) => ({
+        apartmentName: item.aptNm?.trim() || '',
+        legalDong: item.umdNm?.trim() || '',
+        exclusiveArea: parseFloat(item.excluUseAr),
+        floor: parseInt(item.floor),
+        transactionAmount: this.parseAmountSafe(item.deposit), // 보증금 (deposit)
+        year: parseInt(item.dealYear),
+        month: parseInt(item.dealMonth),
+        day: parseInt(item.dealDay)
+      }));
+    } catch (error) {
+      console.error('MOLIT Jeonse API Error:', error);
+      throw new Error('Failed to fetch jeonse transaction data');
+    }
+  }
+
+  /**
+   * Get recent JEONSE transactions for specific apartment
+   */
+  async getRecentJeonseTransactionsForApartment(
+    lawdCd: string,
+    apartmentName: string,
+    area: number | undefined,
+    monthsBack: number = 12
+  ): Promise<MolitTransaction[]> {
+    console.log(`\n🔍 MOLIT Jeonse API Query Details:`);
+    console.log(`   lawdCd: "${lawdCd}"`);
+    console.log(`   apartmentName: "${apartmentName}"`);
+    console.log(`   area: ${area}`);
+    console.log(`   monthsBack: ${monthsBack}`);
+
+    const transactions: MolitTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        console.log(`\n📅 Fetching jeonse ${yearMonth}...`);
+        const monthData = await this.getApartmentJeonseTransactions(lawdCd, yearMonth);
+        console.log(`   → Got ${monthData.length} total jeonse transactions for this district+month`);
+
+        const filtered = monthData.filter(t => {
+          const normalizeAptName = (name: string): string => {
+            return name
+              .replace(/아파트$/g, '')
+              .replace(/APT$/gi, '')
+              .replace(/\s+/g, '')
+              .trim();
+          };
+
+          const normalizedQuery = normalizeAptName(apartmentName);
+          const normalizedTarget = normalizeAptName(t.apartmentName);
+
+          const nameMatches =
+            t.apartmentName === apartmentName ||
+            normalizedTarget === normalizedQuery ||
+            t.apartmentName.startsWith(apartmentName + '(') ||
+            normalizedTarget.startsWith(normalizedQuery + '(');
+
+          if (!nameMatches) {
+            return false;
+          }
+
+          if (area !== undefined) {
+            const areaMatches = Math.abs(t.exclusiveArea - area) < 2;
+            if (!areaMatches) {
+              console.log(`   ⚠️  Name matched "${t.apartmentName}" but area didn't: ${t.exclusiveArea}㎡ vs ${area}㎡`);
+            }
+            return areaMatches;
+          }
+
+          return true;
+        });
+
+        console.log(`   → After filtering: ${filtered.length} jeonse transactions match`);
+        if (filtered.length > 0) {
+          console.log(`   ✅ Sample jeonse: ${filtered[0].apartmentName}, ${filtered[0].exclusiveArea}㎡, ₩${(filtered[0].transactionAmount / 100000000).toFixed(2)}억`);
+        }
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch jeonse data for ${yearMonth}:`, error);
+      }
+    }
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  /**
+   * Get recent SALE transactions for specific apartment
    */
   async getRecentTransactionsForApartment(
     lawdCd: string,
@@ -151,6 +280,16 @@ export class MolitAPI {
 
   private parseAmount(amount: string): number {
     // Amount comes as "123,456" (in 만원)
+    const cleanAmount = amount.replace(/,/g, '');
+    return parseInt(cleanAmount) * 10000; // Convert to won
+  }
+
+  private parseAmountSafe(amount: string | number): number {
+    // Handle both string and number formats (jeonse API returns numbers)
+    if (typeof amount === 'number') {
+      return amount * 10000; // Convert from 만원 to won
+    }
+    // String format: "123,456" (in 만원)
     const cleanAmount = amount.replace(/,/g, '');
     return parseInt(cleanAmount) * 10000; // Convert to won
   }

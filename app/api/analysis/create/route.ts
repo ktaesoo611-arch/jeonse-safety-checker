@@ -24,6 +24,9 @@ interface CreateAnalysisRequest {
   dong?: string;
   building?: string;
   proposedJeonse: number;
+  analysisType?: 'jeonse' | 'wolse';
+  exclusiveArea?: number;
+  monthlyRent?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -34,6 +37,14 @@ export async function POST(request: NextRequest) {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+
+    // Debug logging
+    console.log('Auth check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      authError: authError?.message,
+      cookies: request.cookies.getAll().map(c => c.name),
+    });
 
     if (authError || !user) {
       return NextResponse.json(
@@ -65,6 +76,9 @@ export async function POST(request: NextRequest) {
     const district = body.district || body.address.split(' ')[1];
     const dong = body.dong || body.address.split(' ')[2];
     const building = body.building || '';
+    const analysisType = body.analysisType || 'jeonse';
+    const exclusiveArea = body.exclusiveArea || null;
+    const monthlyRent = body.monthlyRent || null;
 
     // Validate required fields (city, district, dong are NOT NULL in database)
     if (!city || !district || !dong) {
@@ -119,6 +133,7 @@ export async function POST(request: NextRequest) {
             district,
             dong,
             building_name: building,
+            exclusive_area: exclusiveArea,
             created_at: new Date().toISOString(),
           },
         ])
@@ -142,17 +157,18 @@ export async function POST(request: NextRequest) {
     let analysisCreatedAt: string = new Date().toISOString();
 
     // Create analysis in old schema (analysis_results) - this is what all APIs expect
+    // Note: monthly_rent is stored in sessionStorage on client and passed when analysis runs
+    const insertData = {
+      property_id: propertyId,
+      user_id: user.id,
+      proposed_jeonse: body.proposedJeonse,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+
     const { data: analysis, error: analysisError } = await supabase
       .from('analysis_results')
-      .insert([
-        {
-          property_id: propertyId,
-          user_id: user.id,
-          proposed_jeonse: body.proposedJeonse,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        },
-      ])
+      .insert([insertData])
       .select()
       .single();
 
@@ -167,7 +183,22 @@ export async function POST(request: NextRequest) {
     analysisId = analysis.id;
     analysisStatus = analysis.status;
     analysisCreatedAt = analysis.created_at;
-    console.log(`✅ Created analysis in analysis_results: ${analysisId}`);
+    console.log(`✅ Created analysis in analysis_results: ${analysisId} (type: ${analysisType})`);
+
+    // For wolse, also create entry in new schema (analyses table) to store monthly_rent
+    if (analysisType === 'wolse') {
+      await supabase
+        .from('analyses')
+        .upsert({
+          id: analysisId,
+          type: 'wolse_price',
+          property_id: propertyId,
+          user_id: user.id,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        });
+      console.log(`✅ Also created analyses entry for wolse: ${analysisId}`);
+    }
 
     // Return success response
     return NextResponse.json(

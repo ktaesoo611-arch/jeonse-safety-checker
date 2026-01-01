@@ -49,7 +49,7 @@ export default function CheckPage() {
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-full mb-6">
-              <span className="text-amber-700 text-sm font-medium">Step 1 of 2</span>
+              <span className="text-amber-700 text-sm font-medium">Choose Your Service</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-[#1A202C] mb-4">
               What type of rental contract do you have?
@@ -82,14 +82,29 @@ export default function CheckPage() {
                   <DepositIcon className={`w-7 h-7 ${selectedType === 'jeonse' ? 'text-white' : 'text-amber-600 group-hover:text-white'}`} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-[#1A202C] mb-2">Jeonse</h3>
+                  <h3 className="text-2xl font-bold text-[#1A202C] mb-2">Jeonse Check</h3>
                   <p className="text-[#718096] mb-4">
                     Large deposit (usually 50-80% of property value), no monthly rent
                   </p>
-                  <div className="flex items-center gap-2 text-sm text-amber-700">
-                    <ShieldCheckIcon className="w-4 h-4" />
-                    <span>Deposit safety analysis included</span>
+                  <div className="space-y-1.5 text-sm text-amber-700">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheckIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>20+ deposit risk factor analysis</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ChartIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>Expected jeonse from market data</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ScatterIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>Transaction scatter plot</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <TrendIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>Price trend with advice</span>
+                    </div>
                   </div>
+                  <div className="mt-3 text-sm font-semibold text-amber-600">₩39,900</div>
                 </div>
                 {selectedType === 'jeonse' && (
                   <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
@@ -120,14 +135,29 @@ export default function CheckPage() {
                   <CurrencyIcon className={`w-7 h-7 ${selectedType === 'wolse' ? 'text-white' : 'text-orange-600 group-hover:text-white'}`} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-[#1A202C] mb-2">Wolse</h3>
+                  <h3 className="text-2xl font-bold text-[#1A202C] mb-2">Wolse Check</h3>
                   <p className="text-[#718096] mb-4">
                     Smaller deposit + monthly rent payments
                   </p>
-                  <div className="flex items-center gap-2 text-sm text-orange-700">
-                    <CurrencyIcon className="w-4 h-4" />
-                    <span>Price check + optional deposit safety</span>
+                  <div className="space-y-1.5 text-sm text-orange-700">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheckIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>20+ deposit risk factor analysis</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ChartIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>Expected rent from market data</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ScatterIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>Transaction scatter plot</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ScriptIcon className="w-4 h-4 flex-shrink-0" />
+                      <span>Negotiation scripts included</span>
+                    </div>
                   </div>
+                  <div className="mt-3 text-sm font-semibold text-orange-600">₩39,900</div>
                 </div>
                 {selectedType === 'wolse' && (
                   <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
@@ -141,37 +171,24 @@ export default function CheckPage() {
           {/* Continue Button */}
           {selectedType && (
             <div className={`text-center transition-all duration-500 ${selectedType ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-              {selectedType === 'jeonse' ? (
-                <Link href="/analyze">
-                  <button
-                    onClick={(e) => {
-                      haptic.medium(e.currentTarget);
-                      analytics.rentalTypeSelected('jeonse');
-                    }}
-                    className="group px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3"
-                  >
-                    Continue to Deposit Safety Check
-                    <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                  </button>
-                </Link>
-              ) : (
-                <Link href="/check/wolse">
-                  <button
-                    onClick={(e) => {
-                      haptic.medium(e.currentTarget);
-                      analytics.rentalTypeSelected('wolse');
-                    }}
-                    className="group px-10 py-5 bg-gradient-to-r from-orange-400 to-amber-500 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-orange-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3"
-                  >
-                    Continue
-                    <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                  </button>
-                </Link>
-              )}
+              <Link href={`/analyze/${selectedType}`}>
+                <button
+                  onClick={(e) => {
+                    haptic.medium(e.currentTarget);
+                    analytics.rentalTypeSelected(selectedType);
+                  }}
+                  className={`group px-10 py-5 bg-gradient-to-r ${
+                    selectedType === 'jeonse'
+                      ? 'from-amber-500 to-orange-500 hover:shadow-amber-200/50'
+                      : 'from-orange-500 to-amber-500 hover:shadow-orange-200/50'
+                  } text-white font-bold text-lg rounded-2xl hover:shadow-xl transition-all hover:-translate-y-1 inline-flex items-center gap-3`}
+                >
+                  Continue
+                  <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </button>
+              </Link>
             </div>
           )}
 
@@ -234,4 +251,20 @@ function ShieldCheckIcon({ className = "w-6 h-6" }: { className?: string }) {
 
 function CheckIcon({ className = "w-6 h-6" }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>;
+}
+
+function ChartIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
+}
+
+function TrendIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>;
+}
+
+function ScatterIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="6" cy="6" r="2" strokeWidth={2} /><circle cx="18" cy="12" r="2" strokeWidth={2} /><circle cx="10" cy="14" r="2" strokeWidth={2} /><circle cx="14" cy="8" r="2" strokeWidth={2} /><circle cx="8" cy="18" r="2" strokeWidth={2} /></svg>;
+}
+
+function ScriptIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>;
 }

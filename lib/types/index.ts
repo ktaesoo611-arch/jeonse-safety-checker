@@ -43,6 +43,8 @@ export interface ValuationResult {
     value: number;
     weight: number;
   }>;
+  allTransactions?: MolitTransaction[]; // All SALE transactions for price analysis
+  allJeonseTransactions?: MolitTransaction[]; // All JEONSE transactions for jeonse price analysis
 }
 
 // Deunggibu Types
@@ -323,10 +325,15 @@ export interface WolseAnalysisResult {
   userMonthlyRent: number;
   userImpliedRate: number;
 
-  // Rent comparison (NEW - regression-based methodology)
-  expectedRent: number;           // Expected rent at user's deposit based on market rate
+  // Rent comparison (Jeonse-centric methodology)
+  expectedRent: number;           // Expected rent at user's deposit based on market jeonse
   rentDifference: number;         // actualRent - expectedRent (positive = overpaying)
   rentDifferencePercent: number;  // Percentage difference
+
+  // Jeonse-centric analysis
+  impliedJeonseToday?: number;    // Today's market jeonse from regression
+  userImpliedJeonse?: number;     // User's implied jeonse from their quote
+  jeonseSlope?: number;           // Jeonse trend slope (원/month)
 
   // Market analysis
   marketRate: number;

@@ -142,13 +142,13 @@ export default async function DashboardPage() {
         {/* New Analysis Buttons */}
         <div className="mb-8 flex flex-wrap gap-4">
           <Link
-            href="/analyze"
+            href="/analyze/jeonse"
             className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all font-semibold hover:-translate-y-1"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>New Jeonse Safety Check</span>
+            <span>New Jeonse Check</span>
           </Link>
           <Link
             href="/analyze/wolse"
@@ -157,7 +157,7 @@ export default async function DashboardPage() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>New Wolse Price Check</span>
+            <span>New Wolse Check</span>
           </Link>
         </div>
 
@@ -177,10 +177,10 @@ export default async function DashboardPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/analyze"
+                href="/analyze/jeonse"
                 className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all font-semibold hover:-translate-y-1"
               >
-                <span>Jeonse Safety Check</span>
+                <span>Jeonse Check</span>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
@@ -189,7 +189,7 @@ export default async function DashboardPage() {
                 href="/analyze/wolse"
                 className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange-400 to-amber-600 text-white px-6 py-4 rounded-2xl hover:shadow-xl hover:shadow-orange-200/50 transition-all font-semibold hover:-translate-y-1"
               >
-                <span>Wolse Price Check</span>
+                <span>Wolse Check</span>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
