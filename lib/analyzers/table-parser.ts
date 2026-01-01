@@ -205,17 +205,26 @@ export function parseFromTables(document: DocumentAIDocument): {
             mortgages.push(parsed.data);
           } else if (parsed.type === 'jeonse') {
             console.log(
-              `    ✅ Jeonse #${parsed.data.priority}: ₩${parsed.data.amount.toLocaleString()}`
+              `    ✅ Jeonse #${parsed.data.priority}: ₩${parsed.data.amount.toLocaleString()} (${parsed.data.type})`
             );
 
-            // Keep latest entry per priority (변경 overrides 설정)
+            // Handle 전세권설정 vs 전세권변경 consolidation
             const existing = jeonseMap.get(parsed.data.priority);
-            if (
-              !existing ||
-              parsed.data.registrationDate > existing.registrationDate
-            ) {
+            if (!existing) {
+              // First entry for this priority
               jeonseMap.set(parsed.data.priority, parsed.data);
+            } else if (parsed.data.type === '전세권변경') {
+              // Amendment: update amount but keep original registration date
+              console.log(`      → Updating existing jeonse with new amount (keeping original date: ${existing.registrationDate})`);
+              existing.amount = parsed.data.amount;
+            } else if (existing.type === '전세권변경') {
+              // Original 설정 found after 변경: use 설정's date but latest amount
+              console.log(`      → Found original 설정, using its date but keeping latest amount`);
+              existing.registrationDate = parsed.data.registrationDate;
+              existing.type = parsed.data.type;
+              if (parsed.data.tenant) existing.tenant = parsed.data.tenant;
             }
+            // If both are 설정, keep the earlier one (shouldn't happen normally)
           }
         }
       }

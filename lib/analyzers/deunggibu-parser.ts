@@ -909,17 +909,69 @@ export class DeunggibuParser {
         const [, priority, year, month, day, amount] = changeMatch;
         const priorityNum = parseInt(priority);
         const cleanAmount = parseInt(amount.replace(/,/g, '').replace(/\s+/g, ''));
+        const amendmentDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 
-        console.log(`Summary 전세권변경 #${priority}: ₩${cleanAmount.toLocaleString()} (UPDATED AMOUNT)`);
+        console.log(`Summary 전세권변경 #${priority}: ₩${cleanAmount.toLocaleString()} (amendment date: ${amendmentDate})`);
 
-        // Get existing entry or create new one
+        // Get existing entry - KEEP the original registration date if it exists
         const existing = jeonseMap.get(priorityNum);
-        jeonseMap.set(priorityNum, {
-          tenant: existing?.tenant || '전세권자 미상',
-          amount: cleanAmount, // Updated amount from 변경
-          registrationDate: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+        if (existing) {
+          // Update only the amount, keep original registration date
+          console.log(`  → Updating existing jeonse #${priority} (original date: ${existing.registrationDate}) with new amount`);
+          existing.amount = cleanAmount;
+        } else {
+          // No original 전세권설정 found - this 변경 is the only record
+          // Use amendment date as registration date (not ideal but best we can do)
+          console.log(`  → No original 전세권설정 found for #${priority}, creating new entry with amendment date`);
+          jeonseMap.set(priorityNum, {
+            tenant: '전세권자 미상',
+            amount: cleanAmount,
+            registrationDate: amendmentDate,
+            type: '전세권'
+          });
+        }
+      }
+
+      // Post-processing: Consolidate multiple 전세권변경 entries that have no corresponding 전세권설정
+      // This handles cases where:
+      // 1. The original 전세권설정 wasn't parsed (old registration from 2014 etc.)
+      // 2. Multiple 전세권변경 entries were parsed with different priority numbers due to OCR issues
+      const jeonseEntries = Array.from(jeonseMap.entries());
+
+      // Check if we have multiple entries that all appear to be standalone 변경 (created without existing 설정)
+      // A standalone 변경 entry has type '전세권' but was created by the 변경 pattern
+      // We identify this by checking if the amount looks like it came from a 변경 (typically larger amounts)
+      // and if the tenant is '전세권자 미상' (unknown, indicating no 설정 was found)
+      const standaloneChanges = jeonseEntries.filter(([, entry]) =>
+        entry.tenant === '전세권자 미상' || entry.type === '전세권변경'
+      );
+
+      if (standaloneChanges.length > 1) {
+        console.log(`⚠️ Found ${standaloneChanges.length} standalone 전세권변경 entries - consolidating as single jeonse right`);
+
+        // Sort by registration date (earliest first) to find the "original" priority date
+        standaloneChanges.sort((a, b) => a[1].registrationDate.localeCompare(b[1].registrationDate));
+
+        // Find the entry with the latest (highest) amount - this is the current amount
+        const latestAmountEntry = standaloneChanges.reduce((max, curr) =>
+          curr[1].amount > max[1].amount ? curr : max
+        );
+
+        // Keep earliest date, latest amount, and any tenant info found
+        const consolidatedEntry: JeonseRightInfo = {
+          tenant: standaloneChanges.find(([, e]) => e.tenant !== '전세권자 미상')?.[1].tenant || '전세권자 미상',
+          amount: latestAmountEntry[1].amount,
+          registrationDate: standaloneChanges[0][1].registrationDate, // Earliest date
           type: '전세권'
-        });
+        };
+
+        console.log(`  → Consolidated: date=${consolidatedEntry.registrationDate}, amount=₩${consolidatedEntry.amount.toLocaleString()}`);
+
+        // Remove all standalone entries and add the consolidated one
+        for (const [priority] of standaloneChanges) {
+          jeonseMap.delete(priority);
+        }
+        jeonseMap.set(standaloneChanges[0][0], consolidatedEntry);
       }
 
       // Add all jeonse entries to rights array
