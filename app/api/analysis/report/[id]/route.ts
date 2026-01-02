@@ -56,6 +56,7 @@ export async function GET(
 
     // Try wolse_price_full first (for wolse reports)
     const wolseResult = await analysisService.getWolsePriceFull(analysisId);
+    console.log(`📊 Report API [${analysisId}]: Path 1 (wolse_price_full) - wolseResult:`, wolseResult ? { id: wolseResult.id, status: wolseResult.status, user_deposit: wolseResult.user_deposit, user_monthly_rent: wolseResult.user_monthly_rent } : 'null');
     if (wolseResult && wolseResult.status === 'completed') {
       // Fetch property info
       const { data: propertyData } = await supabase
@@ -209,6 +210,7 @@ export async function GET(
 
     // Try new schema first (jeonse_safety_full view)
     const newSchemaResult = await analysisService.getJeonseSafetyFull(analysisId);
+    console.log(`📊 Report API [${analysisId}]: Path 2 (jeonse_safety_full) - newSchemaResult:`, newSchemaResult ? { id: newSchemaResult.id, status: newSchemaResult.status, hasDeunggibuData: !!newSchemaResult.deunggibu_data } : 'null');
     if (newSchemaResult && newSchemaResult.status === 'completed' && newSchemaResult.deunggibu_data) {
       // Fetch documents for additional context
       const { data: documents } = await supabase
@@ -358,6 +360,7 @@ export async function GET(
     }
 
     // Fallback to old schema (analysis_results)
+    console.log(`📊 Report API [${analysisId}]: Path 3 (fallback) - entering fallback`);
     const { data: initialAnalysis, error: analysisError } = await supabase
       .from('analysis_results')
       .select(`
@@ -368,6 +371,7 @@ export async function GET(
       .single();
 
     let analysis = initialAnalysis;
+    console.log(`📊 Report API [${analysisId}]: Path 3 - analysis_results:`, analysis ? { id: analysis.id, status: analysis.status, monthly_rent: analysis.monthly_rent, proposed_jeonse: analysis.proposed_jeonse } : 'null');
 
     if (analysisError || !analysis) {
       return NextResponse.json(
@@ -434,11 +438,12 @@ export async function GET(
     }
 
     // Fetch wolse price data if available (for wolse reports)
-    const { data: wolsePriceData } = await supabase
+    const { data: wolsePriceData, error: wolseError } = await supabase
       .from('wolse_price_data')
       .select('*')
       .eq('analysis_id', analysisId)
       .single();
+    console.log(`📊 Report API [${analysisId}]: Path 3 - wolse_price_data:`, wolsePriceData ? { user_deposit: wolsePriceData.user_deposit, user_monthly_rent: wolsePriceData.user_monthly_rent, expected_rent: wolsePriceData.expected_rent } : 'null', 'error:', wolseError?.message || 'none');
 
     // Find parsed 등기부등본 data
     const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu');
