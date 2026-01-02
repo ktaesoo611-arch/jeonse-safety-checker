@@ -29,6 +29,7 @@ export default function ProcessingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [serverCompleted, setServerCompleted] = useState(false);
 
   // Progress bar follows steps - each step is 20%
   useEffect(() => {
@@ -50,6 +51,36 @@ export default function ProcessingPage() {
     return () => clearInterval(animationInterval);
   }, [currentStep]);
 
+  // When server completes, animate through remaining steps
+  useEffect(() => {
+    if (!serverCompleted || isCompleted) return;
+
+    // Animate through remaining steps one by one
+    const animateRemainingSteps = () => {
+      let stepIndex = currentStep;
+
+      const stepInterval = setInterval(() => {
+        stepIndex++;
+        if (stepIndex >= steps.length) {
+          clearInterval(stepInterval);
+          setCurrentStep(steps.length - 1);
+          // Wait for progress bar to catch up, then mark complete
+          setTimeout(() => {
+            setIsCompleted(true);
+            // Redirect after showing completion
+            setTimeout(() => {
+              router.push(`/analyze/${type}/${analysisId}/preview`);
+            }, 1000);
+          }, 500);
+        } else {
+          setCurrentStep(stepIndex);
+        }
+      }, 600); // 600ms per step for smooth animation
+    };
+
+    animateRemainingSteps();
+  }, [serverCompleted, isCompleted, currentStep, router, type, analysisId]);
+
   useEffect(() => {
     // Poll for status updates
     const checkStatus = async () => {
@@ -58,18 +89,15 @@ export default function ProcessingPage() {
         const data = await response.json();
 
         if (data.status === 'completed') {
-          setCurrentStep(steps.length);
-          setDisplayProgress(100);
-          setIsCompleted(true);
-          // Redirect to preview page (with blur + payment button)
-          setTimeout(() => {
-            router.push(`/analyze/${type}/${analysisId}/preview`);
-          }, 1000);
+          // Don't jump - let the animation handle it
+          if (!serverCompleted) {
+            setServerCompleted(true);
+          }
         } else if (data.status === 'failed') {
           alert('An error occurred during analysis');
         } else {
-          // Update step based on server progress
-          if (typeof data.progress === 'number') {
+          // Update step based on server progress (only if not completed)
+          if (!serverCompleted && typeof data.progress === 'number') {
             const stepIndex = Math.min(
               Math.floor((data.progress / 100) * steps.length),
               steps.length - 1
@@ -89,7 +117,7 @@ export default function ProcessingPage() {
     const interval = setInterval(checkStatus, 1500);
 
     return () => clearInterval(interval);
-  }, [analysisId, router, type]);
+  }, [analysisId, serverCompleted]);
 
   return (
     <div className="min-h-screen bg-[#FDFBF7]">
