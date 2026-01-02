@@ -61,9 +61,9 @@ export default function ProcessingPage() {
           setCurrentStep(steps.length);
           setDisplayProgress(100);
           setIsCompleted(true);
-          // Redirect to report page (not preview)
+          // Redirect to preview page (with blur + payment button)
           setTimeout(() => {
-            router.push(`/analyze/${type}/${analysisId}/report`);
+            router.push(`/analyze/${type}/${analysisId}/preview`);
           }, 1000);
         } else if (data.status === 'failed') {
           alert('An error occurred during analysis');
