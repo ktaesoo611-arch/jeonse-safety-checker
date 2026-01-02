@@ -103,11 +103,11 @@ export async function GET(
             ? `${propertyData?.city || '서울특별시'} ${propertyData?.district || ''} ${propertyData?.dong || ''} ${propertyData?.building_name}`.trim()
             : propertyData?.address || 'N/A',
           buildingName: propertyData?.building_name || null,
-          buildingNumber: propertyData?.building_number || riskAnalysis?.deunggibu?.buildingNumber || null,
-          unit: propertyData?.unit || riskAnalysis?.deunggibu?.unit || null,
+          buildingNumber: propertyData?.building_number || riskAnalysis?.deunggibu?.buildingNumber || riskAnalysis?.buildingNumber || null,
+          unit: propertyData?.unit || riskAnalysis?.deunggibu?.unit || riskAnalysis?.unit || null,
           proposedJeonse: wolseResult.user_deposit,
           estimatedValue: riskAnalysis?.valuation?.valueMid || null,
-          area: propertyData?.exclusive_area || riskAnalysis?.deunggibu?.area || null,
+          area: propertyData?.exclusive_area || riskAnalysis?.deunggibu?.area || riskAnalysis?.area || null,
           valuation: riskAnalysis?.valuation || {},
         },
 
@@ -264,11 +264,11 @@ export async function GET(
             ? `${newSchemaResult.city || '서울특별시'} ${newSchemaResult.district || ''} ${newSchemaResult.dong || ''} ${newSchemaResult.building_name}`.trim()
             : newSchemaResult.address || 'N/A',
           buildingName: newSchemaResult.building_name || null,
-          buildingNumber: riskAnalysis.deunggibu?.buildingNumber || null,
-          unit: riskAnalysis.deunggibu?.unit || null,
+          buildingNumber: riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || null,
+          unit: riskAnalysis.deunggibu?.unit || riskAnalysis.unit || null,
           proposedJeonse: newSchemaResult.proposed_jeonse,
           estimatedValue: newSchemaResult.valuation_data?.valueMid || riskAnalysis.valuation?.valueMid || null,
-          area: riskAnalysis.deunggibu?.area || null,
+          area: riskAnalysis.deunggibu?.area || riskAnalysis.area || null,
           buildingAge: parsedData?.property?.buildingAge || null,
           propertyType: parsedData?.property?.type || null,
           valuation: {
@@ -494,11 +494,11 @@ export async function GET(
           return prop?.address || 'N/A';
         })(),
         buildingName: (Array.isArray(analysis.properties) ? analysis.properties[0]?.building_name : analysis.properties?.building_name) || null,
-        buildingNumber: riskAnalysis.deunggibu?.buildingNumber || null,
-        unit: riskAnalysis.deunggibu?.unit || null,
+        buildingNumber: riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || null,
+        unit: riskAnalysis.deunggibu?.unit || riskAnalysis.unit || null,
         proposedJeonse: analysis.proposed_jeonse,
         estimatedValue: riskAnalysis.valuation?.valueMid || null,
-        area: riskAnalysis.deunggibu?.area || null,
+        area: riskAnalysis.deunggibu?.area || riskAnalysis.area || null,
         buildingAge: parsedData?.property?.buildingAge || null,
         propertyType: parsedData?.property?.type || null,
         valuation: {
