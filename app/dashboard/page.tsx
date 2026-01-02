@@ -321,7 +321,7 @@ export default async function DashboardPage() {
                     <div className="flex space-x-2">
                       {isJeonse && analysis.status === 'pending' && !analysis.payment_status && (
                         <Link
-                          href={`/analyze/${analysis.id}/payment`}
+                          href={`/analyze/jeonse/${analysis.id}/payment`}
                           className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-amber-200/50 transition-all text-sm font-semibold hover:-translate-y-0.5"
                         >
                           Pay Now
@@ -329,7 +329,7 @@ export default async function DashboardPage() {
                       )}
                       {isJeonse && analysis.status === 'completed' && (
                         <Link
-                          href={`/analyze/${analysis.id}`}
+                          href={`/analyze/jeonse/${analysis.id}/report`}
                           className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-amber-200/50 transition-all text-sm font-semibold hover:-translate-y-0.5"
                         >
                           View Report
@@ -337,7 +337,7 @@ export default async function DashboardPage() {
                       )}
                       {isWolse && analysis.status === 'completed' && (
                         <Link
-                          href={`/analyze/wolse?id=${analysis.id}`}
+                          href={`/analyze/wolse/${analysis.id}/report`}
                           className="bg-gradient-to-r from-orange-400 to-amber-600 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-orange-200/50 transition-all text-sm font-semibold hover:-translate-y-0.5"
                         >
                           View Results
