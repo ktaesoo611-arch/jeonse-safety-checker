@@ -96,6 +96,7 @@ export async function GET(
         analysisType: 'wolse',
         generatedAt: new Date().toISOString(),
         completedAt: wolseResult.completed_at,
+        monthlyRent: wolseResult.user_monthly_rent || safetyData?.monthly_rent || null,
 
         property: {
           // Always include building name in address
@@ -489,6 +490,7 @@ export async function GET(
       analysisId: analysis.id,
       generatedAt: new Date().toISOString(),
       completedAt: analysis.completed_at,
+      monthlyRent: analysis.monthly_rent || wolsePriceData?.user_monthly_rent || null,
 
       // Property Information
       property: {

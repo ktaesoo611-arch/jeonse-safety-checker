@@ -149,8 +149,8 @@ export default function ReportPage() {
       contractCount: jeonseAnalysis?.contractCount || 0,
     } : undefined,
     wolseData: isWolse ? {
-      userDeposit: wolseAnalysis?.userDeposit || 0,
-      userMonthlyRent: wolseAnalysis?.userMonthlyRent || 0,
+      userDeposit: wolseAnalysis?.userDeposit || property?.proposedJeonse || 0,
+      userMonthlyRent: wolseAnalysis?.userMonthlyRent || reportData?.monthlyRent || 0,
       userRate: wolseAnalysis?.userRate || 0,
       marketRate: wolseAnalysis?.marketRate || 0,
       marketRateRange: wolseAnalysis?.marketRateRange || { low: 0, high: 0 },
