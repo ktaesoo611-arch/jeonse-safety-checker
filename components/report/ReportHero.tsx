@@ -152,7 +152,7 @@ export default function ReportHero({
           {address}
           {buildingNumber && ` ${buildingNumber}`}
           {unit && ` ${unit}`}
-          {area && ` ${area}㎡`}
+          {area && ` ${Math.floor(area)}㎡`}
         </h1>
 
         {/* Key Metrics */}

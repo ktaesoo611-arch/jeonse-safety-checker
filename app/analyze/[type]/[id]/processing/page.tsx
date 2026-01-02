@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
 
@@ -30,29 +30,23 @@ export default function ProcessingPage() {
   const [targetProgress, setTargetProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
   const [status, setStatus] = useState<string>('processing');
-  const animationRef = useRef<number | null>(null);
+  const lastUpdateTime = useRef<number>(Date.now());
 
-  // Smooth progress animation
+  // Smooth progress animation using interval for consistent timing
   useEffect(() => {
-    const animate = () => {
+    const animationInterval = setInterval(() => {
       setDisplayProgress(prev => {
         const diff = targetProgress - prev;
-        if (Math.abs(diff) < 0.5) {
+        if (Math.abs(diff) < 0.1) {
           return targetProgress;
         }
-        // Ease toward target - move 5% of the remaining distance each frame
-        return prev + diff * 0.05;
+        // Move 2% of remaining distance every 50ms for smooth animation
+        // This creates ~1 second to reach 90% of the target
+        return prev + diff * 0.02;
       });
-      animationRef.current = requestAnimationFrame(animate);
-    };
+    }, 50);
 
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
+    return () => clearInterval(animationInterval);
   }, [targetProgress]);
 
   useEffect(() => {
@@ -92,8 +86,8 @@ export default function ProcessingPage() {
     // Initial check
     checkStatus();
 
-    // Poll every 1 second for smoother updates
-    const interval = setInterval(checkStatus, 1000);
+    // Poll every 1.5 seconds
+    const interval = setInterval(checkStatus, 1500);
 
     return () => clearInterval(interval);
   }, [analysisId, router, type]);
@@ -103,9 +97,8 @@ export default function ProcessingPage() {
       {/* Warm gradient background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-b from-[#FEF7ED] via-[#FDFBF7] to-[#F5F0E8]" />
-        <div className={`absolute top-20 right-[10%] w-96 h-96 ${isWolse ? 'bg-orange-200/30' : 'bg-amber-200/30'} rounded-full blur-3xl animate-pulse`} />
-        <div className={`absolute bottom-[20%] left-[5%] w-72 h-72 ${isWolse ? 'bg-amber-200/30' : 'bg-orange-200/30'} rounded-full blur-3xl animate-pulse`} style={{ animationDelay: '1s' }} />
-        <div className="absolute top-[40%] left-[50%] w-64 h-64 bg-yellow-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className={`absolute top-20 right-[10%] w-96 h-96 ${isWolse ? 'bg-orange-200/30' : 'bg-amber-200/30'} rounded-full blur-3xl`} />
+        <div className={`absolute bottom-[20%] left-[5%] w-72 h-72 ${isWolse ? 'bg-amber-200/30' : 'bg-orange-200/30'} rounded-full blur-3xl`} />
       </div>
 
       {/* Header */}
@@ -145,7 +138,7 @@ export default function ProcessingPage() {
           <div className="mb-10">
             <div className={`h-4 ${isWolse ? 'bg-orange-100' : 'bg-amber-100'} rounded-full overflow-hidden shadow-inner`}>
               <div
-                className={`h-full bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} rounded-full relative`}
+                className={`h-full bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} rounded-full relative transition-all duration-300 ease-out`}
                 style={{ width: `${displayProgress}%` }}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
@@ -174,9 +167,9 @@ export default function ProcessingPage() {
                 `}
               >
                 <div className={`
-                  flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm
+                  flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm transition-all duration-300
                   ${index < currentStep ? `bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white` : ''}
-                  ${index === currentStep ? `bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white animate-pulse` : ''}
+                  ${index === currentStep ? `bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white` : ''}
                   ${index > currentStep ? 'bg-gray-200 text-gray-500' : ''}
                 `}>
                   {index < currentStep ? (
@@ -196,12 +189,8 @@ export default function ProcessingPage() {
                   </span>
                 </div>
                 {index === currentStep && (
-                  <div className="flex-shrink-0">
-                    <div className="flex gap-1">
-                      <div className={`w-2 h-2 ${isWolse ? 'bg-orange-500' : 'bg-amber-500'} rounded-full animate-bounce`} style={{ animationDelay: '0ms' }}></div>
-                      <div className={`w-2 h-2 ${isWolse ? 'bg-orange-500' : 'bg-amber-500'} rounded-full animate-bounce`} style={{ animationDelay: '150ms' }}></div>
-                      <div className={`w-2 h-2 ${isWolse ? 'bg-orange-500' : 'bg-amber-500'} rounded-full animate-bounce`} style={{ animationDelay: '300ms' }}></div>
-                    </div>
+                  <div className="flex-shrink-0 text-sm text-gray-500">
+                    Processing...
                   </div>
                 )}
                 {index < currentStep && (
