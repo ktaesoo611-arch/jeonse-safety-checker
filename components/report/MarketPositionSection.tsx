@@ -388,12 +388,12 @@ export default function MarketPositionSection({
                     <span className="text-lg">⚠️</span>
                     <div>
                       <p className="font-semibold text-amber-900 text-sm">
-                        {wolseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Still Verify Before Signing'}
+                        {wolseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Check Physical Condition'}
                       </p>
                       <p className="text-sm text-amber-700 mt-1">
                         {wolseData.assessment === 'GOOD_DEAL'
-                          ? 'Below-market prices often have reasons. Check property condition, landlord\'s financial status (등기부등본), and contract terms for hidden issues.'
-                          : 'Even at fair market price, verify the property\'s legal status and landlord\'s debt situation before signing.'}
+                          ? 'Below-market prices often have reasons. Check for physical issues (leaks, mold, noise), neighborhood problems, or why the landlord needs to rent quickly.'
+                          : 'Visit the property to check for physical issues like water damage, mold, noise levels, and overall maintenance condition.'}
                       </p>
                     </div>
                   </div>
@@ -693,12 +693,12 @@ export default function MarketPositionSection({
                     <span className="text-lg">⚠️</span>
                     <div>
                       <p className="font-semibold text-amber-900 text-sm">
-                        {jeonseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Still Verify Before Signing'}
+                        {jeonseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Check Physical Condition'}
                       </p>
                       <p className="text-sm text-amber-700 mt-1">
                         {jeonseData.assessment === 'GOOD_DEAL'
-                          ? 'Below-market jeonse often has reasons. Check landlord\'s debt status (등기부등본), building condition, and why they may need funds urgently.'
-                          : 'Even at fair market price, verify the property\'s legal status and landlord\'s total debt situation before signing.'}
+                          ? 'Below-market jeonse often has reasons. Check for physical issues (leaks, mold, noise), building maintenance, or why the landlord needs funds urgently.'
+                          : 'Visit the property to check for physical issues like water damage, mold, noise levels, and overall maintenance condition.'}
                       </p>
                     </div>
                   </div>

@@ -213,8 +213,8 @@ export default function ActionItemsSection({
               <div>
                 <p className="font-semibold text-amber-900">Verify Why Price is Low</p>
                 <p className="text-sm text-amber-700">
-                  Below-market prices often have reasons. Before signing, check: property condition,
-                  landlord&apos;s financial status (등기부등본), and contract terms for hidden issues.
+                  Below-market prices often have reasons. Before signing, check for physical issues
+                  (leaks, mold, noise), neighborhood problems, or why the landlord needs to rent quickly.
                 </p>
               </div>
             </div>
