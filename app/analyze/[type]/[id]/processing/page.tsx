@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
 
@@ -27,8 +27,33 @@ export default function ProcessingPage() {
   const accentColor = isWolse ? 'orange' : 'amber';
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [targetProgress, setTargetProgress] = useState(0);
+  const [displayProgress, setDisplayProgress] = useState(0);
   const [status, setStatus] = useState<string>('processing');
+  const animationRef = useRef<number | null>(null);
+
+  // Smooth progress animation
+  useEffect(() => {
+    const animate = () => {
+      setDisplayProgress(prev => {
+        const diff = targetProgress - prev;
+        if (Math.abs(diff) < 0.5) {
+          return targetProgress;
+        }
+        // Ease toward target - move 5% of the remaining distance each frame
+        return prev + diff * 0.05;
+      });
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [targetProgress]);
 
   useEffect(() => {
     // Poll for status updates
@@ -38,18 +63,18 @@ export default function ProcessingPage() {
         const data = await response.json();
 
         if (data.status === 'completed') {
-          setProgress(100);
+          setTargetProgress(100);
           setCurrentStep(steps.length - 1);
           setTimeout(() => {
             router.push(`/analyze/${type}/${analysisId}/preview`);
-          }, 1000);
+          }, 1500);
         } else if (data.status === 'failed') {
           setStatus('failed');
           alert('An error occurred during analysis');
         } else {
           // Use server progress if available
           if (typeof data.progress === 'number') {
-            setProgress(data.progress);
+            setTargetProgress(data.progress);
 
             // Update current step based on progress
             const stepIndex = Math.min(
@@ -106,19 +131,6 @@ export default function ProcessingPage() {
             <span>Step 3 of 4</span>
           </div>
 
-          {/* Animated spinner */}
-          <div className="mb-8 flex justify-center">
-            <div className="relative w-28 h-28">
-              <div className={`absolute inset-0 border-8 ${isWolse ? 'border-orange-200' : 'border-amber-200'} rounded-full`}></div>
-              <div className={`absolute inset-0 border-8 ${isWolse ? 'border-orange-500' : 'border-amber-500'} border-t-transparent rounded-full animate-spin`}></div>
-              <div className={`absolute inset-3 bg-gradient-to-br ${isWolse ? 'from-orange-100 to-amber-100' : 'from-amber-100 to-orange-100'} rounded-full flex items-center justify-center shadow-inner`}>
-                <svg className={`w-12 h-12 ${isWolse ? 'text-orange-600' : 'text-amber-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A202C] mb-4 tracking-tight" style={{ letterSpacing: '-0.03em' }}>
             Analyzing your property...
           </h1>
@@ -133,18 +145,18 @@ export default function ProcessingPage() {
           <div className="mb-10">
             <div className={`h-4 ${isWolse ? 'bg-orange-100' : 'bg-amber-100'} rounded-full overflow-hidden shadow-inner`}>
               <div
-                className={`h-full bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} transition-all duration-500 ease-out rounded-full relative`}
-                style={{ width: `${progress}%` }}
+                className={`h-full bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} rounded-full relative`}
+                style={{ width: `${displayProgress}%` }}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
               </div>
             </div>
             <div className="flex justify-between items-center mt-3">
               <p className={`text-lg font-bold ${isWolse ? 'text-orange-700' : 'text-amber-700'}`}>
-                {Math.round(progress)}% Complete
+                {Math.round(displayProgress)}% Complete
               </p>
               <p className="text-sm text-[#718096]">
-                {progress < 100 ? `~${Math.max(5, Math.round((100 - progress) / 3))} seconds remaining` : 'Almost done!'}
+                {displayProgress < 100 ? `~${Math.max(5, Math.round((100 - displayProgress) / 3))} seconds remaining` : 'Almost done!'}
               </p>
             </div>
           </div>
