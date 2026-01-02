@@ -160,6 +160,9 @@ export default function PreviewPage() {
   // Generate preview data (uses real data when available, falls back to mock)
   const previewData = {
     address: property?.address || '서울특별시 강남구 역삼동 아파트',
+    buildingNumber: property?.buildingNumber || null,
+    unit: property?.unit || null,
+    area: property?.area || null,
     riskLevel: riskAnalysis?.riskLevel || summary?.riskLevel || 'MODERATE' as const,
     safetyScore: riskAnalysis?.overallScore || summary?.safetyScore || 72,
     deposit: property?.proposedJeonse || 300000000,
@@ -295,6 +298,9 @@ export default function PreviewPage() {
         {/* Hero - Visible */}
         <ReportHero
           address={previewData.address}
+          buildingNumber={previewData.buildingNumber}
+          unit={previewData.unit}
+          area={previewData.area}
           riskLevel={previewData.riskLevel}
           safetyScore={previewData.safetyScore}
           deposit={previewData.deposit}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
 
@@ -27,27 +27,28 @@ export default function ProcessingPage() {
   const accentColor = isWolse ? 'orange' : 'amber';
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [targetProgress, setTargetProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
-  const [status, setStatus] = useState<string>('processing');
-  const lastUpdateTime = useRef<number>(Date.now());
+  const [isCompleted, setIsCompleted] = useState(false);
 
-  // Smooth progress animation using interval for consistent timing
+  // Progress bar follows steps - each step is 20%
   useEffect(() => {
+    // Calculate target progress based on current step
+    const targetProgress = Math.min((currentStep + 1) * 20, 100);
+
+    // Animate progress bar smoothly toward step target
     const animationInterval = setInterval(() => {
       setDisplayProgress(prev => {
-        const diff = targetProgress - prev;
-        if (Math.abs(diff) < 0.1) {
+        if (prev >= targetProgress) {
+          clearInterval(animationInterval);
           return targetProgress;
         }
-        // Move 2% of remaining distance every 50ms for smooth animation
-        // This creates ~1 second to reach 90% of the target
-        return prev + diff * 0.02;
+        // Smooth increment - 0.5% every 50ms
+        return Math.min(prev + 0.5, targetProgress);
       });
     }, 50);
 
     return () => clearInterval(animationInterval);
-  }, [targetProgress]);
+  }, [currentStep]);
 
   useEffect(() => {
     // Poll for status updates
@@ -57,20 +58,18 @@ export default function ProcessingPage() {
         const data = await response.json();
 
         if (data.status === 'completed') {
-          setTargetProgress(100);
-          setCurrentStep(steps.length - 1);
+          setCurrentStep(steps.length);
+          setDisplayProgress(100);
+          setIsCompleted(true);
+          // Redirect to report page (not preview)
           setTimeout(() => {
-            router.push(`/analyze/${type}/${analysisId}/preview`);
-          }, 1500);
+            router.push(`/analyze/${type}/${analysisId}/report`);
+          }, 1000);
         } else if (data.status === 'failed') {
-          setStatus('failed');
           alert('An error occurred during analysis');
         } else {
-          // Use server progress if available
+          // Update step based on server progress
           if (typeof data.progress === 'number') {
-            setTargetProgress(data.progress);
-
-            // Update current step based on progress
             const stepIndex = Math.min(
               Math.floor((data.progress / 100) * steps.length),
               steps.length - 1
@@ -124,11 +123,28 @@ export default function ProcessingPage() {
             <span>Step 3 of 4</span>
           </div>
 
+          {/* Spinning Circle */}
+          <div className="mb-8 flex justify-center">
+            <div className="relative w-24 h-24">
+              <div className={`absolute inset-0 border-4 ${isWolse ? 'border-orange-200' : 'border-amber-200'} rounded-full`}></div>
+              <div className={`absolute inset-0 border-4 ${isWolse ? 'border-orange-500' : 'border-amber-500'} border-t-transparent rounded-full ${isCompleted ? '' : 'animate-spin'}`}></div>
+              <div className={`absolute inset-2 bg-gradient-to-br ${isWolse ? 'from-orange-50 to-amber-50' : 'from-amber-50 to-orange-50'} rounded-full flex items-center justify-center`}>
+                {isCompleted ? (
+                  <svg className={`w-10 h-10 ${isWolse ? 'text-orange-500' : 'text-amber-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <span className="text-3xl">{steps[currentStep]?.icon || '📄'}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A202C] mb-4 tracking-tight" style={{ letterSpacing: '-0.03em' }}>
-            Analyzing your property...
+            {isCompleted ? 'Analysis Complete!' : 'Analyzing your property...'}
           </h1>
           <p className="text-xl text-[#4A5568]">
-            Please wait. This usually takes about 30 seconds.
+            {isCompleted ? 'Redirecting to your report...' : 'Please wait. This usually takes about 30 seconds.'}
           </p>
         </div>
 
@@ -136,7 +152,7 @@ export default function ProcessingPage() {
         <div className={`bg-white rounded-3xl p-8 mb-8 shadow-xl shadow-${accentColor}-900/5 border border-${accentColor}-100`}>
           {/* Progress Bar */}
           <div className="mb-10">
-            <div className={`h-4 ${isWolse ? 'bg-orange-100' : 'bg-amber-100'} rounded-full overflow-hidden shadow-inner`}>
+            <div className={`h-3 ${isWolse ? 'bg-orange-100' : 'bg-amber-100'} rounded-full overflow-hidden shadow-inner`}>
               <div
                 className={`h-full bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} rounded-full relative transition-all duration-300 ease-out`}
                 style={{ width: `${displayProgress}%` }}
@@ -149,7 +165,7 @@ export default function ProcessingPage() {
                 {Math.round(displayProgress)}% Complete
               </p>
               <p className="text-sm text-[#718096]">
-                {displayProgress < 100 ? `~${Math.max(5, Math.round((100 - displayProgress) / 3))} seconds remaining` : 'Almost done!'}
+                Step {Math.min(currentStep + 1, steps.length)} of {steps.length}
               </p>
             </div>
           </div>
@@ -160,19 +176,20 @@ export default function ProcessingPage() {
               <div
                 key={step.id}
                 className={`
-                  flex items-center gap-4 p-4 rounded-2xl transition-all duration-300
+                  flex items-center gap-4 p-4 rounded-2xl transition-all duration-500
                   ${index < currentStep ? (isWolse ? 'bg-orange-50' : 'bg-amber-50') : ''}
-                  ${index === currentStep ? `bg-gradient-to-r ${isWolse ? 'from-orange-50 to-amber-50' : 'from-amber-50 to-orange-50'} shadow-md scale-[1.02] border ${isWolse ? 'border-orange-200' : 'border-amber-200'}` : ''}
-                  ${index > currentStep ? 'bg-gray-50/50' : ''}
+                  ${index === currentStep && !isCompleted ? `bg-gradient-to-r ${isWolse ? 'from-orange-50 to-amber-50' : 'from-amber-50 to-orange-50'} shadow-md scale-[1.02] border ${isWolse ? 'border-orange-200' : 'border-amber-200'}` : ''}
+                  ${index >= currentStep && isCompleted ? (isWolse ? 'bg-orange-50' : 'bg-amber-50') : ''}
+                  ${index > currentStep && !isCompleted ? 'bg-gray-50/50' : ''}
                 `}
               >
                 <div className={`
-                  flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm transition-all duration-300
-                  ${index < currentStep ? `bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white` : ''}
-                  ${index === currentStep ? `bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white` : ''}
-                  ${index > currentStep ? 'bg-gray-200 text-gray-500' : ''}
+                  flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm transition-all duration-500
+                  ${index < currentStep || isCompleted ? `bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white` : ''}
+                  ${index === currentStep && !isCompleted ? `bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white` : ''}
+                  ${index > currentStep && !isCompleted ? 'bg-gray-200 text-gray-500' : ''}
                 `}>
-                  {index < currentStep ? (
+                  {index < currentStep || isCompleted ? (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
@@ -183,17 +200,21 @@ export default function ProcessingPage() {
                 <div className="flex-1">
                   <span className={`
                     font-semibold text-lg
-                    ${index <= currentStep ? 'text-[#1A202C]' : 'text-[#A0AEC0]'}
+                    ${index <= currentStep || isCompleted ? 'text-[#1A202C]' : 'text-[#A0AEC0]'}
                   `}>
                     {step.name}
                   </span>
                 </div>
-                {index === currentStep && (
-                  <div className="flex-shrink-0 text-sm text-gray-500">
-                    Processing...
+                {index === currentStep && !isCompleted && (
+                  <div className="flex-shrink-0">
+                    <div className="flex gap-1">
+                      <div className={`w-2 h-2 ${isWolse ? 'bg-orange-500' : 'bg-amber-500'} rounded-full animate-bounce`} style={{ animationDelay: '0ms' }}></div>
+                      <div className={`w-2 h-2 ${isWolse ? 'bg-orange-500' : 'bg-amber-500'} rounded-full animate-bounce`} style={{ animationDelay: '150ms' }}></div>
+                      <div className={`w-2 h-2 ${isWolse ? 'bg-orange-500' : 'bg-amber-500'} rounded-full animate-bounce`} style={{ animationDelay: '300ms' }}></div>
+                    </div>
                   </div>
                 )}
-                {index < currentStep && (
+                {(index < currentStep || isCompleted) && (
                   <div className={`flex-shrink-0 ${isWolse ? 'text-orange-600 bg-orange-100' : 'text-amber-600 bg-amber-100'} font-semibold text-sm px-3 py-1 rounded-full`}>
                     Done
                   </div>
