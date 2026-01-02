@@ -75,6 +75,14 @@ export async function GET(
       const riskAnalysis = safetyData?.deunggibu_data || null;
       const hasSafetyData = riskAnalysis && riskAnalysis.overallScore !== undefined;
 
+      // Debug: Log area sources
+      console.log(`📐 Area sources [${analysisId}]:`, {
+        'riskAnalysis?.deunggibu?.area': riskAnalysis?.deunggibu?.area,
+        'riskAnalysis?.area': riskAnalysis?.area,
+        'propertyData?.exclusive_area': propertyData?.exclusive_area,
+        'using': riskAnalysis?.deunggibu?.area || riskAnalysis?.area || propertyData?.exclusive_area || null
+      });
+
       // Recalculate overall score with new weights (LTV 40%, Legal 30%, Market 15%, Building 15%)
       // This ensures consistency even for old analyses stored with different weights
       const recalculateScore = (data: any) => {
@@ -109,7 +117,8 @@ export async function GET(
           unit: propertyData?.unit || riskAnalysis?.deunggibu?.unit || riskAnalysis?.unit || null,
           proposedJeonse: wolseResult.user_deposit,
           estimatedValue: riskAnalysis?.valuation?.valueMid || null,
-          area: propertyData?.exclusive_area || riskAnalysis?.deunggibu?.area || riskAnalysis?.area || null,
+          // Prioritize LLM-extracted area from 등기부등본 over user-entered value
+          area: riskAnalysis?.deunggibu?.area || riskAnalysis?.area || propertyData?.exclusive_area || null,
           valuation: riskAnalysis?.valuation || {},
         },
 
@@ -271,6 +280,7 @@ export async function GET(
           unit: riskAnalysis.deunggibu?.unit || riskAnalysis.unit || null,
           proposedJeonse: newSchemaResult.proposed_jeonse,
           estimatedValue: newSchemaResult.valuation_data?.valueMid || riskAnalysis.valuation?.valueMid || null,
+          // Prioritize LLM-extracted area from 등기부등본
           area: riskAnalysis.deunggibu?.area || riskAnalysis.area || null,
           buildingAge: parsedData?.property?.buildingAge || null,
           propertyType: parsedData?.property?.type || null,
@@ -512,6 +522,7 @@ export async function GET(
         unit: riskAnalysis.deunggibu?.unit || riskAnalysis.unit || null,
         proposedJeonse: analysis.proposed_jeonse,
         estimatedValue: riskAnalysis.valuation?.valueMid || null,
+        // Prioritize LLM-extracted area from 등기부등본
         area: riskAnalysis.deunggibu?.area || riskAnalysis.area || null,
         buildingAge: parsedData?.property?.buildingAge || null,
         propertyType: parsedData?.property?.type || null,

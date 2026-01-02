@@ -26,71 +26,122 @@ export default function PreviewPage() {
   const [reportData, setReportData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Run wolse price analysis if wolse type
-  useEffect(() => {
-    if (!isWolse) return;
+  // State to track if wolse analysis has been run
+  const [wolseAnalysisRun, setWolseAnalysisRun] = useState(false);
 
-    const runWolseAnalysis = async () => {
-      try {
-        // Get form data from sessionStorage
-        const storedData = sessionStorage.getItem(`analysis-${analysisId}`);
-        if (!storedData) {
-          console.log('No stored form data for wolse analysis');
-          return;
-        }
+  // Run wolse price analysis after jeonse analysis is complete (to get exclusiveArea from parsed document)
+  const runWolseAnalysis = async (parsedReportData: any) => {
+    if (!isWolse || wolseAnalysisRun) return;
 
-        const formData = JSON.parse(storedData);
-        if (!formData.exclusiveArea || !formData.monthlyRent) {
-          console.log('Missing required wolse data');
-          return;
-        }
-
-        console.log('Running wolse price analysis...', formData);
-
-        // Run wolse preview analysis
-        const previewResponse = await fetch('/api/wolse/preview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            city: formData.city,
-            district: formData.district,
-            dong: formData.dong,
-            apartmentName: formData.building,
-            exclusiveArea: formData.exclusiveArea,
-            deposit: formData.deposit,
-            monthlyRent: formData.monthlyRent
-          })
-        });
-
-        if (!previewResponse.ok) {
-          console.error('Wolse preview failed');
-          return;
-        }
-
-        const previewData = await previewResponse.json();
-        console.log('Wolse preview result:', previewData);
-
-        // Save the analysis result
-        const saveResponse = await fetch('/api/wolse/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            result: previewData.result,
-            inputData: previewData.inputData,
-            analysisId // Use existing analysis ID
-          })
-        });
-
-        if (saveResponse.ok) {
-          console.log('Wolse analysis saved');
-        }
-      } catch (err) {
-        console.error('Wolse analysis error:', err);
+    try {
+      // Get form data from sessionStorage (has city, district, dong, building, deposit, monthlyRent)
+      const storedData = sessionStorage.getItem(`analysis-${analysisId}`);
+      if (!storedData) {
+        console.error(`[Wolse Analysis] No stored form data found for analysis-${analysisId}.`);
+        return;
       }
-    };
 
-    runWolseAnalysis();
-  }, [isWolse, analysisId]);
+      const formData = JSON.parse(storedData);
+      console.log('[Wolse Analysis] Loaded form data:', formData);
+
+      if (!formData.monthlyRent) {
+        console.error('[Wolse Analysis] Missing monthlyRent in form data.');
+        return;
+      }
+
+      // Get exclusiveArea from parsed document data (extracted from 등기부등본)
+      // Try multiple paths where area might be stored
+      let exclusiveArea = formData.exclusiveArea; // Try user-provided first
+
+      if (!exclusiveArea) {
+        // Log all possible paths for debugging
+        console.log('[Wolse Analysis] Searching for exclusiveArea in report data...');
+        console.log('[Wolse Analysis] - riskAnalysis.deunggibu?.area:', parsedReportData?.riskAnalysis?.deunggibu?.area);
+        console.log('[Wolse Analysis] - property?.area:', parsedReportData?.property?.area);
+        console.log('[Wolse Analysis] - riskAnalysis?.area:', parsedReportData?.riskAnalysis?.area);
+        console.log('[Wolse Analysis] - jeonseAnalysis?.transactionData[0]?.exclusiveArea:', parsedReportData?.jeonseAnalysis?.transactionData?.[0]?.exclusiveArea);
+
+        // Try to get from parsed document - multiple paths
+        exclusiveArea = parsedReportData?.riskAnalysis?.deunggibu?.area ||
+                        parsedReportData?.property?.area ||
+                        parsedReportData?.riskAnalysis?.area ||
+                        // Fallback: get from jeonse transaction data (same building, similar unit)
+                        parsedReportData?.jeonseAnalysis?.transactionData?.[0]?.exclusiveArea;
+
+        if (exclusiveArea) {
+          console.log('[Wolse Analysis] Got exclusiveArea:', exclusiveArea);
+        }
+      }
+
+      if (!exclusiveArea) {
+        console.error('[Wolse Analysis] Missing exclusiveArea. Checked paths:', {
+          'riskAnalysis.deunggibu.area': parsedReportData?.riskAnalysis?.deunggibu?.area,
+          'property.area': parsedReportData?.property?.area,
+          'riskAnalysis.area': parsedReportData?.riskAnalysis?.area,
+          'jeonseAnalysis.transactionData[0].exclusiveArea': parsedReportData?.jeonseAnalysis?.transactionData?.[0]?.exclusiveArea,
+        });
+        console.error('[Wolse Analysis] Full report structure keys:', Object.keys(parsedReportData || {}));
+        return;
+      }
+
+      console.log('[Wolse Analysis] Running wolse price analysis with:', {
+        ...formData,
+        exclusiveArea
+      });
+
+      setWolseAnalysisRun(true); // Mark as running to prevent duplicate calls
+
+      // Run wolse preview analysis
+      const previewResponse = await fetch('/api/wolse/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city: formData.city,
+          district: formData.district,
+          dong: formData.dong,
+          apartmentName: formData.building,
+          exclusiveArea: exclusiveArea,
+          deposit: formData.deposit,
+          monthlyRent: formData.monthlyRent
+        })
+      });
+
+      if (!previewResponse.ok) {
+        const errorData = await previewResponse.json().catch(() => ({}));
+        console.error('[Wolse Analysis] Preview API failed:', previewResponse.status, errorData);
+        return;
+      }
+
+      const previewData = await previewResponse.json();
+      console.log('[Wolse Analysis] Preview result:', previewData);
+
+      // Save the analysis result
+      const saveResponse = await fetch('/api/wolse/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          result: previewData.result,
+          inputData: previewData.inputData,
+          analysisId // Use existing analysis ID
+        })
+      });
+
+      if (saveResponse.ok) {
+        console.log('[Wolse Analysis] Successfully saved wolse analysis data');
+        // Refresh report data to include wolse analysis
+        const refreshedReport = await fetch(`/api/analysis/report/${analysisId}`);
+        if (refreshedReport.ok) {
+          const refreshedData = await refreshedReport.json();
+          setReportData(refreshedData);
+        }
+      } else {
+        const saveError = await saveResponse.json().catch(() => ({}));
+        console.error('[Wolse Analysis] Failed to save wolse analysis:', saveResponse.status, saveError);
+      }
+    } catch (err) {
+      console.error('[Wolse Analysis] Unexpected error:', err);
+    }
+  };
 
   // Poll for analysis completion
   useEffect(() => {
@@ -108,6 +159,12 @@ export default function PreviewPage() {
           const reportResponse = await fetch(`/api/analysis/report/${analysisId}`);
           const report = await reportResponse.json();
           setReportData(report);
+
+          // For wolse, run the wolse price analysis now that we have the parsed document data
+          if (isWolse) {
+            await runWolseAnalysis(report);
+          }
+
           setIsLoading(false);
           return true;
         } else if (data.status === 'failed') {
