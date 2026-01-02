@@ -380,6 +380,25 @@ export default function MarketPositionSection({
               {wolseData.assessmentDetails && (
                 <p className="mt-4 text-gray-600 text-sm">{wolseData.assessmentDetails}</p>
               )}
+
+              {/* Warning for Good Deal / Fair Price */}
+              {(wolseData.assessment === 'GOOD_DEAL' || wolseData.assessment === 'FAIR') && (
+                <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg">⚠️</span>
+                    <div>
+                      <p className="font-semibold text-amber-900 text-sm">
+                        {wolseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Still Verify Before Signing'}
+                      </p>
+                      <p className="text-sm text-amber-700 mt-1">
+                        {wolseData.assessment === 'GOOD_DEAL'
+                          ? 'Below-market prices often have reasons. Check property condition, landlord\'s financial status (등기부등본), and contract terms for hidden issues.'
+                          : 'Even at fair market price, verify the property\'s legal status and landlord\'s debt situation before signing.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
@@ -665,6 +684,25 @@ export default function MarketPositionSection({
 
               {jeonseData.assessmentDetails && (
                 <p className="mt-4 text-gray-600 text-sm">{jeonseData.assessmentDetails}</p>
+              )}
+
+              {/* Warning for Good Deal / Fair Price */}
+              {jeonseData.assessment && (jeonseData.assessment === 'GOOD_DEAL' || jeonseData.assessment === 'FAIR') && (
+                <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg">⚠️</span>
+                    <div>
+                      <p className="font-semibold text-amber-900 text-sm">
+                        {jeonseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Still Verify Before Signing'}
+                      </p>
+                      <p className="text-sm text-amber-700 mt-1">
+                        {jeonseData.assessment === 'GOOD_DEAL'
+                          ? 'Below-market jeonse often has reasons. Check landlord\'s debt status (등기부등본), building condition, and why they may need funds urgently.'
+                          : 'Even at fair market price, verify the property\'s legal status and landlord\'s total debt situation before signing.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           );
