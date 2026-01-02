@@ -432,6 +432,13 @@ export async function GET(
       console.error('Error fetching documents:', documentsError);
     }
 
+    // Fetch wolse price data if available (for wolse reports)
+    const { data: wolsePriceData } = await supabase
+      .from('wolse_price_data')
+      .select('*')
+      .eq('analysis_id', analysisId)
+      .single();
+
     // Find parsed 등기부등본 data
     const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu');
     const parsedData = deunggibuDoc?.parsed_data || null;
@@ -590,6 +597,37 @@ export async function GET(
         transactionData: jeonseAnalysisFallback.transactionData,
         regressionLine: jeonseAnalysisFallback.regressionLine,
         contractCount: jeonseAnalysisFallback.contractCount,
+      } : null,
+
+      // Wolse analysis (if wolse price data exists)
+      wolseAnalysis: wolsePriceData ? {
+        userDeposit: wolsePriceData.user_deposit || analysis.proposed_jeonse || 0,
+        userMonthlyRent: wolsePriceData.user_monthly_rent || analysis.monthly_rent || 0,
+        userRate: wolsePriceData.user_implied_rate || 0,
+        marketRate: wolsePriceData.market_rate || 0,
+        marketRateRange: {
+          low: wolsePriceData.market_rate_low || 0,
+          high: wolsePriceData.market_rate_high || 0,
+        },
+        legalRate: wolsePriceData.legal_rate || 4.5,
+        expectedRent: wolsePriceData.expected_rent || 0,
+        rentDifference: wolsePriceData.rent_difference || 0,
+        rentDifferencePercent: wolsePriceData.rent_difference_percent || 0,
+        assessment: wolsePriceData.assessment || 'FAIR',
+        assessmentDetails: wolsePriceData.assessment_details || null,
+        contractCount: wolsePriceData.contract_count || 0,
+        confidenceLevel: wolsePriceData.confidence_level || null,
+        savingsPotential: {
+          vsMarket: wolsePriceData.savings_vs_market || 0,
+          vsLegal: wolsePriceData.savings_vs_legal || 0,
+        },
+        trend: wolsePriceData.trend_direction ? {
+          direction: wolsePriceData.trend_direction,
+          percentage: wolsePriceData.trend_percentage || 0,
+          advice: wolsePriceData.trend_advice || '',
+        } : null,
+        recentTransactions: wolsePriceData.recent_transactions || [],
+        negotiationOptions: wolsePriceData.negotiation_options || [],
       } : null,
 
       // Documents
