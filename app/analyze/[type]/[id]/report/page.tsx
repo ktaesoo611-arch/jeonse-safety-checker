@@ -87,6 +87,9 @@ export default function ReportPage() {
 
   const heroProps = {
     address: property?.address || 'Address not available',
+    buildingNumber: property?.buildingNumber || null,
+    unit: property?.unit || null,
+    area: property?.area || null,
     riskLevel: (riskAnalysis?.riskLevel || summary?.riskLevel || 'UNKNOWN') as 'SAFE' | 'MODERATE' | 'HIGH' | 'CRITICAL' | 'UNKNOWN',
     safetyScore: riskAnalysis?.overallScore || summary?.safetyScore || 0,
     deposit: property?.proposedJeonse || wolseAnalysis?.userDeposit || 0,

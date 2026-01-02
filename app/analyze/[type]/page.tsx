@@ -138,7 +138,6 @@ export default function PropertyInfoPage() {
     if (!formData.deposit) newErrors.deposit = 'Please enter deposit amount';
 
     if (isWolse) {
-      if (!formData.exclusiveArea) newErrors.exclusiveArea = 'Please enter area';
       if (!formData.monthlyRent) newErrors.monthlyRent = 'Please enter monthly rent';
     }
 
@@ -146,9 +145,6 @@ export default function PropertyInfoPage() {
     const deposit = parseInt(parseNumber(formData.deposit));
     const monthlyRent = parseInt(parseNumber(formData.monthlyRent));
 
-    if (formData.exclusiveArea && (isNaN(exclusiveArea) || exclusiveArea <= 0)) {
-      newErrors.exclusiveArea = 'Please enter a valid area';
-    }
     if (formData.deposit && (isNaN(deposit) || deposit <= 0)) {
       newErrors.deposit = 'Please enter a valid deposit amount';
     }
@@ -371,18 +367,6 @@ export default function PropertyInfoPage() {
                 )}
               </div>
 
-              {isWolse && (
-                <Input
-                  label="Exclusive Area (㎡) *"
-                  type="number"
-                  step="0.01"
-                  placeholder="84.5"
-                  value={formData.exclusiveArea}
-                  onChange={(e) => setFormData({ ...formData, exclusiveArea: e.target.value })}
-                  error={errors.exclusiveArea}
-                  helperText="전용면적 - Check your contract or building register"
-                />
-              )}
             </div>
 
             {/* Rental Terms Section */}

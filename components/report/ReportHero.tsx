@@ -2,6 +2,9 @@
 
 interface ReportHeroProps {
   address: string;
+  buildingNumber?: string | null;
+  unit?: string | null;
+  area?: number | null;
   riskLevel: 'SAFE' | 'MODERATE' | 'HIGH' | 'CRITICAL' | 'UNKNOWN';
   safetyScore: number;
   deposit: number;
@@ -14,6 +17,9 @@ interface ReportHeroProps {
 
 export default function ReportHero({
   address,
+  buildingNumber,
+  unit,
+  area,
   riskLevel,
   safetyScore,
   deposit,
@@ -144,6 +150,9 @@ export default function ReportHero({
         {/* Address */}
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-6">
           {address}
+          {buildingNumber && ` ${buildingNumber}`}
+          {unit && ` ${unit}`}
+          {area && ` ${area}㎡`}
         </h1>
 
         {/* Key Metrics */}

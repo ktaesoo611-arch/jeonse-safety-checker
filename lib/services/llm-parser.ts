@@ -51,6 +51,8 @@ interface ParsedDeunggibuData {
 
   // Property info from 표제부
   area?: number; // 전용면적 in ㎡
+  buildingNumber?: string; // 동 (e.g., "제1104동")
+  unit?: string; // 호 (e.g., "제2602호")
 
   // Liens & Restrictions flags (for legal score calculation)
   hasSeizure: boolean; // 압류
@@ -231,11 +233,12 @@ PRIORITY 4: Detect legal restrictions from ALL sections (갑구, 을구, summary
    - Extract 4-digit year (e.g., "2021년", "2021-", "2021.")
    - **EXAMPLE**: "신축년월일 2021년03월15일" → buildingYear: 2021
 
-6. **전용면적 (Exclusive Area)** - CRITICAL for MOLIT API:
+6. **전용면적 (Exclusive Area) & 동/호 (Building/Unit)** - CRITICAL for MOLIT API:
    - Look in "표제부" section, specifically "전유부분의 건물의 표시"
    - Find area in ㎡ or m² format (e.g., "84.98㎡", "114.86m²")
-   - Usually appears after "건물번호" or near structure description
-   - **EXAMPLE**: "제8층 제804호 철근콘크리트구조 114.86m²" → area: 114.86
+   - Find building number (동): "제XXX동" format (e.g., "제1104동", "제8동")
+   - Find unit number (호): "제XXX호" format (e.g., "제2602호", "제804호")
+   - **EXAMPLE**: "제1104동 제2602호 철근콘크리트구조 84.98m²" → buildingNumber: "제1104동", unit: "제2602호", area: 84.98
 
 7. **Legal Restrictions (Boolean Flags)** - CRITICAL for risk scoring:
    **IMPORTANT**: Use ONLY the "주요 등기사항 요약 (참고용)" summary section to detect these!
@@ -267,6 +270,8 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 {
   "buildingYear": 2021,
   "area": 84.98,
+  "buildingNumber": "제1104동",
+  "unit": "제2602호",
   "ownership": [
     {
       "ownerName": "홍길동",
@@ -348,6 +353,10 @@ ${text}`;
     // Extract area (전용면적) - CRITICAL for MOLIT API
     const area = parsed.area ? parseFloat(parsed.area.toString()) : undefined;
 
+    // Extract building number and unit (동/호)
+    const buildingNumber = parsed.buildingNumber || undefined;
+    const unit = parsed.unit || undefined;
+
     // Transform mortgages
     const mortgages: MortgageEntry[] = (parsed.mortgages || []).map((m: any) => ({
       priority: m.priority,
@@ -420,6 +429,8 @@ ${text}`;
       confidence,
       buildingYear, // Optional: extracted from 표제부 section
       area, // 전용면적 from 표제부 section
+      buildingNumber, // 동 from 표제부 section
+      unit, // 호 from 표제부 section
 
       // Legal restriction flags
       hasSeizure,
