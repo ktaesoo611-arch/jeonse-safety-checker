@@ -23,3 +23,21 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Print styles */
+@media print {
+  /* Force background colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Progress bars need visible borders for print */
+  .print-progress-bar {
+    border: 1px solid #9ca3af !important;
+  }
+
+  .print-progress-fill {
+    border: 1px solid currentColor !important;
+  }
+}

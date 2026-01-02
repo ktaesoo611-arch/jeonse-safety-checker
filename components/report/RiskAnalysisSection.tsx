@@ -293,15 +293,15 @@ export default function RiskAnalysisSection({
                   </div>
                   <span className="font-bold text-gray-900">{value}/100</span>
                 </div>
-                <div className={`h-2.5 rounded-full overflow-hidden ${
+                <div className={`h-2.5 rounded-full overflow-hidden print-progress-bar ${
                   value === 0 ? 'bg-red-200 ring-2 ring-red-500 ring-offset-1' : 'bg-gray-200'
                 }`}>
                   <div
-                    className={`h-full bg-gradient-to-r transition-all duration-500 ${
-                      value >= 75 ? 'from-emerald-500 to-teal-500' :
-                      value >= 50 ? 'from-yellow-500 to-orange-400' :
-                      value >= 25 ? 'from-orange-500 to-red-500' :
-                      value === 0 ? 'from-red-700 to-red-900' : 'from-red-600 to-rose-600'
+                    className={`h-full bg-gradient-to-r transition-all duration-500 print-progress-fill ${
+                      value >= 75 ? 'from-emerald-500 to-teal-500 text-emerald-600' :
+                      value >= 50 ? 'from-yellow-500 to-orange-400 text-yellow-600' :
+                      value >= 25 ? 'from-orange-500 to-red-500 text-orange-600' :
+                      value === 0 ? 'from-red-700 to-red-900 text-red-700' : 'from-red-600 to-rose-600 text-red-600'
                     }`}
                     style={{ width: `${value || 0.5}%`, minWidth: value === 0 ? '4px' : '0' }}
                   />
