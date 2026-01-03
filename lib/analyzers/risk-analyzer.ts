@@ -168,8 +168,10 @@ export class RiskAnalyzer {
     const debtRanking = this.rankDebts(deunggibu, proposedJeonse);
 
     // Calculate breakdown
-    // Reuse total debt calculation from above (already includes mortgages + jeonse rights)
-    const totalDebt = totalExistingDebt;
+    // Use totalMortgageAmount (채권최고액 sum) for display consistency with debtRanking
+    // This matches what appears on the registry document
+    const totalMortgageAmountForDisplay = deunggibu.totalMortgageAmount;
+    const totalDebt = totalMortgageAmountForDisplay + totalJeonseLeaseDebt;
     const totalExposure = totalDebt + proposedJeonse;
     const availableEquity = propertyValue - totalExposure;
 
@@ -935,11 +937,12 @@ export class RiskAnalyzer {
     const ranking: MortgageRanking[] = [];
 
     // Add mortgages (temporarily without rank)
+    // Use maxSecuredAmount (채권최고액) for display - this is what appears on the registry
     deunggibu.mortgages.forEach((mortgage) => {
       ranking.push({
         rank: 0, // Will be assigned after sorting
         type: '근저당권 (Mortgage)',
-        amount: mortgage.estimatedPrincipal,
+        amount: mortgage.maxSecuredAmount,
         registrationDate: mortgage.registrationDate,
         priority: 'subordinate' // Will be recalculated after sorting
       });
