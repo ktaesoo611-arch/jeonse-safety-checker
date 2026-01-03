@@ -148,12 +148,18 @@ export default function ReportHero({
         </div>
 
         {/* Address */}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-6">
-          {address}
-          {buildingNumber && ` ${buildingNumber}`}
-          {unit && ` ${unit}`}
-          {area && ` ${Math.floor(area)}㎡`}
-        </h1>
+        <div className="text-center mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            {address}
+          </h1>
+          {(buildingNumber || unit || area) && (
+            <p className="text-xl md:text-2xl font-semibold text-gray-700 mt-1">
+              {buildingNumber}
+              {unit && ` ${unit}`}
+              {area && ` ${Math.floor(area)}㎡`}
+            </p>
+          )}
+        </div>
 
         {/* Key Metrics */}
         <div className="flex justify-center gap-6 flex-wrap">
