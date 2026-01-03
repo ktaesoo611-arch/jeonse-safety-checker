@@ -299,34 +299,54 @@ async function performRealAnalysis(
       deunggibuData.address = address;
     }
 
-    // Step 5.5: Populate boolean flags from liens array (LLM parser doesn't set these)
+    // Step 5.5: Augment boolean flags from liens array
+    // IMPORTANT: Preserve LLM's flag detection (from summary section) and use OR logic
+    // The LLM detects flags from "주요 등기사항 요약" summary, which is authoritative
+    // Liens array provides additional detection in case LLM extraction missed entries
     if (deunggibuData.liens && Array.isArray(deunggibuData.liens)) {
-      deunggibuData.hasAuction = false;
-      deunggibuData.hasSeizure = false;
-      deunggibuData.hasProvisionalSeizure = false;
-      deunggibuData.hasProvisionalDisposition = false;
+      // Preserve existing LLM-detected flags (don't reset to false!)
+      const llmHasAuction = deunggibuData.hasAuction === true;
+      const llmHasSeizure = deunggibuData.hasSeizure === true;
+      const llmHasProvisionalSeizure = deunggibuData.hasProvisionalSeizure === true;
+      const llmHasProvisionalDisposition = deunggibuData.hasProvisionalDisposition === true;
+
+      // Additional detection from liens array
+      let liensHasAuction = false;
+      let liensHasSeizure = false;
+      let liensHasProvisionalSeizure = false;
+      let liensHasProvisionalDisposition = false;
 
       deunggibuData.liens.forEach((lien: any) => {
         const lienType = lien.type?.toLowerCase() || '';
         if (lienType.includes('경매')) {
-          deunggibuData.hasAuction = true;
+          liensHasAuction = true;
         }
         if (lienType.includes('압류') && !lienType.includes('가압류')) {
-          deunggibuData.hasSeizure = true;
+          liensHasSeizure = true;
         }
         if (lienType.includes('가압류')) {
-          deunggibuData.hasProvisionalSeizure = true;
+          liensHasProvisionalSeizure = true;
         }
         if (lienType.includes('가처분')) {
-          deunggibuData.hasProvisionalDisposition = true;
+          liensHasProvisionalDisposition = true;
         }
       });
 
-      console.log('Populated legal flags from liens:', {
+      // Combine LLM detection with liens array detection (OR logic)
+      deunggibuData.hasAuction = llmHasAuction || liensHasAuction;
+      deunggibuData.hasSeizure = llmHasSeizure || liensHasSeizure;
+      deunggibuData.hasProvisionalSeizure = llmHasProvisionalSeizure || liensHasProvisionalSeizure;
+      deunggibuData.hasProvisionalDisposition = llmHasProvisionalDisposition || liensHasProvisionalDisposition;
+
+      console.log('Legal flags (combined LLM + liens detection):', {
         hasAuction: deunggibuData.hasAuction,
         hasSeizure: deunggibuData.hasSeizure,
         hasProvisionalSeizure: deunggibuData.hasProvisionalSeizure,
         hasProvisionalDisposition: deunggibuData.hasProvisionalDisposition,
+        sources: {
+          llm: { hasAuction: llmHasAuction, hasSeizure: llmHasSeizure, hasProvisionalSeizure: llmHasProvisionalSeizure, hasProvisionalDisposition: llmHasProvisionalDisposition },
+          liens: { hasAuction: liensHasAuction, hasSeizure: liensHasSeizure, hasProvisionalSeizure: liensHasProvisionalSeizure, hasProvisionalDisposition: liensHasProvisionalDisposition }
+        },
         liensCount: deunggibuData.liens.length
       });
     }

@@ -254,7 +254,7 @@ PRIORITY 4: Detect legal restrictions from ALL sections (갑구, 을구, summary
 
    Flags to detect from summary section:
    - **hasSeizure (압류)**: Court seizure - look for "압류" but NOT "가압류" in section 2
-   - **hasAuction (경매개시결정)**: Foreclosure auction - look for "경매개시결정" or "임의경매개시결정" in section 2
+   - **hasAuction (경매개시결정)**: Foreclosure auction - look for "경매개시결정", "임의경매개시결정", or "강제경매개시결정" in section 2
    - **hasProvisionalSeizure (가압류)**: Provisional seizure - look for "가압류" in section 2
    - **hasSuperficies (지상권)**: Surface rights - look for "지상권" in section 3
    - **hasProvisionalRegistration (가등기)**: Provisional registration - look for "가등기" in section 2

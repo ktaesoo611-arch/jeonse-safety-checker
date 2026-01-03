@@ -258,17 +258,8 @@ export default function PreviewPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Analyzing Your Property</h2>
-          <p className="text-gray-600">This usually takes 10-30 seconds...</p>
-        </div>
-      </div>
-    );
-  }
+  // Skip the spinner - show content immediately with a fade-in effect
+  // The processing page already waited for completion before redirecting here
 
   if (error) {
     return (
@@ -290,7 +281,7 @@ export default function PreviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7]">
+    <div className="min-h-screen bg-[#FDFBF7] animate-fadeIn">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#FDFBF7]/80 backdrop-blur-md border-b border-amber-100">
         <div className="container mx-auto px-6 py-4 max-w-7xl flex items-center justify-between">
@@ -302,9 +293,9 @@ export default function PreviewPage() {
             </div>
             <span className="text-xl font-semibold text-[#2D3748]">K-Rent Safety</span>
           </Link>
-          <div className={`inline-flex items-center gap-2 px-4 py-2 bg-${isWolse ? 'orange' : 'amber'}-100 text-${isWolse ? 'orange' : 'amber'}-700 rounded-full text-sm font-semibold`}>
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${isWolse ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700'}`}>
             <span>{isWolse ? 'Wolse' : 'Jeonse'} Check</span>
-            <span className={`text-${isWolse ? 'orange' : 'amber'}-400`}>|</span>
+            <span className={isWolse ? 'text-orange-400' : 'text-amber-400'}>|</span>
             <span>Step 4 of 4</span>
           </div>
         </div>
@@ -339,7 +330,7 @@ export default function PreviewPage() {
         {/* Preview Banner */}
         <div className={`mb-8 p-4 bg-gradient-to-r ${isWolse ? 'from-orange-100 to-amber-100' : 'from-amber-100 to-orange-100'} rounded-2xl border ${isWolse ? 'border-orange-200' : 'border-amber-200'}`}>
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 bg-${isWolse ? 'orange' : 'amber'}-500 rounded-full flex items-center justify-center`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isWolse ? 'bg-orange-500' : 'bg-amber-500'}`}>
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />

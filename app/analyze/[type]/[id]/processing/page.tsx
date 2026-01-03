@@ -24,7 +24,6 @@ export default function ProcessingPage() {
   }
 
   const isWolse = type === 'wolse';
-  const accentColor = isWolse ? 'orange' : 'amber';
 
   const [currentStep, setCurrentStep] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
@@ -145,9 +144,9 @@ export default function ProcessingPage() {
       <div className="relative z-10 container mx-auto px-6 py-16 max-w-3xl">
         {/* Header Section */}
         <div className="mb-12 text-center">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 bg-${accentColor}-50 text-${accentColor}-700 rounded-full text-sm font-semibold mb-6 border border-${accentColor}-200`}>
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-6 border ${isWolse ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
             <span>{isWolse ? 'Wolse' : 'Jeonse'} Check</span>
-            <span className={`text-${accentColor}-400`}>|</span>
+            <span className={isWolse ? 'text-orange-400' : 'text-amber-400'}>|</span>
             <span>Step 3 of 4</span>
           </div>
 
@@ -177,7 +176,7 @@ export default function ProcessingPage() {
         </div>
 
         {/* Progress Card */}
-        <div className={`bg-white rounded-3xl p-8 mb-8 shadow-xl shadow-${accentColor}-900/5 border border-${accentColor}-100`}>
+        <div className={`bg-white rounded-3xl p-8 mb-8 shadow-xl border ${isWolse ? 'shadow-orange-900/5 border-orange-100' : 'shadow-amber-900/5 border-amber-100'}`}>
           {/* Progress Bar */}
           <div className="mb-10">
             <div className={`h-3 ${isWolse ? 'bg-orange-100' : 'bg-amber-100'} rounded-full overflow-hidden shadow-inner`}>

@@ -1159,8 +1159,8 @@ export class DeunggibuParser {
       // Format: "순위번호 등기목적 접수정보 주요등기사항 대상소유자"
       // Example: "2 임의경매개시결정 2023년 11월 10일 제166137호 채권자 주식회사현대부동산연구소 김선회"
 
-      // Pattern for 경매 (Auction) in summary
-      const auctionPattern = /(\d+)\s+(?:임의경매개시결정|경매개시결정)\s+(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일[^채]*?채권자\s+([^\s]+(?:\s+[가-힣]+)*)/g;
+      // Pattern for 경매 (Auction) in summary - includes 임의경매, 강제경매, and plain 경매개시결정
+      const auctionPattern = /(\d+)\s+(?:임의경매개시결정|강제경매개시결정|경매개시결정)\s+(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일[^채]*?채권자\s+([^\s]+(?:\s+[가-힣]+)*)/g;
       let match;
       while ((match = auctionPattern.exec(summarySection)) !== null) {
         const [, priority, year, month, day, creditor] = match;
@@ -1262,8 +1262,8 @@ export class DeunggibuParser {
       });
     }
 
-    // Pattern 4: 경매개시결정 (Auction)
-    const auctionPattern = /(\d+)\s+(?:임의경매개시결정|경매개시결정)\s+(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일[^금]*?(?:신청인|채권자)\s+([가-힣\s]+)/gs;
+    // Pattern 4: 경매개시결정 (Auction) - includes 임의경매, 강제경매, and plain 경매개시결정
+    const auctionPattern = /(\d+)\s+(?:임의경매개시결정|강제경매개시결정|경매개시결정)\s+(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일[^금]*?(?:신청인|채권자)\s+([가-힣\s]+)/gs;
 
     let match4;
     while ((match4 = auctionPattern.exec(eulguSection)) !== null) {
