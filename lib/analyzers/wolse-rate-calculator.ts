@@ -71,9 +71,14 @@ export class WolseRateCalculator {
   }
 
   /**
-   * Remove outliers from transactions using IQR method
-   * Outliers are transactions where deposit OR rent falls outside IQR bounds
-   * Uses tighter bounds (1.0×IQR) for dong/district level data due to higher variance
+   * Remove outliers from transactions
+   *
+   * Deposit filtering: 0 ~ 80% of estimated property value
+   * - Property value is estimated from transactions: median implied jeonse / 0.75
+   * - Implied jeonse = deposit + (monthlyRent × 12 / conversionRate)
+   * - Falls back to IQR with 30% min if estimation fails
+   *
+   * Rent filtering: IQR-based with 30% minimum
    */
   private removeOutliers(
     transactions: WolseTransaction[],
@@ -86,30 +91,57 @@ export class WolseRateCalculator {
       return { clean: transactions, removed: [] };
     }
 
+    const CONVERSION_RATE = 0.045; // 4.5% for implied jeonse calculation
+    const JEONSE_TO_VALUE_RATIO = 0.75; // Jeonse is typically 75% of property value
+    const MAX_DEPOSIT_RATIO = 0.80; // Max deposit is 80% of property value
+    const MIN_IQR_PERCENT = 0.30; // 30% of median for IQR fallback
+
     // Use tighter bounds for dong/district level data (higher variance)
     const multiplier = dataSource === 'building' ? 1.5 : 1.0;
 
-    // Calculate IQR for deposits
-    const sortedDeposits = [...transactions].sort((a, b) => a.deposit - b.deposit);
-    const q1DepositIdx = Math.floor(transactions.length * 0.25);
-    const q3DepositIdx = Math.floor(transactions.length * 0.75);
-    const q1Deposit = sortedDeposits[q1DepositIdx].deposit;
-    const q3Deposit = sortedDeposits[q3DepositIdx].deposit;
-    const iqrDeposit = q3Deposit - q1Deposit;
-    const depositLower = q1Deposit - multiplier * iqrDeposit;
-    const depositUpper = q3Deposit + multiplier * iqrDeposit;
+    // Step 1: Estimate property value from transactions
+    // Calculate implied jeonse for each transaction
+    const impliedJeonses = transactions.map(t =>
+      t.deposit + (t.monthlyRent * 12 / CONVERSION_RATE)
+    );
+    impliedJeonses.sort((a, b) => a - b);
+    const medianImpliedJeonse = impliedJeonses[Math.floor(impliedJeonses.length / 2)];
+    const estimatedPropertyValue = medianImpliedJeonse / JEONSE_TO_VALUE_RATIO;
 
-    // Calculate IQR for rents
+    // Step 2: Calculate deposit bounds (0 ~ 80% of property value)
+    const depositLower = 0;
+    const depositUpper = estimatedPropertyValue * MAX_DEPOSIT_RATIO;
+    const depositMethod = 'property-value';
+
+    console.log(`\n   📊 Deposit Bounds [${depositMethod}]:`);
+    console.log(`      Median implied jeonse: ${(medianImpliedJeonse/10000).toFixed(0)}만`);
+    console.log(`      Estimated property value: ${(estimatedPropertyValue/10000).toFixed(0)}만`);
+    console.log(`      Valid deposit range: ${(depositLower/10000).toFixed(0)}만 ~ ${(depositUpper/10000).toFixed(0)}만 (0~80%)`);
+
+    // Step 3: Calculate rent bounds using IQR with 30% minimum
     const sortedRents = [...transactions].sort((a, b) => a.monthlyRent - b.monthlyRent);
-    const q1Rent = sortedRents[q1DepositIdx].monthlyRent;
-    const q3Rent = sortedRents[q3DepositIdx].monthlyRent;
-    const iqrRent = q3Rent - q1Rent;
+    const q1RentIdx = Math.floor(transactions.length * 0.25);
+    const q3RentIdx = Math.floor(transactions.length * 0.75);
+    const medianRentIdx = Math.floor(transactions.length * 0.5);
+    const q1Rent = sortedRents[q1RentIdx].monthlyRent;
+    const q3Rent = sortedRents[q3RentIdx].monthlyRent;
+    const medianRent = sortedRents[medianRentIdx].monthlyRent;
+
+    // Use actual IQR or minimum 30% of median, whichever is larger
+    let iqrRent = q3Rent - q1Rent;
+    const minIqrRent = medianRent * MIN_IQR_PERCENT;
+    const usedMinRent = iqrRent < minIqrRent;
+    if (usedMinRent) {
+      iqrRent = minIqrRent;
+    }
+
     const rentLower = q1Rent - multiplier * iqrRent;
     const rentUpper = q3Rent + multiplier * iqrRent;
 
-    // IQR bounds logging (concise)
-    console.log(`\n   📊 IQR Bounds [${dataSource}, ${multiplier}×IQR]: Deposit ${(depositLower/10000).toFixed(0)}~${(depositUpper/10000).toFixed(0)}만, Rent ${(rentLower/10000).toFixed(0)}~${(rentUpper/10000).toFixed(0)}만`);
+    const rentNote = usedMinRent ? ' (min 30%)' : '';
+    console.log(`   📊 Rent Bounds [IQR, ${multiplier}×]: ${(rentLower/10000).toFixed(0)}만 ~ ${(rentUpper/10000).toFixed(0)}만${rentNote}`);
 
+    // Step 4: Filter transactions
     const clean: WolseTransaction[] = [];
     const removed: WolseTransaction[] = [];
 

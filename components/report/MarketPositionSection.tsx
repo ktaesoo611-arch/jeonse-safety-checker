@@ -437,7 +437,7 @@ export default function MarketPositionSection({
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
               <span>📊</span>
-              Recent Transactions ({wolseData.contractCount} contracts)
+              Recent Transactions ({wolseData.recentTransactions.length} contracts)
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -742,7 +742,7 @@ export default function MarketPositionSection({
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
               <span>📋</span>
-              Recent Transactions ({jeonseData.contractCount || jeonseData.transactionData.length} contracts)
+              Recent Transactions ({jeonseData.transactionData.length} contracts)
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
