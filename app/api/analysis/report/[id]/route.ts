@@ -72,6 +72,30 @@ export async function GET(
         .eq('id', analysisId)
         .single();
 
+      // Fetch uploaded documents for parsed data (buildingNumber, unit, etc.)
+      const { data: wolseDocuments } = await supabase
+        .from('uploaded_documents')
+        .select('*')
+        .eq('analysis_id', analysisId)
+        .order('created_at', { ascending: false });
+
+      const wolseDeunggibuDoc = wolseDocuments?.find((d: any) => d.document_type === 'deunggibu');
+      const wolseParsedData = wolseDeunggibuDoc?.parsed_data || null;
+
+      // Extract buildingNumber and unit from address if not explicitly parsed
+      let wolseBuildingNumber = wolseParsedData?.buildingNumber || null;
+      let wolseUnit = wolseParsedData?.unit || null;
+      if ((!wolseBuildingNumber || !wolseUnit) && wolseParsedData?.address) {
+        const buildingMatch = wolseParsedData.address.match(/제(\d+)동/);
+        const unitMatch = wolseParsedData.address.match(/제(\d+)호/);
+        if (!wolseBuildingNumber && buildingMatch) {
+          wolseBuildingNumber = `제${buildingMatch[1]}동`;
+        }
+        if (!wolseUnit && unitMatch) {
+          wolseUnit = `제${unitMatch[1]}호`;
+        }
+      }
+
       const riskAnalysis = safetyData?.deunggibu_data || null;
       const hasSafetyData = riskAnalysis && riskAnalysis.overallScore !== undefined;
 
@@ -113,12 +137,12 @@ export async function GET(
             ? `${propertyData?.city || '서울특별시'} ${propertyData?.district || ''} ${propertyData?.dong || ''} ${propertyData?.building_name}`.trim()
             : propertyData?.address || 'N/A',
           buildingName: propertyData?.building_name || null,
-          buildingNumber: propertyData?.building_number || riskAnalysis?.deunggibu?.buildingNumber || riskAnalysis?.buildingNumber || null,
-          unit: propertyData?.unit || riskAnalysis?.deunggibu?.unit || riskAnalysis?.unit || null,
+          buildingNumber: propertyData?.building_number || riskAnalysis?.deunggibu?.buildingNumber || riskAnalysis?.buildingNumber || wolseBuildingNumber || null,
+          unit: propertyData?.unit || riskAnalysis?.deunggibu?.unit || riskAnalysis?.unit || wolseUnit || null,
           proposedJeonse: wolseResult.user_deposit,
           estimatedValue: riskAnalysis?.valuation?.valueMid || null,
           // Prioritize LLM-extracted area from 등기부등본 over user-entered value
-          area: riskAnalysis?.deunggibu?.area || riskAnalysis?.area || propertyData?.exclusive_area || null,
+          area: riskAnalysis?.deunggibu?.area || riskAnalysis?.area || wolseParsedData?.area || propertyData?.exclusive_area || null,
           valuation: riskAnalysis?.valuation || {},
         },
 
@@ -231,6 +255,20 @@ export async function GET(
       const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu');
       const parsedData = deunggibuDoc?.parsed_data || null;
 
+      // Extract buildingNumber and unit from address if not explicitly parsed
+      let jeonseBuildingNumber = parsedData?.buildingNumber || null;
+      let jeonseUnit = parsedData?.unit || null;
+      if ((!jeonseBuildingNumber || !jeonseUnit) && parsedData?.address) {
+        const buildingMatch = parsedData.address.match(/제(\d+)동/);
+        const unitMatch = parsedData.address.match(/제(\d+)호/);
+        if (!jeonseBuildingNumber && buildingMatch) {
+          jeonseBuildingNumber = `제${buildingMatch[1]}동`;
+        }
+        if (!jeonseUnit && unitMatch) {
+          jeonseUnit = `제${unitMatch[1]}호`;
+        }
+      }
+
       // Build report from new schema
       const riskAnalysis = newSchemaResult.deunggibu_data;
 
@@ -276,8 +314,8 @@ export async function GET(
             ? `${newSchemaResult.city || '서울특별시'} ${newSchemaResult.district || ''} ${newSchemaResult.dong || ''} ${newSchemaResult.building_name}`.trim()
             : newSchemaResult.address || 'N/A',
           buildingName: newSchemaResult.building_name || null,
-          buildingNumber: newSchemaResult.building_number || riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || null,
-          unit: newSchemaResult.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || null,
+          buildingNumber: newSchemaResult.building_number || riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || jeonseBuildingNumber || null,
+          unit: newSchemaResult.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || jeonseUnit || null,
           proposedJeonse: newSchemaResult.proposed_jeonse,
           estimatedValue: newSchemaResult.valuation_data?.valueMid || riskAnalysis.valuation?.valueMid || null,
           // Prioritize LLM-extracted area from 등기부등본
@@ -459,6 +497,20 @@ export async function GET(
     const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu');
     const parsedData = deunggibuDoc?.parsed_data || null;
 
+    // Extract buildingNumber and unit from address if not explicitly parsed (fallback path)
+    let fallbackBuildingNumber = parsedData?.buildingNumber || null;
+    let fallbackUnit = parsedData?.unit || null;
+    if ((!fallbackBuildingNumber || !fallbackUnit) && parsedData?.address) {
+      const buildingMatch = parsedData.address.match(/제(\d+)동/);
+      const unitMatch = parsedData.address.match(/제(\d+)호/);
+      if (!fallbackBuildingNumber && buildingMatch) {
+        fallbackBuildingNumber = `제${buildingMatch[1]}동`;
+      }
+      if (!fallbackUnit && unitMatch) {
+        fallbackUnit = `제${unitMatch[1]}호`;
+      }
+    }
+
     // Build comprehensive report
     const riskAnalysis = analysis.deunggibu_data;
 
@@ -516,12 +568,12 @@ export async function GET(
             ? `${prop?.city || '서울특별시'} ${prop?.district || ''} ${prop?.dong || ''} ${prop?.building_name}`.trim()
             : prop?.address || 'N/A',
           buildingName: prop?.building_name || null,
-          buildingNumber: prop?.building_number || riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || null,
-          unit: prop?.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || null,
+          buildingNumber: prop?.building_number || riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || fallbackBuildingNumber || null,
+          unit: prop?.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || fallbackUnit || null,
           proposedJeonse: analysis.proposed_jeonse,
           estimatedValue: riskAnalysis.valuation?.valueMid || null,
           // Prioritize LLM-extracted area from 등기부등본
-          area: riskAnalysis.deunggibu?.area || riskAnalysis.area || null,
+          area: riskAnalysis.deunggibu?.area || riskAnalysis.area || parsedData?.area || null,
           buildingAge: parsedData?.property?.buildingAge || null,
           propertyType: parsedData?.property?.type || null,
           valuation: {
