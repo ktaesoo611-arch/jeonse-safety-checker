@@ -34,6 +34,17 @@ export default function PreviewPage() {
     return null;
   });
 
+  // Get user's form data from sessionStorage (has deposit, monthlyRent, etc.)
+  const [userFormData, setUserFormData] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem(`analysis-${analysisId}`);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    }
+    return null;
+  });
+
   const [isLoading, setIsLoading] = useState(!reportData);
   const [analysisReady, setAnalysisReady] = useState(!!reportData);
   const [error, setError] = useState<string | null>(null);
@@ -243,8 +254,8 @@ export default function PreviewPage() {
     area: property?.area || null,
     riskLevel: riskAnalysis?.riskLevel || summary?.riskLevel || 'MODERATE' as const,
     safetyScore: riskAnalysis?.overallScore || summary?.safetyScore || 72,
-    deposit: property?.proposedJeonse || 300000000,
-    monthlyRent: isWolse ? (reportData?.monthlyRent || reportData?.wolseAnalysis?.userMonthlyRent || 1500000) : undefined,
+    deposit: userFormData?.deposit || property?.proposedJeonse || 300000000,
+    monthlyRent: isWolse ? (userFormData?.monthlyRent || reportData?.monthlyRent || reportData?.wolseAnalysis?.userMonthlyRent || null) : undefined,
     estimatedValue: property?.estimatedValue || valuation?.valueMid || 450000000,
     verdict: riskAnalysis?.verdict || summary?.verdict || 'Your deposit analysis shows moderate risk. Review the detailed breakdown below for specific concerns and recommendations.',
     reportDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
