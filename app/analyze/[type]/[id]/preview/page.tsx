@@ -21,9 +21,21 @@ export default function PreviewPage() {
   }
 
   const isWolse = type === 'wolse';
-  const [isLoading, setIsLoading] = useState(true);
-  const [analysisReady, setAnalysisReady] = useState(false);
-  const [reportData, setReportData] = useState<any>(null);
+
+  // Initialize reportData from sessionStorage if available (cached by processing page)
+  const [reportData, setReportData] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = sessionStorage.getItem(`report-${analysisId}`);
+      if (cached) {
+        sessionStorage.removeItem(`report-${analysisId}`);
+        return JSON.parse(cached);
+      }
+    }
+    return null;
+  });
+
+  const [isLoading, setIsLoading] = useState(!reportData);
+  const [analysisReady, setAnalysisReady] = useState(!!reportData);
   const [error, setError] = useState<string | null>(null);
 
   // State to track if wolse analysis has been run
@@ -150,6 +162,15 @@ export default function PreviewPage() {
 
     const pollStatus = async () => {
       try {
+        // Skip polling if we already have report data (from sessionStorage initialization)
+        if (reportData) {
+          // For wolse, run the wolse price analysis now that we have the parsed document data
+          if (isWolse && !wolseAnalysisRun) {
+            await runWolseAnalysis(reportData);
+          }
+          return true;
+        }
+
         const response = await fetch(`/api/analysis/status/${analysisId}`);
         const data = await response.json();
 
@@ -257,9 +278,6 @@ export default function PreviewPage() {
       optional: ['Negotiate lower deposit if possible']
     }
   };
-
-  // Skip the spinner - show content immediately with a fade-in effect
-  // The processing page already waited for completion before redirecting here
 
   if (error) {
     return (

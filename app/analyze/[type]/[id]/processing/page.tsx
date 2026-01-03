@@ -55,21 +55,35 @@ export default function ProcessingPage() {
     if (!serverCompleted || isCompleted) return;
 
     // Animate through remaining steps one by one
-    const animateRemainingSteps = () => {
+    const animateRemainingSteps = async () => {
       let stepIndex = currentStep;
 
-      const stepInterval = setInterval(() => {
+      const stepInterval = setInterval(async () => {
         stepIndex++;
         if (stepIndex >= steps.length) {
           clearInterval(stepInterval);
           setCurrentStep(steps.length - 1);
           // Wait for progress bar to catch up, then mark complete
-          setTimeout(() => {
+          setTimeout(async () => {
             setIsCompleted(true);
-            // Redirect after showing completion
-            setTimeout(() => {
+            // Pre-fetch report data and cache in sessionStorage before redirecting
+            // This prevents showing mock data (역삼동) on preview page
+            try {
+              const reportResponse = await fetch(`/api/analysis/report/${analysisId}`);
+              if (reportResponse.ok) {
+                const reportData = await reportResponse.json();
+                // Cache in sessionStorage for preview page to use immediately
+                sessionStorage.setItem(`report-${analysisId}`, JSON.stringify(reportData));
+                router.push(`/analyze/${type}/${analysisId}/preview`);
+              } else {
+                // Retry once after a short delay
+                await new Promise(resolve => setTimeout(resolve, 500));
+                router.push(`/analyze/${type}/${analysisId}/preview`);
+              }
+            } catch {
+              // On error, redirect anyway
               router.push(`/analyze/${type}/${analysisId}/preview`);
-            }, 1000);
+            }
           }, 500);
         } else {
           setCurrentStep(stepIndex);
