@@ -209,7 +209,12 @@ PRIORITY 4: Detect legal restrictions from ALL sections (갑구, 을구, summary
    - Look for EVERY "근저당권설정" entry in the document
    - Extract: 순위번호 (priority), 접수일자/등록일 (date), 채권최고액 (max secured amount), 근저당권자 (creditor)
    - Date format: YYYY년MM월DD일 or YYYY-MM-DD or YYYY년M월D일
-   - Amount format: Look for "금", "채권최고액", or numbers followed by "원"
+   - Amount format: Look for "채권최고액" followed by "금" + numbers + "원" (e.g., "금1,227,600,000원")
+   - **CRITICAL OCR PARSING**: The amount may NOT be immediately after "채권최고액" - it might be on the same line but separated by other text!
+     * Scan the ENTIRE row/entry to find the "금XXX원" pattern for each mortgage
+     * Example messy OCR: "채권최고액 근저당권자 ... 고대진 금1,227,600,000원" - the amount is at the END
+     * Match EACH mortgage entry to its OWN amount - do NOT copy amounts from other entries
+   - **IGNORE 근저당권이전 (mortgage transfer)**: These are transfers of existing mortgages, NOT new mortgages. They do not have new amounts.
    - **EXAMPLE**: "순위번호 19 | 근저당권설정 | 2021년3월28일 | 채권최고액 금393,900,000원 | 근저당권자 농협은행주식회사"
 
 3. **전세권 및 주택임차권 (Jeonse Rights and Housing Lease Rights)**:
@@ -267,6 +272,12 @@ PRIORITY 4: Detect legal restrictions from ALL sections (갑구, 을구, summary
    - Entries may be merged on same line (e.g., "8 전세권변경 25 근저당권설정 2022년2월9일")
    - Use delimiters like "|" or "제XXX호" to separate fields
    - If date appears multiple times, match it to the closest entry type
+   - **CRITICAL for summary table parsing**: The 주요 등기사항 요약 table may have messy OCR:
+     * Example input: "5 근저당권설정 2020년9월23일 제165738호 채권최고액 근저당권자 5-2 근저당권이전 ... 금1,227,600,000원 영등포농업협동조합 6 근저당권설정 2021년8월18일 제137675호 채권최고액 금152,400,000원"
+     * CORRECT parsing: Entry 5 has 금1,227,600,000원, Entry 6 has 금152,400,000원
+     * WRONG parsing: Entry 5 and 6 both have 금152,400,000원
+     * Each entry starts with its priority number (5, 6, etc.) - use this to segment entries
+     * The "금XXX원" amount belongs to the MOST RECENT 근저당권설정 entry BEFORE it
 
 **PARSE CAREFULLY**: Even if section 3 shows only a table with ONE mortgage entry, extract that mortgage! Do not return empty arrays if entries exist.
 
