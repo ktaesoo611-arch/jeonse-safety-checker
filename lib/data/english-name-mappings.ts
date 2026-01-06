@@ -139,6 +139,7 @@ export const SUBBRAND_DICTIONARY: Record<string, string> = {
   '리버뷰': 'River View',
   '아르테온': 'ARTEON',
   '그라시움': 'Gracium',
+  '센트베르': 'Centvert',
   '베네루체': 'Bene Luce',
   '웰츠타워': 'WELLTZ TOWER',
   '프레지던스': 'Presidence',
@@ -291,6 +292,9 @@ export const LOCATION_DICTIONARY: Record<string, string> = {
   '신촌': 'Sinchon',
   '연희': 'Yeonhui',
   '연남': 'Yeonnam',
+
+  // Gyeonggi-do locations
+  '광명': 'Gwangmyeong',
 };
 
 // ============================================================================
