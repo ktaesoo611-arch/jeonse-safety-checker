@@ -9415,7 +9415,7 @@
     },
     {
       "name": "강변에스케이뷰",
-      "nameEn": "Gangbyeoneseukei View",
+      "nameEn": "Gangbyeon SK View",
       "district": "광진구",
       "districtCode": "11215",
       "dongs": [
@@ -9907,7 +9907,7 @@
     },
     {
       "name": "에스케이",
-      "nameEn": "Eseukei",
+      "nameEn": "SK",
       "district": "광진구",
       "districtCode": "11215",
       "dongs": [
@@ -19168,7 +19168,7 @@
     },
     {
       "name": "종암에스케이",
-      "nameEn": "Jongameseukei",
+      "nameEn": "Jongam SK",
       "district": "성북구",
       "districtCode": "11290",
       "dongs": [
@@ -20052,7 +20052,7 @@
     },
     {
       "name": "삼선에스케이뷰",
-      "nameEn": "Samseoneseukei View",
+      "nameEn": "Samseon SK View",
       "district": "성북구",
       "districtCode": "11290",
       "dongs": [
@@ -21495,7 +21495,7 @@
     },
     {
       "name": "에스케이북한산시티",
-      "nameEn": "Eseukei Bukhansan City",
+      "nameEn": "SK Bukhansan City",
       "district": "강북구",
       "districtCode": "11305",
       "dongs": [
@@ -30659,7 +30659,7 @@
     },
     {
       "name": "백련산에스케이뷰아이파크",
-      "nameEn": "Baekryeonsan Eseukei View I'PARK",
+      "nameEn": "Baekryeonsan SK View I'PARK",
       "district": "은평구",
       "districtCode": "11380",
       "dongs": [
@@ -37447,7 +37447,7 @@
     },
     {
       "name": "에스케이뷰",
-      "nameEn": "Eseukei View",
+      "nameEn": "SK View",
       "district": "서대문구",
       "districtCode": "11410",
       "dongs": [
@@ -53480,7 +53480,7 @@
     },
     {
       "name": "우장산에스케이뷰",
-      "nameEn": "Ujangsaneseukei View",
+      "nameEn": "Ujangsan SK View",
       "district": "강서구",
       "districtCode": "11500",
       "dongs": [
@@ -60479,7 +60479,7 @@
     },
     {
       "name": "구로에스케이뷰",
-      "nameEn": "Guroeseukei View",
+      "nameEn": "Guro SK View",
       "district": "구로구",
       "districtCode": "11530",
       "dongs": [
@@ -63005,7 +63005,7 @@
     },
     {
       "name": "보라매에스케이뷰",
-      "nameEn": "Boramae Eseukei View",
+      "nameEn": "Boramae SK View",
       "district": "영등포구",
       "districtCode": "11560",
       "dongs": [
@@ -78538,7 +78538,7 @@
     },
     {
       "name": "반포에스케이뷰",
-      "nameEn": "Banpo Eseukei View",
+      "nameEn": "Banpo SK View",
       "district": "서초구",
       "districtCode": "11650",
       "dongs": [
@@ -79286,7 +79286,7 @@
     },
     {
       "name": "서초에스케이뷰",
-      "nameEn": "Seocho Eseukei View",
+      "nameEn": "Seocho SK View",
       "district": "서초구",
       "districtCode": "11650",
       "dongs": [
@@ -92964,7 +92964,7 @@
     },
     {
       "name": "에스케이허브진",
-      "nameEn": "Eseukeiheobeujin",
+      "nameEn": "SK Hub Jin",
       "district": "강동구",
       "districtCode": "11740",
       "dongs": [
@@ -94644,7 +94644,7 @@
     },
     {
       "name": "강동역에스케이허브",
-      "nameEn": "Gangdongyeokeseukeiheobeu",
+      "nameEn": "Gangdong Station SK Hub",
       "district": "강동구",
       "districtCode": "11740",
       "dongs": [
@@ -129297,7 +129297,7 @@
     },
     {
       "name": "평택소사에스케이뷰",
-      "nameEn": "Pyeongtaeksosaeseukei VIEW",
+      "nameEn": "Pyeongtaek Sosa SK View",
       "district": "평택시",
       "districtCode": "41220",
       "dongs": [
@@ -137724,7 +137724,7 @@
     },
     {
       "name": "행신2차에스케이뷰",
-      "nameEn": "Haengsin2chaeseukei VIEW",
+      "nameEn": "Haengsin SK View 2nd",
       "district": "고양시 덕양구",
       "districtCode": "41281",
       "dongs": [
@@ -145331,7 +145331,7 @@
     },
     {
       "name": "에스케이신일",
-      "nameEn": "Eseukeisinil",
+      "nameEn": "SK Shinil",
       "district": "구리시",
       "districtCode": "41310",
       "dongs": [
@@ -186891,7 +186891,7 @@
     },
     {
       "name": "에스케이뷰파크",
-      "nameEn": "Eseukei VIEW Park",
+      "nameEn": "SK View Park",
       "district": "화성시",
       "districtCode": "41590",
       "dongs": [
@@ -187239,7 +187239,7 @@
     },
     {
       "name": "에스케이뷰파크2차",
-      "nameEn": "Eseukei VIEW Park 2cha",
+      "nameEn": "SK View Park 2nd",
       "district": "화성시",
       "districtCode": "41590",
       "dongs": [

@@ -84,6 +84,7 @@ export const BRAND_DICTIONARY: Record<string, string> = {
   'KCC': 'KCC',
   'LG': 'LG',
   'SK': 'SK',
+  '에스케이': 'SK',
   '포스코': 'POSCO',
 };
 
@@ -175,6 +176,7 @@ export const SUBBRAND_DICTIONARY: Record<string, string> = {
   '블루': 'Blue',
   '골드': 'Gold',
   '실버': 'Silver',
+  '허브': 'Hub',
   '로얄': 'Royal',
   '프라임': 'Prime',
   '더': 'The',
