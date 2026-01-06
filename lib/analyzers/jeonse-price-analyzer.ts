@@ -85,6 +85,32 @@ function theilSenTimeRegression(data: { daysAgo: number; value: number }[]): {
 }
 
 /**
+ * Filter out renewal contracts (갱신) from transactions
+ *
+ * Renewal contracts are limited to 5% increase under Korean law,
+ * so they don't represent true market rates.
+ */
+function filterRenewalContracts(transactions: MolitTransaction[]): {
+  filtered: MolitTransaction[];
+  renewalCount: number;
+} {
+  const filtered: MolitTransaction[] = [];
+  let renewalCount = 0;
+
+  for (const t of transactions) {
+    // Check for renewal contract (갱신)
+    // contractType can be '신규', '갱신', or undefined (old data without this field)
+    if (t.contractType === '갱신') {
+      renewalCount++;
+    } else {
+      filtered.push(t);
+    }
+  }
+
+  return { filtered, renewalCount };
+}
+
+/**
  * Remove outliers using IQR method
  */
 function removeOutliers(transactions: MolitTransaction[]): {
@@ -150,6 +176,19 @@ export class JeonsePriceAnalyzer {
     let filteredTransactions = transactions;
     if (userArea) {
       filteredTransactions = this.filterByArea(transactions, userArea);
+    }
+
+    // Filter out renewal contracts (갱신)
+    // Renewals are capped at 5% increase and don't represent true market rates
+    const originalCount = filteredTransactions.length;
+    const renewalFilterResult = filterRenewalContracts(filteredTransactions);
+    filteredTransactions = renewalFilterResult.filtered;
+
+    if (renewalFilterResult.renewalCount > 0) {
+      console.log(`\n🔍 RENEWAL CONTRACT FILTER:`);
+      console.log(`   Original: ${originalCount} transactions`);
+      console.log(`   🔄 Renewals (갱신) removed: ${renewalFilterResult.renewalCount}`);
+      console.log(`   ✅ New contracts (신규) kept: ${filteredTransactions.length}`);
     }
 
     // Need at least 3 transactions for meaningful analysis

@@ -21,6 +21,7 @@ export interface MolitTransaction {
   year: number;
   month: number;
   day: number;
+  contractType?: string; // 신규, 갱신 - for filtering renewal contracts
 }
 
 // Valuation Types

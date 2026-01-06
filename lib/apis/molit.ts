@@ -97,7 +97,8 @@ export class MolitAPI {
         transactionAmount: this.parseAmountSafe(item.deposit), // 보증금 (deposit)
         year: parseInt(item.dealYear),
         month: parseInt(item.dealMonth),
-        day: parseInt(item.dealDay)
+        day: parseInt(item.dealDay),
+        contractType: item.contractType?.trim() || undefined // 신규/갱신
       }));
     } catch (error) {
       console.error('MOLIT Jeonse API Error:', error);
