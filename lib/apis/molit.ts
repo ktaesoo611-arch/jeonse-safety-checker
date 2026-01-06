@@ -85,11 +85,18 @@ export class MolitAPI {
 
       const result = response.data;
       const items = result.response?.body?.items?.item || [];
-      const transactions = Array.isArray(items) ? items : [items];
+      const allTransactions = Array.isArray(items) ? items : [items];
 
-      console.log(`MOLIT Jeonse API: Found ${transactions.length} jeonse transactions for ${lawdCd} ${dealYmd}`);
+      // Filter to only pure jeonse (monthlyRent = 0)
+      // The API returns both jeonse and wolse transactions
+      const jeonseOnly = allTransactions.filter((item: any) => {
+        const monthlyRent = parseInt(String(item.monthlyRent || '0').replace(/,/g, ''));
+        return monthlyRent === 0;
+      });
 
-      return transactions.map((item: any) => ({
+      console.log(`MOLIT Jeonse API: Found ${jeonseOnly.length} pure jeonse transactions (filtered from ${allTransactions.length} total) for ${lawdCd} ${dealYmd}`);
+
+      return jeonseOnly.map((item: any) => ({
         apartmentName: item.aptNm?.trim() || '',
         legalDong: item.umdNm?.trim() || '',
         exclusiveArea: parseFloat(item.excluUseAr),
