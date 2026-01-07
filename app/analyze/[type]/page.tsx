@@ -140,11 +140,15 @@ export default function PropertyInfoPage() {
     if (isWolse) {
       if (!formData.monthlyRent) newErrors.monthlyRent = 'Please enter monthly rent';
     }
+    if (!formData.exclusiveArea) newErrors.exclusiveArea = 'Please enter exclusive area';
 
     const exclusiveArea = parseFloat(formData.exclusiveArea);
     const deposit = parseInt(parseNumber(formData.deposit));
     const monthlyRent = parseInt(parseNumber(formData.monthlyRent));
 
+    if (formData.exclusiveArea && (isNaN(exclusiveArea) || exclusiveArea <= 0)) {
+      newErrors.exclusiveArea = 'Please enter a valid area';
+    }
     if (formData.deposit && (isNaN(deposit) || deposit <= 0)) {
       newErrors.deposit = 'Please enter a valid deposit amount';
     }
@@ -409,6 +413,22 @@ export default function PropertyInfoPage() {
                   )}
                 </div>
               )}
+
+              <div>
+                <Input
+                  label="Exclusive Area (전용면적) *"
+                  placeholder="84.5"
+                  value={formData.exclusiveArea}
+                  onChange={(e) => setFormData({ ...formData, exclusiveArea: e.target.value.replace(/[^0-9.]/g, '') })}
+                  error={errors.exclusiveArea}
+                  helperText="Enter in ㎡ (e.g., 84.5). Check your contract or property listing."
+                />
+                {formData.exclusiveArea && !isNaN(parseFloat(formData.exclusiveArea)) && (
+                  <p className={`mt-1 text-sm text-${accentColor}-600 font-medium`}>
+                    = {(parseFloat(formData.exclusiveArea) / 3.306).toFixed(1)}평
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Submit Button */}
