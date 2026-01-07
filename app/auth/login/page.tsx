@@ -1,9 +1,14 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthForm from '@/components/AuthForm';
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+  const confirmed = searchParams.get('confirmed');
+
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4 relative">
       {/* Warm gradient background */}
@@ -37,6 +42,22 @@ export default function LoginPage() {
         {/* Login Form */}
         <div className="bg-white rounded-3xl shadow-xl shadow-amber-100/50 p-8 border border-amber-100">
           <h2 className="text-2xl font-bold text-[#1A202C] mb-6">Log In</h2>
+
+          {error === 'auth_callback_error' && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl">
+              <p className="text-sm text-red-600">
+                There was a problem confirming your email. Please try signing up again or contact support.
+              </p>
+            </div>
+          )}
+
+          {confirmed === 'true' && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-2xl">
+              <p className="text-sm text-green-600">
+                Your email has been confirmed! You can now log in.
+              </p>
+            </div>
+          )}
 
           <AuthForm mode="login" />
 
