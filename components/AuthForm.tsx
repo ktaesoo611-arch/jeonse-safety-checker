@@ -57,6 +57,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
           return;
         }
 
+        // If session exists, email confirmation is disabled - auto login
+        if (data.session) {
+          router.push('/');
+          router.refresh();
+          return;
+        }
+
+        // Email confirmation is required
         setMessage('Please check your email to confirm your account');
         setIsLoading(false);
       } else {
