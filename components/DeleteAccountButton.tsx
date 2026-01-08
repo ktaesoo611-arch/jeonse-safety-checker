@@ -26,8 +26,13 @@ export default function DeleteAccountButton() {
         credentials: 'include',
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      if (!data.success) {
         throw new Error(data.error || 'Failed to delete account');
       }
 
