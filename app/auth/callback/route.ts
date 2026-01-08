@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/';
+  const type = searchParams.get('type');
 
   if (code) {
     const cookieStore = await cookies();
@@ -34,10 +35,17 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // If it's from email confirmation, redirect to login with success message
-      if (next === '/') {
+      // Handle password reset/recovery flow
+      if (type === 'recovery' || next.includes('reset-password')) {
+        return NextResponse.redirect(`${origin}/auth/reset-password`);
+      }
+
+      // Handle email confirmation
+      if (type === 'signup' || next === '/') {
         return NextResponse.redirect(`${origin}/auth/login?confirmed=true`);
       }
+
+      // Default redirect
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
