@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import Link from 'next/link';
+import DeleteAccountButton from '@/components/DeleteAccountButton';
 
 export default async function ProfilePage() {
   const supabase = await createServerSupabaseClient();
@@ -234,6 +235,15 @@ export default async function ProfilePage() {
               Change Password
             </Link>
           </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="bg-white rounded-3xl shadow-xl shadow-red-100/30 p-8 border border-red-100">
+          <h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
+          <p className="text-sm text-[#718096] mb-4">
+            Once you delete your account, there is no going back. Please be certain.
+          </p>
+          <DeleteAccountButton />
         </div>
       </div>
     </div>
