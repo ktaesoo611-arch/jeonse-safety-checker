@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { emailService } from '@/lib/services/email-service';
 
 export async function POST(request: Request) {
   try {
@@ -167,6 +168,38 @@ export async function POST(request: Request) {
             payment_status: 'approved',
           })
           .eq('id', linkedAnalysisId);
+
+        // Send payment confirmation email
+        try {
+          // Get user email from the analysis
+          const { data: analysisData } = await supabaseAdmin
+            .from('analyses')
+            .select('user_id, type')
+            .eq('id', linkedAnalysisId)
+            .single();
+
+          if (analysisData?.user_id) {
+            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(
+              analysisData.user_id
+            );
+
+            if (userData?.user?.email) {
+              await emailService.sendPaymentConfirmation(userData.user.email, {
+                userName: userData.user.user_metadata?.full_name || '',
+                orderName: tossData.orderName || 'Analysis Payment',
+                amount: amount,
+                paymentMethod: tossData.method || 'Card',
+                receiptUrl: tossData.receipt?.url,
+                analysisId: linkedAnalysisId,
+                analysisType: analysisData.type || 'jeonse_safety',
+              });
+              console.log('Payment confirmation email sent to:', userData.user.email);
+            }
+          }
+        } catch (emailError) {
+          // Log but don't fail the payment verification
+          console.error('Failed to send payment confirmation email:', emailError);
+        }
       } else {
         // Fall back to old schema (analysis_results)
         await supabaseAdmin

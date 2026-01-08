@@ -26,6 +26,8 @@
     "@anthropic-ai/sdk": "^0.71.0",
     "@google-cloud/documentai": "^9.5.0",
     "@google-cloud/vision": "^5.3.4",
+    "@react-email/components": "^1.0.4",
+    "@react-email/render": "^2.0.2",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.80.0",
     "@tosspayments/payment-widget-sdk": "^0.12.1",
@@ -45,6 +47,7 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "recharts": "^3.6.0",
+    "resend": "^6.6.0",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3"
   },
