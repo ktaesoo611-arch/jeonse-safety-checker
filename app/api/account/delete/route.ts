@@ -80,17 +80,25 @@ export async function DELETE() {
       .eq('user_id', userId);
     if (analysesError) console.log('Delete from analyses (non-critical):', analysesError.message);
 
-    // 3. Delete from legacy tables if they exist
+    // 3. Set user_id to NULL in legacy tables (to avoid FK constraint issues)
+    // Some tables have FK without ON DELETE CASCADE
     const legacyTables = ['analysis_results', 'wolse_analyses'];
     for (const table of legacyTables) {
       const { error } = await supabaseAdmin
         .from(table)
-        .delete()
+        .update({ user_id: null })
         .eq('user_id', userId);
-      if (error) console.log(`Delete from ${table} (non-critical):`, error.message);
+      if (error) console.log(`Update ${table} (non-critical):`, error.message);
     }
 
-    // 4. Delete the user from Supabase Auth - this is the critical step
+    // 4. Also set user_id to NULL in analyses table (FK constraint)
+    const { error: nullifyError } = await supabaseAdmin
+      .from('analyses')
+      .update({ user_id: null })
+      .eq('user_id', userId);
+    if (nullifyError) console.log('Nullify analyses user_id (non-critical):', nullifyError.message);
+
+    // 5. Delete the user from Supabase Auth - this is the critical step
     console.log('Deleting user from auth...');
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
