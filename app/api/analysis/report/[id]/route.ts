@@ -56,7 +56,15 @@ export async function GET(
 
     // Try wolse_price_full first (for wolse reports)
     const wolseResult = await analysisService.getWolsePriceFull(analysisId);
-    console.log(`📊 Report API [${analysisId}]: Path 1 (wolse_price_full) - wolseResult:`, wolseResult ? { id: wolseResult.id, status: wolseResult.status, user_deposit: wolseResult.user_deposit, user_monthly_rent: wolseResult.user_monthly_rent } : 'null');
+    console.log(`📊 Report API [${analysisId}]: Path 1 (wolse_price_full) - wolseResult:`, wolseResult ? {
+      id: wolseResult.id,
+      status: wolseResult.status,
+      user_deposit: wolseResult.user_deposit,
+      user_monthly_rent: wolseResult.user_monthly_rent,
+      contract_count: wolseResult.contract_count,
+      recent_transactions_count: wolseResult.recent_transactions?.length || 0,
+      has_recent_transactions: !!wolseResult.recent_transactions
+    } : 'null');
     if (wolseResult && wolseResult.status === 'completed') {
       // Fetch property info
       const { data: propertyData } = await supabase

@@ -21,11 +21,36 @@ export default function ReportPage() {
 
   const isWolse = type === 'wolse';
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Try to load from sessionStorage first (cached by preview page for instant load)
+  const [reportData, setReportData] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = sessionStorage.getItem(`report-${analysisId}`);
+      if (cached) {
+        sessionStorage.removeItem(`report-${analysisId}`);
+        const parsed = JSON.parse(cached);
+        console.log('[Report] Loaded from cache:', {
+          hasWolseAnalysis: !!parsed.wolseAnalysis,
+          wolseAnalysisKeys: parsed.wolseAnalysis ? Object.keys(parsed.wolseAnalysis) : [],
+          recentTransactions: parsed.wolseAnalysis?.recentTransactions?.length || 0
+        });
+        return parsed;
+      }
+    }
+    return null;
+  });
+  const [isLoading, setIsLoading] = useState(!reportData);
   const [error, setError] = useState<string | null>(null);
-  const [reportData, setReportData] = useState<any>(null);
 
   useEffect(() => {
+    // Skip fetch if we have cached data
+    if (reportData) {
+      console.log('[Report] Using cached data from sessionStorage');
+      return;
+    }
+
+    let retryCount = 0;
+    const maxRetries = 2;
+
     async function fetchReport() {
       try {
         const response = await fetch(`/api/analysis/report/${analysisId}`);
@@ -33,6 +58,21 @@ export default function ReportPage() {
           throw new Error('Failed to fetch report');
         }
         const data = await response.json();
+
+        // For wolse reports, check if recentTransactions is loaded
+        // If not, retry after a short delay (race condition with database)
+        if (isWolse && data.wolseAnalysis) {
+          const hasTransactions = data.wolseAnalysis.recentTransactions?.length > 0;
+          const hasMarketData = data.wolseAnalysis.contractCount > 0;
+
+          if (!hasTransactions && hasMarketData && retryCount < maxRetries) {
+            console.log(`[Report] Wolse data incomplete, retrying... (${retryCount + 1}/${maxRetries})`);
+            retryCount++;
+            setTimeout(fetchReport, 500); // Retry after 500ms
+            return;
+          }
+        }
+
         setReportData(data);
         setIsLoading(false);
       } catch (err) {
@@ -43,7 +83,7 @@ export default function ReportPage() {
     }
 
     fetchReport();
-  }, [analysisId]);
+  }, [analysisId, isWolse, reportData]);
 
   if (isLoading) {
     return (
@@ -84,6 +124,15 @@ export default function ReportPage() {
   const valuation = property?.valuation || {};
   const wolseAnalysis = reportData?.wolseAnalysis || {};
   const jeonseAnalysis = reportData?.jeonseAnalysis || null;
+
+  // Debug: log wolseAnalysis data
+  console.log('[Report] wolseAnalysis from reportData:', {
+    hasData: Object.keys(wolseAnalysis).length > 0,
+    userDeposit: wolseAnalysis?.userDeposit,
+    userMonthlyRent: wolseAnalysis?.userMonthlyRent,
+    recentTransactions: wolseAnalysis?.recentTransactions?.length,
+    contractCount: wolseAnalysis?.contractCount
+  });
 
   const heroProps = {
     address: property?.address || 'Address not available',

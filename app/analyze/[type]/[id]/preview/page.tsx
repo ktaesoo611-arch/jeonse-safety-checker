@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -49,18 +49,21 @@ export default function PreviewPage() {
   const [analysisReady, setAnalysisReady] = useState(!!reportData);
   const [error, setError] = useState<string | null>(null);
 
-  // State to track if wolse analysis has been run
-  const [wolseAnalysisRun, setWolseAnalysisRun] = useState(false);
+  // Use ref to track if wolse analysis has been run (avoids stale closure in useEffect)
+  const wolseAnalysisRunRef = useRef(false);
+  // Track if wolse analysis is complete (for disabling button)
+  const [wolseAnalysisComplete, setWolseAnalysisComplete] = useState(!isWolse); // true for jeonse
 
   // Run wolse price analysis after jeonse analysis is complete (to get exclusiveArea from parsed document)
   const runWolseAnalysis = async (parsedReportData: any) => {
-    if (!isWolse || wolseAnalysisRun) return;
+    if (!isWolse || wolseAnalysisRunRef.current) return;
 
     try {
       // Get form data from sessionStorage (has city, district, dong, building, deposit, monthlyRent)
       const storedData = sessionStorage.getItem(`analysis-${analysisId}`);
       if (!storedData) {
         console.error(`[Wolse Analysis] No stored form data found for analysis-${analysisId}.`);
+        setWolseAnalysisComplete(true); // Allow navigation even on error
         return;
       }
 
@@ -69,6 +72,7 @@ export default function PreviewPage() {
 
       if (!formData.monthlyRent) {
         console.error('[Wolse Analysis] Missing monthlyRent in form data.');
+        setWolseAnalysisComplete(true); // Allow navigation even on error
         return;
       }
 
@@ -104,6 +108,7 @@ export default function PreviewPage() {
           'jeonseAnalysis.transactionData[0].exclusiveArea': parsedReportData?.jeonseAnalysis?.transactionData?.[0]?.exclusiveArea,
         });
         console.error('[Wolse Analysis] Full report structure keys:', Object.keys(parsedReportData || {}));
+        setWolseAnalysisComplete(true); // Allow navigation even on error
         return;
       }
 
@@ -112,7 +117,7 @@ export default function PreviewPage() {
         exclusiveArea
       });
 
-      setWolseAnalysisRun(true); // Mark as running to prevent duplicate calls
+      wolseAnalysisRunRef.current = true; // Mark as running to prevent duplicate calls
 
       // Run wolse preview analysis
       const previewResponse = await fetch('/api/wolse/preview', {
@@ -132,6 +137,7 @@ export default function PreviewPage() {
       if (!previewResponse.ok) {
         const errorData = await previewResponse.json().catch(() => ({}));
         console.error('[Wolse Analysis] Preview API failed:', previewResponse.status, errorData);
+        setWolseAnalysisComplete(true); // Allow navigation even on error
         return;
       }
 
@@ -151,18 +157,57 @@ export default function PreviewPage() {
 
       if (saveResponse.ok) {
         console.log('[Wolse Analysis] Successfully saved wolse analysis data');
-        // Refresh report data to include wolse analysis
-        const refreshedReport = await fetch(`/api/analysis/report/${analysisId}`);
-        if (refreshedReport.ok) {
-          const refreshedData = await refreshedReport.json();
-          setReportData(refreshedData);
+        const saveData = await saveResponse.json();
+
+        // Use the saved result directly to avoid race condition with database
+        // The save API returns the complete result, so we can merge it locally
+        if (saveData.result) {
+          setReportData((prevData: any) => ({
+            ...prevData,
+            wolseAnalysis: {
+              userDeposit: saveData.result.userDeposit,
+              userMonthlyRent: saveData.result.userMonthlyRent,
+              userRate: saveData.result.userImpliedRate,
+              marketRate: saveData.result.marketRate,
+              marketRateRange: saveData.result.marketRateRange,
+              legalRate: saveData.result.legalRate,
+              expectedRent: saveData.result.expectedRent,
+              rentDifference: saveData.result.rentDifference,
+              rentDifferencePercent: saveData.result.rentDifferencePercent,
+              assessment: saveData.result.assessment,
+              assessmentDetails: saveData.result.assessmentDetails,
+              contractCount: saveData.result.contractCount,
+              confidenceLevel: saveData.result.confidenceLevel,
+              savingsPotential: saveData.result.savingsPotential,
+              trend: saveData.result.trend,
+              recentTransactions: saveData.result.recentTransactions,
+              negotiationOptions: saveData.result.negotiationOptions,
+            }
+          }));
+          console.log('[Wolse Analysis] Merged wolse data directly, recentTransactions:', saveData.result.recentTransactions?.length || 0);
+          setWolseAnalysisComplete(true);
         }
+
+        // Also refresh from API after a small delay to ensure consistency
+        setTimeout(async () => {
+          try {
+            const refreshedReport = await fetch(`/api/analysis/report/${analysisId}`);
+            if (refreshedReport.ok) {
+              const refreshedData = await refreshedReport.json();
+              setReportData(refreshedData);
+            }
+          } catch (err) {
+            console.log('[Wolse Analysis] Background refresh failed, using local data');
+          }
+        }, 1000);
       } else {
         const saveError = await saveResponse.json().catch(() => ({}));
         console.error('[Wolse Analysis] Failed to save wolse analysis:', saveResponse.status, saveError);
+        setWolseAnalysisComplete(true); // Allow navigation even on error
       }
     } catch (err) {
       console.error('[Wolse Analysis] Unexpected error:', err);
+      setWolseAnalysisComplete(true); // Allow navigation even on error
     }
   };
 
@@ -176,7 +221,7 @@ export default function PreviewPage() {
         // Skip polling if we already have report data (from sessionStorage initialization)
         if (reportData) {
           // For wolse, run the wolse price analysis now that we have the parsed document data
-          if (isWolse && !wolseAnalysisRun) {
+          if (isWolse && !wolseAnalysisRunRef.current) {
             await runWolseAnalysis(reportData);
           }
           return true;
@@ -237,6 +282,16 @@ export default function PreviewPage() {
   };
 
   const handleUnlockFree = () => {
+    // For wolse, ensure analysis is complete before navigating
+    if (isWolse && !wolseAnalysisComplete) {
+      console.log('[Preview] Wolse analysis still running, waiting...');
+      return; // Button should be disabled, but guard anyway
+    }
+    // Cache current report data in sessionStorage for instant report page load
+    if (reportData) {
+      console.log('[Preview] Caching report data with wolseAnalysis:', !!reportData.wolseAnalysis);
+      sessionStorage.setItem(`report-${analysisId}`, JSON.stringify(reportData));
+    }
     router.push(`/analyze/${type}/${analysisId}/report`);
   };
 
@@ -344,12 +399,26 @@ export default function PreviewPage() {
           </button>
           <button
             onClick={handleUnlockFree}
-            className="w-full px-8 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+            disabled={isWolse && !wolseAnalysisComplete}
+            className={`w-full px-8 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
+              isWolse && !wolseAnalysisComplete
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Unlock for Free (Testing)
+            {isWolse && !wolseAnalysisComplete ? (
+              <>
+                <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                Analyzing Market Data...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Unlock for Free (Testing)
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -411,9 +480,21 @@ export default function PreviewPage() {
                 </button>
                 <button
                   onClick={handleUnlockFree}
-                  className="px-8 py-3 bg-white/80 text-gray-700 font-semibold rounded-xl hover:bg-white transition-all"
+                  disabled={isWolse && !wolseAnalysisComplete}
+                  className={`px-8 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                    isWolse && !wolseAnalysisComplete
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-white/80 text-gray-700 hover:bg-white'
+                  }`}
                 >
-                  Unlock for Free (Testing)
+                  {isWolse && !wolseAnalysisComplete ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    'Unlock for Free (Testing)'
+                  )}
                 </button>
               </div>
             </div>

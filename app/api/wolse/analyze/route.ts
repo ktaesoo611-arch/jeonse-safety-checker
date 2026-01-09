@@ -176,6 +176,7 @@ export async function POST(request: NextRequest) {
       );
 
       // Save wolse price data
+      console.log(`📊 Saving wolse price data: contractCount=${result.contractCount}, recentTransactions.length=${result.recentTransactions?.length || 0}`);
       await analysisService.saveWolsePriceData(analysisId, {
         userDeposit: result.userDeposit,
         userMonthlyRent: result.userMonthlyRent,
@@ -203,6 +204,7 @@ export async function POST(request: NextRequest) {
         negotiationOptions: result.negotiationOptions,
         recentTransactions: result.recentTransactions
       }, result.expiresAt);
+      console.log(`✅ Wolse price data saved with ${result.recentTransactions?.length || 0} transactions`);
 
       // Update status to completed
       await analysisService.updateStatus(analysisId, 'completed', new Date().toISOString());
