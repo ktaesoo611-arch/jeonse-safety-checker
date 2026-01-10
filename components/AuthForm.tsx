@@ -17,6 +17,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showResendConfirmation, setShowResendConfirmation] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +78,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
         });
 
         if (signInError) {
-          setError(signInError.message);
+          // Check if it's an email not confirmed error
+          if (signInError.message.toLowerCase().includes('email not confirmed')) {
+            setShowResendConfirmation(true);
+            setResendEmail(email);
+            setError('Your email has not been confirmed yet. Please check your inbox or request a new confirmation email.');
+          } else {
+            setError(signInError.message);
+          }
           setIsLoading(false);
           return;
         }
@@ -90,6 +100,35 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
   };
 
+  const handleResendConfirmation = async () => {
+    if (!resendEmail) return;
+
+    setIsResending(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch('/api/auth/resend-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to resend confirmation email');
+      } else {
+        setMessage('Confirmation email sent! Please check your inbox and spam folder.');
+        setShowResendConfirmation(false);
+      }
+    } catch (err) {
+      setError('Failed to resend confirmation email. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
@@ -100,6 +139,31 @@ export default function AuthForm({ mode }: AuthFormProps) {
             </svg>
             {error}
           </p>
+          {showResendConfirmation && (
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={isResending}
+              className="mt-3 w-full px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-sm font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isResending ? (
+                <>
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Resend Confirmation Email
+                </>
+              )}
+            </button>
+          )}
         </div>
       )}
 
