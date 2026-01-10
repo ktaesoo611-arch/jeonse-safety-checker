@@ -86,50 +86,50 @@ export default function ReportHero({
 
   return (
     <>
-      <div className="bg-white rounded-3xl p-8 mb-8 shadow-lg border border-gray-100">
+      <div className="bg-white rounded-3xl p-6 sm:p-10 mb-8 shadow-lg border border-gray-100">
         {/* Traffic Light Indicator */}
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center gap-4">
+        <div className="flex justify-center mb-10">
+          <div className="flex items-center gap-3 sm:gap-6">
             {/* SAFE */}
             <div className="flex flex-col items-center group">
-              <div className={`w-10 h-10 rounded-full border-2 transition-all duration-200 group-hover:scale-110 ${
+              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border-3 transition-all duration-200 group-hover:scale-110 ${
                 position === 0
-                  ? 'bg-emerald-500 border-emerald-600 shadow-lg shadow-emerald-200'
+                  ? 'bg-emerald-500 border-emerald-600 shadow-xl shadow-emerald-200'
                   : 'bg-gray-100 border-gray-200 group-hover:bg-emerald-50 group-hover:border-emerald-300'
               }`} />
-              <span className={`text-xs mt-2 font-medium transition-colors duration-200 ${position === 0 ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'}`}>
+              <span className={`text-sm sm:text-base mt-3 font-semibold transition-colors duration-200 ${position === 0 ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'}`}>
                 Safe
               </span>
             </div>
 
             {/* Connector */}
-            <div className="w-16 h-0.5 bg-gray-200" />
+            <div className="w-8 sm:w-16 h-1 bg-gray-200 rounded-full" />
 
             {/* MODERATE */}
             <div className="flex flex-col items-center group">
-              <div className={`w-10 h-10 rounded-full border-2 transition-all duration-200 group-hover:scale-110 ${
+              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border-3 transition-all duration-200 group-hover:scale-110 ${
                 position === 1
-                  ? 'bg-amber-500 border-amber-600 shadow-lg shadow-amber-200'
+                  ? 'bg-amber-500 border-amber-600 shadow-xl shadow-amber-200'
                   : 'bg-gray-100 border-gray-200 group-hover:bg-amber-50 group-hover:border-amber-300'
               }`} />
-              <span className={`text-xs mt-2 font-medium transition-colors duration-200 ${position === 1 ? 'text-amber-600' : 'text-gray-400 group-hover:text-amber-500'}`}>
+              <span className={`text-sm sm:text-base mt-3 font-semibold transition-colors duration-200 ${position === 1 ? 'text-amber-600' : 'text-gray-400 group-hover:text-amber-500'}`}>
                 Moderate
               </span>
             </div>
 
             {/* Connector */}
-            <div className="w-16 h-0.5 bg-gray-200" />
+            <div className="w-8 sm:w-16 h-1 bg-gray-200 rounded-full" />
 
             {/* HIGH/CRITICAL */}
             <div className="flex flex-col items-center group">
-              <div className={`w-10 h-10 rounded-full border-2 transition-all duration-200 group-hover:scale-110 ${
+              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border-3 transition-all duration-200 group-hover:scale-110 ${
                 position === 2
                   ? riskLevel === 'CRITICAL'
-                    ? 'bg-red-600 border-red-700 shadow-lg shadow-red-200'
-                    : 'bg-orange-500 border-orange-600 shadow-lg shadow-orange-200'
+                    ? 'bg-red-600 border-red-700 shadow-xl shadow-red-200'
+                    : 'bg-orange-500 border-orange-600 shadow-xl shadow-orange-200'
                   : 'bg-gray-100 border-gray-200 group-hover:bg-orange-50 group-hover:border-orange-300'
               }`} />
-              <span className={`text-xs mt-2 font-medium transition-colors duration-200 ${
+              <span className={`text-sm sm:text-base mt-3 font-semibold transition-colors duration-200 ${
                 position === 2
                   ? riskLevel === 'CRITICAL' ? 'text-red-600' : 'text-orange-600'
                   : 'text-gray-400 group-hover:text-orange-500'
@@ -141,19 +141,19 @@ export default function ReportHero({
         </div>
 
         {/* Risk Status Badge */}
-        <div className="text-center mb-6">
-          <span className={`inline-block px-5 py-2.5 rounded-full text-sm font-bold ${getRiskColor()} bg-gray-50 border border-gray-200`}>
+        <div className="text-center mb-8">
+          <span className={`inline-block px-6 py-3 rounded-full text-base sm:text-lg font-bold ${getRiskColor()} bg-gray-50 border-2 border-gray-200`}>
             {getRiskText()}
           </span>
         </div>
 
         {/* Address */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
             {address}
           </h1>
           {(buildingNumber || unit || area) && (
-            <p className="text-xl md:text-2xl font-semibold text-gray-700 mt-1">
+            <p className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-600 mt-2">
               {buildingNumber}
               {unit && ` ${unit}`}
               {area && ` ${Math.floor(area)}㎡`}
@@ -162,42 +162,52 @@ export default function ReportHero({
         </div>
 
         {/* Key Metrics */}
-        <div className="flex justify-center gap-6 flex-wrap">
-          <div className="text-center px-6 py-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200">
-            <p className="text-sm text-gray-500 mb-1">Deposit</p>
-            <p className="text-xl font-bold text-gray-900">{formatAmount(deposit)}</p>
+        <div className="grid grid-cols-2 sm:flex sm:justify-center gap-4 sm:gap-6">
+          <div className="text-center px-4 sm:px-8 py-5 bg-blue-50 rounded-2xl border-2 border-blue-100 hover:bg-blue-100 hover:shadow-md hover:border-blue-200 transition-all duration-200">
+            <p className="text-sm sm:text-base text-blue-600 font-medium mb-2">Deposit</p>
+            <p className="text-xl sm:text-2xl font-bold text-blue-900">{formatAmount(deposit)}</p>
           </div>
 
-          <div className="text-center px-6 py-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200">
-            <p className="text-sm text-gray-500 mb-1">Safety Score</p>
-            <p className="text-xl font-bold text-gray-900">{safetyScore}/100</p>
+          <div className={`text-center px-4 sm:px-8 py-5 rounded-2xl border-2 hover:shadow-md transition-all duration-200 ${
+            safetyScore >= 70 ? 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200' :
+            safetyScore >= 50 ? 'bg-amber-50 border-amber-100 hover:bg-amber-100 hover:border-amber-200' :
+            'bg-red-50 border-red-100 hover:bg-red-100 hover:border-red-200'
+          }`}>
+            <p className={`text-sm sm:text-base font-medium mb-2 ${
+              safetyScore >= 70 ? 'text-emerald-600' :
+              safetyScore >= 50 ? 'text-amber-600' : 'text-red-600'
+            }`}>Safety Score</p>
+            <p className={`text-xl sm:text-2xl font-bold ${
+              safetyScore >= 70 ? 'text-emerald-900' :
+              safetyScore >= 50 ? 'text-amber-900' : 'text-red-900'
+            }`}>{safetyScore}/100</p>
           </div>
 
           {monthlyRent !== undefined && (
-            <div className="text-center px-6 py-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200">
-              <p className="text-sm text-gray-500 mb-1">Monthly Rent</p>
-              <p className="text-xl font-bold text-gray-900">{formatAmount(monthlyRent)}</p>
+            <div className="text-center px-4 sm:px-8 py-5 bg-purple-50 rounded-2xl border-2 border-purple-100 hover:bg-purple-100 hover:shadow-md hover:border-purple-200 transition-all duration-200">
+              <p className="text-sm sm:text-base text-purple-600 font-medium mb-2">Monthly Rent</p>
+              <p className="text-xl sm:text-2xl font-bold text-purple-900">{formatAmount(monthlyRent)}</p>
             </div>
           )}
 
           {estimatedValue && (
-            <div className="text-center px-6 py-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200">
-              <p className="text-sm text-gray-500 mb-1">Est. Value</p>
-              <p className="text-xl font-bold text-gray-900">{formatAmount(estimatedValue)}</p>
+            <div className="text-center px-4 sm:px-8 py-5 bg-slate-50 rounded-2xl border-2 border-slate-200 hover:bg-slate-100 hover:shadow-md hover:border-slate-300 transition-all duration-200">
+              <p className="text-sm sm:text-base text-slate-600 font-medium mb-2">Est. Value</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900">{formatAmount(estimatedValue)}</p>
             </div>
           )}
         </div>
 
         {/* Report Date */}
-        <p className="text-center text-sm text-gray-400 mt-6">
+        <p className="text-center text-sm sm:text-base text-gray-400 mt-8">
           Report generated: {reportDate}
         </p>
       </div>
 
       {/* Verdict Section */}
       {verdict && (
-        <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-gray-100">
-          <p className="text-lg text-gray-700 leading-relaxed text-center">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 mb-8 shadow-sm border border-gray-100">
+          <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed text-center">
             {verdict}
           </p>
         </div>

@@ -136,44 +136,44 @@ export default function MarketPositionSection({
 
     return (
       <div className="mb-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-          <span className="text-2xl">📊</span>
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
+          <span className="text-3xl">📊</span>
           Market Position
         </h2>
 
         {/* Key Metrics */}
-        <div className="grid md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
-            <p className="text-sm text-gray-500 mb-2">Your Rent</p>
-            <p className="text-3xl font-bold text-gray-900">{formatAmount(wolseData.userMonthlyRent)}</p>
-            <p className="text-sm text-gray-400 mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
+            <p className="text-sm sm:text-base text-gray-500 mb-2">Your Rent</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900">{formatAmount(wolseData.userMonthlyRent)}</p>
+            <p className="text-sm sm:text-base text-gray-400 mt-2">
               at {formatAmount(wolseData.userDeposit)} deposit
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
-            <p className="text-sm text-gray-500 mb-2">Expected Rent</p>
-            <p className="text-3xl font-bold text-emerald-600">{formatAmount(wolseData.expectedRent)}</p>
-            <p className="text-sm text-gray-400 mt-2">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
+            <p className="text-sm sm:text-base text-gray-500 mb-2">Expected Rent</p>
+            <p className="text-2xl sm:text-3xl font-bold text-emerald-600">{formatAmount(wolseData.expectedRent)}</p>
+            <p className="text-sm sm:text-base text-gray-400 mt-2">
               at your deposit level
             </p>
           </div>
 
-          <div className={`rounded-2xl p-6 text-center shadow-sm border hover:shadow-lg transition-all duration-200 cursor-default ${
+          <div className={`rounded-2xl p-5 sm:p-6 text-center shadow-sm border hover:shadow-lg transition-all duration-200 cursor-default ${
             wolseData.rentDifference <= 0
               ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
               : wolseData.rentDifferencePercent <= 5
               ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
               : 'bg-red-50 border-red-200 hover:bg-red-100'
           }`}>
-            <p className="text-sm text-gray-500 mb-2">Difference</p>
-            <p className={`text-3xl font-bold ${
+            <p className="text-sm sm:text-base text-gray-500 mb-2">Difference</p>
+            <p className={`text-2xl sm:text-3xl font-bold ${
               wolseData.rentDifference <= 0 ? 'text-emerald-600' :
               wolseData.rentDifferencePercent <= 5 ? 'text-blue-600' : 'text-red-600'
             }`}>
               {wolseData.rentDifference >= 0 ? '+' : ''}{formatAmount(wolseData.rentDifference)}
             </p>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-sm sm:text-base text-gray-400 mt-2">
               {wolseData.rentDifferencePercent >= 0 ? '+' : ''}{wolseData.rentDifferencePercent.toFixed(1)}% vs expected
             </p>
           </div>
@@ -244,14 +244,14 @@ export default function MarketPositionSection({
           };
 
           return (
-            <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
-              <h3 className="font-bold text-gray-900 mb-2">Rent at Your Deposit Level</h3>
-              <p className="text-sm text-gray-500 mb-4">
+            <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+              <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-2">Rent at Your Deposit Level</h3>
+              <p className="text-sm sm:text-base text-gray-500 mb-4">
                 Market rent normalized to {formatAmount(wolseData.userDeposit)} deposit over the past 12 months
               </p>
 
               {/* Scatter Plot with Regression Line */}
-              <div className="h-72 w-full">
+              <div className="h-64 sm:h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
                     margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
@@ -349,7 +349,7 @@ export default function MarketPositionSection({
               </div>
 
               {/* Legend */}
-              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-4 text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-blue-500 opacity-60" />
                   <span className="text-gray-600">Market transactions</span>
@@ -360,7 +360,7 @@ export default function MarketPositionSection({
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0.5 bg-emerald-500" />
-                  <span className="text-gray-600">Expected rent (today)</span>
+                  <span className="text-gray-600">Expected rent</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0.5 border-t-2 border-dashed" style={{ borderColor: wolseData.rentDifference <= 0 ? '#10b981' : wolseData.rentDifferencePercent <= 10 ? '#f59e0b' : '#ef4444' }} />
@@ -369,28 +369,28 @@ export default function MarketPositionSection({
               </div>
 
               {/* Assessment Badge */}
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${style.bg} ${style.border} border mt-4`}>
-                <span>{style.icon}</span>
-                <span className={`font-semibold ${style.color}`}>{style.label}</span>
-                <span className={`text-sm ${style.color}`}>
+              <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full ${style.bg} ${style.border} border mt-4`}>
+                <span className="text-lg">{style.icon}</span>
+                <span className={`font-semibold text-sm sm:text-base ${style.color}`}>{style.label}</span>
+                <span className={`text-xs sm:text-sm ${style.color}`}>
                   ({wolseData.rentDifference >= 0 ? '+' : ''}{(wolseData.rentDifference / 10000).toFixed(0)}만, {wolseData.rentDifferencePercent >= 0 ? '+' : ''}{wolseData.rentDifferencePercent.toFixed(1)}%)
                 </span>
               </div>
 
               {wolseData.assessmentDetails && (
-                <p className="mt-4 text-gray-600 text-sm">{wolseData.assessmentDetails}</p>
+                <p className="mt-4 text-gray-600 text-sm sm:text-base">{wolseData.assessmentDetails}</p>
               )}
 
               {/* Warning for Good Deal / Fair Price */}
               {(wolseData.assessment === 'GOOD_DEAL' || wolseData.assessment === 'FAIR') && (
-                <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                <div className="mt-4 p-4 sm:p-5 rounded-xl bg-amber-50 border border-amber-200">
                   <div className="flex items-start gap-3">
-                    <span className="text-lg">⚠️</span>
+                    <span className="text-xl sm:text-2xl">⚠️</span>
                     <div>
-                      <p className="font-semibold text-amber-900 text-sm">
+                      <p className="font-semibold text-amber-900 text-sm sm:text-base">
                         {wolseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Check Physical Condition'}
                       </p>
-                      <p className="text-sm text-amber-700 mt-1">
+                      <p className="text-sm sm:text-base text-amber-700 mt-1">
                         {wolseData.assessment === 'GOOD_DEAL'
                           ? 'Below-market prices often have reasons. Check for physical issues (leaks, mold, noise), neighborhood problems, or why the landlord needs to rent quickly.'
                           : 'Visit the property to check for physical issues like water damage, mold, noise levels, and overall maintenance condition.'}
@@ -405,27 +405,27 @@ export default function MarketPositionSection({
 
         {/* Savings Potential */}
         {wolseData.savingsPotential.vsMarket > 0 && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 mb-6 border border-amber-200 hover:shadow-lg transition-all duration-200">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span>💰</span>
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-6 border border-amber-200 hover:shadow-lg transition-all duration-200">
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">💰</span>
               Potential Savings
             </h3>
-            <div className="p-4 rounded-xl bg-white/50 hover:bg-white hover:shadow-md transition-all duration-200 cursor-default">
-              <p className="text-sm text-gray-600">If negotiated to expected rent:</p>
-              <p className="text-2xl font-bold text-amber-700">{formatAmount(wolseData.savingsPotential.vsMarket)}/year</p>
+            <div className="p-4 sm:p-5 rounded-xl bg-white/50 hover:bg-white hover:shadow-md transition-all duration-200 cursor-default">
+              <p className="text-sm sm:text-base text-gray-600">If negotiated to expected rent:</p>
+              <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{formatAmount(wolseData.savingsPotential.vsMarket)}/year</p>
             </div>
           </div>
         )}
 
         {/* Price Trend */}
         {wolseData.trend && (
-          <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span>{getTrendIcon(wolseData.trend.direction)}</span>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">{getTrendIcon(wolseData.trend.direction)}</span>
               Price Trend
             </h3>
-            <p className="text-gray-600 leading-relaxed">{wolseData.trend.advice}</p>
-            <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
+            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{wolseData.trend.advice}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3 sm:gap-4 text-sm sm:text-base text-gray-500">
               <span>Direction: <strong className="text-gray-900">{wolseData.trend.direction}</strong></span>
               <span>Change: <strong className="text-gray-900">{wolseData.trend.percentage.toFixed(1)}%</strong> over 12 months</span>
             </div>
@@ -434,32 +434,32 @@ export default function MarketPositionSection({
 
         {/* Recent Transactions */}
         {wolseData.recentTransactions && wolseData.recentTransactions.length > 0 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span>📊</span>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">📊</span>
               Recent Transactions ({wolseData.recentTransactions.length} contracts)
             </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full text-sm sm:text-base min-w-[450px]">
                 <thead>
                   <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
-                    <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Area</th>
-                    <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Floor</th>
-                    <th className="text-right py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Deposit</th>
-                    <th className="text-right py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Monthly</th>
+                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Date</th>
+                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Area</th>
+                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Floor</th>
+                    <th className="text-right py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Deposit</th>
+                    <th className="text-right py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Monthly</th>
                   </tr>
                 </thead>
                 <tbody>
                   {wolseData.recentTransactions.slice(0, 10).map((tx, index) => (
                     <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-3 text-gray-600">
+                      <td className="py-3 sm:py-4 px-3 text-gray-600">
                         {tx.year}.{tx.month.toString().padStart(2, '0')}.{tx.day.toString().padStart(2, '0')}
                       </td>
-                      <td className="py-3 px-3 text-gray-600">{tx.exclusiveArea.toFixed(1)}㎡</td>
-                      <td className="py-3 px-3 text-gray-600">{tx.floor}F</td>
-                      <td className="py-3 px-3 text-right font-medium text-gray-900">{formatAmount(tx.deposit)}</td>
-                      <td className="py-3 px-3 text-right font-medium text-gray-900">{formatAmount(tx.monthlyRent)}</td>
+                      <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.exclusiveArea.toFixed(1)}㎡</td>
+                      <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.floor}F</td>
+                      <td className="py-3 sm:py-4 px-3 text-right font-medium text-gray-900">{formatAmount(tx.deposit)}</td>
+                      <td className="py-3 sm:py-4 px-3 text-right font-medium text-gray-900">{formatAmount(tx.monthlyRent)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -479,42 +479,42 @@ export default function MarketPositionSection({
 
     return (
       <div className="mb-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-          <span className="text-2xl">📊</span>
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
+          <span className="text-3xl">📊</span>
           Market Position
         </h2>
 
         {/* Key Metrics - Only show if we have analysis data */}
         {hasAnalysis && (
-          <div className="grid md:grid-cols-3 gap-6 mb-6">
-            <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
-              <p className="text-sm text-gray-500 mb-2">Your Jeonse</p>
-              <p className="text-3xl font-bold text-gray-900">{formatAmount(jeonseData.proposedJeonse)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
+              <p className="text-sm sm:text-base text-gray-500 mb-2">Your Jeonse</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{formatAmount(jeonseData.proposedJeonse)}</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
-              <p className="text-sm text-gray-500 mb-2">Expected Jeonse</p>
-              <p className="text-3xl font-bold text-emerald-600">{formatAmount(jeonseData.expectedJeonse!)}</p>
-              <p className="text-sm text-gray-400 mt-2">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
+              <p className="text-sm sm:text-base text-gray-500 mb-2">Expected Jeonse</p>
+              <p className="text-2xl sm:text-3xl font-bold text-emerald-600">{formatAmount(jeonseData.expectedJeonse!)}</p>
+              <p className="text-sm sm:text-base text-gray-400 mt-2">
                 based on {jeonseData.contractCount || 0} recent contracts
               </p>
             </div>
 
-            <div className={`rounded-2xl p-6 text-center shadow-sm border hover:shadow-lg transition-all duration-200 cursor-default ${
+            <div className={`rounded-2xl p-5 sm:p-6 text-center shadow-sm border hover:shadow-lg transition-all duration-200 cursor-default ${
               (jeonseData.jeonseDifference || 0) <= 0
                 ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
                 : (jeonseData.jeonseDifferencePercent || 0) <= 5
                 ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
                 : 'bg-red-50 border-red-200 hover:bg-red-100'
             }`}>
-              <p className="text-sm text-gray-500 mb-2">Difference</p>
-              <p className={`text-3xl font-bold ${
+              <p className="text-sm sm:text-base text-gray-500 mb-2">Difference</p>
+              <p className={`text-2xl sm:text-3xl font-bold ${
                 (jeonseData.jeonseDifference || 0) <= 0 ? 'text-emerald-600' :
                 (jeonseData.jeonseDifferencePercent || 0) <= 5 ? 'text-blue-600' : 'text-red-600'
               }`}>
                 {(jeonseData.jeonseDifference || 0) >= 0 ? '+' : ''}{formatAmount(jeonseData.jeonseDifference || 0)}
               </p>
-              <p className="text-sm text-gray-400 mt-2">
+              <p className="text-sm sm:text-base text-gray-400 mt-2">
                 {(jeonseData.jeonseDifferencePercent || 0) >= 0 ? '+' : ''}{(jeonseData.jeonseDifferencePercent || 0).toFixed(1)}% vs expected
               </p>
             </div>
@@ -550,14 +550,14 @@ export default function MarketPositionSection({
           };
 
           return (
-            <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
-              <h3 className="font-bold text-gray-900 mb-2">Jeonse Market Transactions</h3>
-              <p className="text-sm text-gray-500 mb-4">
+            <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+              <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-2">Jeonse Market Transactions</h3>
+              <p className="text-sm sm:text-base text-gray-500 mb-4">
                 Recent jeonse transactions for similar units over the past 12 months
               </p>
 
               {/* Scatter Plot */}
-              <div className="h-72 w-full">
+              <div className="h-64 sm:h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
                     margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
@@ -652,7 +652,7 @@ export default function MarketPositionSection({
               </div>
 
               {/* Legend */}
-              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-4 text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-blue-500 opacity-60" />
                   <span className="text-gray-600">Market transactions</span>
@@ -663,7 +663,7 @@ export default function MarketPositionSection({
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0.5 bg-emerald-500" />
-                  <span className="text-gray-600">Expected jeonse (today)</span>
+                  <span className="text-gray-600">Expected jeonse</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0.5 border-t-2 border-dashed" style={{ borderColor: (jeonseData.jeonseDifference || 0) <= 0 ? '#10b981' : (jeonseData.jeonseDifferencePercent || 0) <= 10 ? '#f59e0b' : '#ef4444' }} />
@@ -673,29 +673,29 @@ export default function MarketPositionSection({
 
               {/* Assessment Badge */}
               {style && (
-                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${style.bg} ${style.border} border mt-4`}>
-                  <span>{style.icon}</span>
-                  <span className={`font-semibold ${style.color}`}>{style.label}</span>
-                  <span className={`text-sm ${style.color}`}>
+                <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full ${style.bg} ${style.border} border mt-4`}>
+                  <span className="text-lg">{style.icon}</span>
+                  <span className={`font-semibold text-sm sm:text-base ${style.color}`}>{style.label}</span>
+                  <span className={`text-xs sm:text-sm ${style.color}`}>
                     ({(jeonseData.jeonseDifference || 0) >= 0 ? '+' : ''}{((jeonseData.jeonseDifference || 0) / 100000000).toFixed(2)}억, {(jeonseData.jeonseDifferencePercent || 0) >= 0 ? '+' : ''}{(jeonseData.jeonseDifferencePercent || 0).toFixed(1)}%)
                   </span>
                 </div>
               )}
 
               {jeonseData.assessmentDetails && (
-                <p className="mt-4 text-gray-600 text-sm">{jeonseData.assessmentDetails}</p>
+                <p className="mt-4 text-gray-600 text-sm sm:text-base">{jeonseData.assessmentDetails}</p>
               )}
 
               {/* Warning for Good Deal / Fair Price */}
               {jeonseData.assessment && (jeonseData.assessment === 'GOOD_DEAL' || jeonseData.assessment === 'FAIR') && (
-                <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                <div className="mt-4 p-4 sm:p-5 rounded-xl bg-amber-50 border border-amber-200">
                   <div className="flex items-start gap-3">
-                    <span className="text-lg">⚠️</span>
+                    <span className="text-xl sm:text-2xl">⚠️</span>
                     <div>
-                      <p className="font-semibold text-amber-900 text-sm">
+                      <p className="font-semibold text-amber-900 text-sm sm:text-base">
                         {jeonseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Check Physical Condition'}
                       </p>
-                      <p className="text-sm text-amber-700 mt-1">
+                      <p className="text-sm sm:text-base text-amber-700 mt-1">
                         {jeonseData.assessment === 'GOOD_DEAL'
                           ? 'Below-market jeonse often has reasons. Check for physical issues (leaks, mold, noise), building maintenance, or why the landlord needs funds urgently.'
                           : 'Visit the property to check for physical issues like water damage, mold, noise levels, and overall maintenance condition.'}
@@ -710,27 +710,27 @@ export default function MarketPositionSection({
 
         {/* Potential Savings */}
         {jeonseData.potentialSavings && jeonseData.potentialSavings > 0 && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 mb-6 border border-amber-200 hover:shadow-lg transition-all duration-200">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span>💰</span>
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-6 border border-amber-200 hover:shadow-lg transition-all duration-200">
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">💰</span>
               Potential Savings
             </h3>
-            <div className="p-4 rounded-xl bg-white/50 hover:bg-white hover:shadow-md transition-all duration-200 cursor-default">
-              <p className="text-sm text-gray-600">If negotiated to expected jeonse:</p>
-              <p className="text-2xl font-bold text-amber-700">{formatAmount(jeonseData.potentialSavings)}</p>
+            <div className="p-4 sm:p-5 rounded-xl bg-white/50 hover:bg-white hover:shadow-md transition-all duration-200 cursor-default">
+              <p className="text-sm sm:text-base text-gray-600">If negotiated to expected jeonse:</p>
+              <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{formatAmount(jeonseData.potentialSavings)}</p>
             </div>
           </div>
         )}
 
         {/* Price Trend */}
         {jeonseData.trend && (
-          <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span>{getTrendIcon(jeonseData.trend.direction)}</span>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">{getTrendIcon(jeonseData.trend.direction)}</span>
               Price Trend
             </h3>
-            <p className="text-gray-600 leading-relaxed">{jeonseData.trend.advice}</p>
-            <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
+            <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{jeonseData.trend.advice}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3 sm:gap-4 text-sm sm:text-base text-gray-500">
               <span>Direction: <strong className="text-gray-900">{jeonseData.trend.direction}</strong></span>
               <span>Change: <strong className="text-gray-900">{jeonseData.trend.percentage.toFixed(1)}%</strong> annually</span>
             </div>
@@ -739,28 +739,28 @@ export default function MarketPositionSection({
 
         {/* Recent Transactions Table */}
         {jeonseData.transactionData && jeonseData.transactionData.length > 0 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span>📋</span>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">📋</span>
               Recent Transactions ({jeonseData.transactionData.length} contracts)
             </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full text-sm sm:text-base min-w-[400px]">
                 <thead>
                   <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
-                    <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Area</th>
-                    <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Floor</th>
-                    <th className="text-right py-3 px-3 text-xs font-semibold text-gray-500 uppercase">Jeonse</th>
+                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Date</th>
+                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Area</th>
+                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Floor</th>
+                    <th className="text-right py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Jeonse</th>
                   </tr>
                 </thead>
                 <tbody>
                   {jeonseData.transactionData.slice(0, 10).map((tx, index) => (
                     <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-3 text-gray-600">{tx.date}</td>
-                      <td className="py-3 px-3 text-gray-600">{tx.exclusiveArea?.toFixed(1)}㎡</td>
-                      <td className="py-3 px-3 text-gray-600">{tx.floor}F</td>
-                      <td className="py-3 px-3 text-right font-medium text-gray-900">{tx.price.toFixed(2)}억</td>
+                      <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.date}</td>
+                      <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.exclusiveArea?.toFixed(1)}㎡</td>
+                      <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.floor}F</td>
+                      <td className="py-3 sm:py-4 px-3 text-right font-medium text-gray-900">{tx.price.toFixed(2)}억</td>
                     </tr>
                   ))}
                 </tbody>
@@ -771,28 +771,28 @@ export default function MarketPositionSection({
 
         {/* Fallback: Show old view if no analysis data */}
         {!hasAnalysis && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
             {/* Price Comparison */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="text-center p-4 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200 cursor-default">
-                <p className="text-xs text-gray-500 mb-1">Your Jeonse</p>
-                <p className="text-xl font-bold text-gray-900">{formatAmount(jeonseData.proposedJeonse)}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="text-center p-4 sm:p-5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200 cursor-default">
+                <p className="text-xs sm:text-sm text-gray-500 mb-1">Your Jeonse</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900">{formatAmount(jeonseData.proposedJeonse)}</p>
               </div>
               {jeonseData.estimatedValue && (
-                <div className="text-center p-4 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200 cursor-default">
-                  <p className="text-xs text-gray-500 mb-1">Est. Market Value</p>
-                  <p className="text-xl font-bold text-gray-900">{formatAmount(jeonseData.estimatedValue)}</p>
+                <div className="text-center p-4 sm:p-5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200 cursor-default">
+                  <p className="text-xs sm:text-sm text-gray-500 mb-1">Est. Market Value</p>
+                  <p className="text-lg sm:text-xl font-bold text-gray-900">{formatAmount(jeonseData.estimatedValue)}</p>
                 </div>
               )}
               {jeonseData.estimatedValue && (
-                <div className="text-center p-4 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 hover:shadow-md transition-all duration-200 cursor-default">
-                  <p className="text-xs text-amber-600 mb-1">Jeonse Ratio</p>
-                  <p className="text-xl font-bold text-amber-700">{((jeonseData.proposedJeonse / jeonseData.estimatedValue) * 100).toFixed(1)}%</p>
+                <div className="text-center p-4 sm:p-5 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 hover:shadow-md transition-all duration-200 cursor-default">
+                  <p className="text-xs sm:text-sm text-amber-600 mb-1">Jeonse Ratio</p>
+                  <p className="text-lg sm:text-xl font-bold text-amber-700">{((jeonseData.proposedJeonse / jeonseData.estimatedValue) * 100).toFixed(1)}%</p>
                 </div>
               )}
-              <div className="text-center p-4 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200 cursor-default">
-                <p className="text-xs text-gray-500 mb-1">Market Trend</p>
-                <p className={`text-xl font-bold ${
+              <div className="text-center p-4 sm:p-5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200 cursor-default">
+                <p className="text-xs sm:text-sm text-gray-500 mb-1">Market Trend</p>
+                <p className={`text-lg sm:text-xl font-bold ${
                   jeonseData.marketTrend === 'rising' ? 'text-emerald-600' :
                   jeonseData.marketTrend === 'falling' ? 'text-red-600' : 'text-gray-600'
                 }`}>
@@ -804,14 +804,14 @@ export default function MarketPositionSection({
 
             {/* Price Range */}
             {jeonseData.valueLow && jeonseData.valueHigh && (
-              <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 hover:shadow-md transition-all duration-200 cursor-default">
-                <p className="text-sm text-blue-700 mb-2">Estimated Value Range</p>
+              <div className="p-4 sm:p-5 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 hover:shadow-md transition-all duration-200 cursor-default">
+                <p className="text-sm sm:text-base text-blue-700 mb-2">Estimated Value Range</p>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-blue-800">{formatAmount(jeonseData.valueLow)}</span>
-                  <div className="flex-1 mx-4 h-2 bg-blue-200 rounded-full relative">
+                  <span className="font-semibold text-sm sm:text-base text-blue-800">{formatAmount(jeonseData.valueLow)}</span>
+                  <div className="flex-1 mx-3 sm:mx-4 h-2 sm:h-3 bg-blue-200 rounded-full relative">
                     {jeonseData.valueMid && (
                       <div
-                        className="absolute top-0 w-3 h-3 bg-blue-600 rounded-full -mt-0.5"
+                        className="absolute top-0 w-3 h-3 sm:w-4 sm:h-4 bg-blue-600 rounded-full -mt-0.5 sm:-mt-1"
                         style={{
                           left: `${((jeonseData.valueMid - jeonseData.valueLow) / (jeonseData.valueHigh - jeonseData.valueLow)) * 100}%`,
                           transform: 'translateX(-50%)'
@@ -819,10 +819,10 @@ export default function MarketPositionSection({
                       />
                     )}
                   </div>
-                  <span className="font-semibold text-blue-800">{formatAmount(jeonseData.valueHigh)}</span>
+                  <span className="font-semibold text-sm sm:text-base text-blue-800">{formatAmount(jeonseData.valueHigh)}</span>
                 </div>
                 {jeonseData.confidence && (
-                  <p className="text-xs text-blue-600 mt-2">
+                  <p className="text-xs sm:text-sm text-blue-600 mt-2">
                     Confidence: {(jeonseData.confidence * 100).toFixed(0)}%
                   </p>
                 )}
