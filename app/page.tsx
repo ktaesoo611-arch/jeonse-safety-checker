@@ -490,19 +490,20 @@ export default function LandingPage() {
 // Tabbed Report Preview Component
 function ReportPreview() {
   const [activeTab, setActiveTab] = useState(0);
-  const tabs = ['Risk Analysis', 'Market Position', 'Action Items'];
+  const tabs = ['Risk', 'Market', 'Actions'];
+  const fullTabs = ['Risk Analysis', 'Market Position', 'Action Items'];
 
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
       {/* Browser Header */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-100">
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-            <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-red-400"></div>
+            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-yellow-400"></div>
+            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-green-400"></div>
           </div>
-          <span className="text-[10px] text-gray-400 font-medium">Sample Report • 반포자이 122동</span>
+          <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium truncate ml-2">Sample Report</span>
         </div>
       </div>
 
@@ -512,119 +513,94 @@ function ReportPreview() {
           <button
             key={tab}
             onClick={() => setActiveTab(i)}
-            className={`flex-1 px-3 py-2.5 text-[11px] font-medium transition-colors ${
+            className={`flex-1 px-2 sm:px-3 py-2.5 text-[10px] sm:text-[11px] font-medium transition-colors whitespace-nowrap ${
               activeTab === i
                 ? 'text-amber-600 border-b-2 border-amber-500 bg-amber-50/50'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
-            {tab}
+            <span className="sm:hidden">{tab}</span>
+            <span className="hidden sm:inline">{fullTabs[i]}</span>
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
-      <div className="p-4 min-h-[400px] max-h-[400px] overflow-y-auto">
+      <div className="p-3 sm:p-4 min-h-[350px] sm:min-h-[400px] max-h-[350px] sm:max-h-[400px] overflow-y-auto">
         {/* Tab 1: Risk Analysis */}
         {activeTab === 0 && (
           <div className="space-y-3">
             {/* Safety Score Header */}
             <div className="text-center pb-3 border-b border-gray-100">
-              <div className="inline-block px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-semibold rounded-full mb-2">
+              <div className="inline-block px-2 sm:px-2.5 py-1 bg-red-100 text-red-700 text-[9px] sm:text-[10px] font-semibold rounded-full mb-2">
                 Critical Risk
               </div>
-              <div className="text-xs text-gray-500 mb-0.5">Safety Score</div>
-              <div className="text-3xl font-bold text-red-500">23<span className="text-sm text-gray-400">/100</span></div>
+              <div className="text-[10px] sm:text-xs text-gray-500 mb-0.5">Safety Score</div>
+              <div className="text-2xl sm:text-3xl font-bold text-red-500">23<span className="text-xs sm:text-sm text-gray-400">/100</span></div>
             </div>
 
             {/* Detailed Scores */}
             <div className="space-y-2">
-              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Detailed Scores</div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-600">Loan-to-Value (40%)</span>
-                  <span className="text-[10px] font-semibold text-red-500">0/100</span>
-                </div>
-                <div className="w-full h-1.5 bg-gray-100 rounded-full">
-                  <div className="w-0 h-1.5 bg-red-500 rounded-full"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-600">Legal Issues (30%)</span>
-                  <span className="text-[10px] font-semibold text-red-500">0/100</span>
-                </div>
-                <div className="w-full h-1.5 bg-gray-100 rounded-full">
-                  <div className="w-0 h-1.5 bg-red-500 rounded-full"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-600">Market Trend (15%)</span>
-                  <span className="text-[10px] font-semibold text-green-500">85/100</span>
-                </div>
-                <div className="w-full h-1.5 bg-gray-100 rounded-full">
-                  <div className="w-[85%] h-1.5 bg-green-500 rounded-full"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-600">Building Age (15%)</span>
-                  <span className="text-[10px] font-semibold text-amber-500">70/100</span>
-                </div>
-                <div className="w-full h-1.5 bg-gray-100 rounded-full">
-                  <div className="w-[70%] h-1.5 bg-amber-500 rounded-full"></div>
-                </div>
+              <div className="text-[9px] sm:text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Detailed Scores</div>
+              <div className="space-y-2">
+                {[
+                  { label: 'LTV', weight: '40%', score: 0, color: 'red' },
+                  { label: 'Legal', weight: '30%', score: 0, color: 'red' },
+                  { label: 'Trend', weight: '15%', score: 85, color: 'green' },
+                  { label: 'Building', weight: '15%', score: 70, color: 'amber' },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[10px] sm:text-[11px] text-gray-600">{item.label} ({item.weight})</span>
+                      <span className={`text-[10px] sm:text-[11px] font-semibold text-${item.color}-500`}>{item.score}/100</span>
+                    </div>
+                    <div className="w-full h-1.5 sm:h-2 bg-gray-100 rounded-full">
+                      <div className={`h-full bg-${item.color}-500 rounded-full`} style={{ width: `${item.score}%` }}></div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Debt & Priority */}
-            <div className="bg-gray-50 rounded-lg p-2.5">
-              <div className="text-[10px] font-semibold text-gray-700 mb-2">Debt & Priority Analysis</div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <div className="text-[9px] text-gray-500">Total Debt</div>
-                  <div className="text-sm font-bold text-red-500">₩70.5억</div>
+            <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3">
+              <div className="text-[10px] sm:text-[11px] font-semibold text-gray-700 mb-2">Debt Analysis</div>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center">
+                <div className="bg-white rounded p-1.5 sm:p-2">
+                  <div className="text-[8px] sm:text-[9px] text-gray-500">Total Debt</div>
+                  <div className="text-xs sm:text-sm font-bold text-red-500">₩70.5억</div>
                 </div>
-                <div>
-                  <div className="text-[9px] text-gray-500">Your Deposit</div>
-                  <div className="text-sm font-bold text-amber-600">₩18.0억</div>
+                <div className="bg-white rounded p-1.5 sm:p-2">
+                  <div className="text-[8px] sm:text-[9px] text-gray-500">Deposit</div>
+                  <div className="text-xs sm:text-sm font-bold text-amber-600">₩18.0억</div>
                 </div>
-                <div>
-                  <div className="text-[9px] text-gray-500">Equity</div>
-                  <div className="text-sm font-bold text-red-600">-₩24.4억</div>
+                <div className="bg-white rounded p-1.5 sm:p-2">
+                  <div className="text-[8px] sm:text-[9px] text-gray-500">Equity</div>
+                  <div className="text-xs sm:text-sm font-bold text-red-600">-₩24억</div>
                 </div>
               </div>
-              <div className="mt-2 text-[9px] text-red-600 text-center bg-red-50 rounded py-1">
-                Negative equity detected! Debt exceeds property value.
+              <div className="mt-2 text-[9px] sm:text-[10px] text-red-600 text-center bg-red-50 rounded py-1">
+                Negative equity! Debt exceeds value.
               </div>
             </div>
 
             {/* Detected Risks */}
             <div className="space-y-1.5">
-              <div className="text-[10px] font-semibold text-gray-700">Detected Risks (8)</div>
-              <div className="bg-red-50 border border-red-100 rounded-lg p-2">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="px-1 py-0.5 bg-red-500 text-white text-[7px] font-bold rounded">CRITICAL</span>
-                  <span className="text-[10px] font-medium text-red-800">Seizure</span>
+              <div className="text-[10px] sm:text-[11px] font-semibold text-gray-700">Detected Risks (8)</div>
+              {[
+                { level: 'CRITICAL', name: 'Seizure', desc: 'Active seizure. AVOID!', color: 'red' },
+                { level: 'CRITICAL', name: 'Auction', desc: 'In foreclosure. DO NOT PROCEED.', color: 'red' },
+                { level: 'HIGH', name: 'Mortgage', desc: '₩12.8억 senior mortgage.', color: 'amber' },
+                { level: 'HIGH', name: 'Jeonse', desc: '2 tenants, ₩51억 deposits.', color: 'amber' },
+              ].map((risk) => (
+                <div key={risk.name} className={`bg-${risk.color}-50 border border-${risk.color}-100 rounded-lg p-2`}>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`px-1 py-0.5 bg-${risk.color}-500 text-white text-[7px] sm:text-[8px] font-bold rounded`}>{risk.level}</span>
+                    <span className={`text-[10px] sm:text-[11px] font-medium text-${risk.color}-800`}>{risk.name}</span>
+                  </div>
+                  <p className={`text-[9px] sm:text-[10px] text-${risk.color}-600`}>{risk.desc}</p>
                 </div>
-                <p className="text-[9px] text-red-600">Property has active seizure. AVOID THIS PROPERTY.</p>
-              </div>
-              <div className="bg-red-50 border border-red-100 rounded-lg p-2">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="px-1 py-0.5 bg-red-500 text-white text-[7px] font-bold rounded">CRITICAL</span>
-                  <span className="text-[10px] font-medium text-red-800">Auction</span>
-                </div>
-                <p className="text-[9px] text-red-600">Property is in foreclosure auction. DO NOT PROCEED.</p>
-              </div>
-              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="px-1 py-0.5 bg-amber-500 text-white text-[7px] font-bold rounded">HIGH</span>
-                  <span className="text-[10px] font-medium text-amber-800">Senior Mortgage</span>
-                </div>
-                <p className="text-[9px] text-amber-700">₩12.8억 mortgage exists. They get paid first.</p>
-              </div>
-              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="px-1 py-0.5 bg-amber-500 text-white text-[7px] font-bold rounded">HIGH</span>
-                  <span className="text-[10px] font-medium text-amber-800">Existing Jeonse</span>
-                </div>
-                <p className="text-[9px] text-amber-700">2 registered tenants with ₩51.0억 total deposits.</p>
-              </div>
+              ))}
             </div>
           </div>
         )}
@@ -632,103 +608,88 @@ function ReportPreview() {
         {/* Tab 2: Market Position */}
         {activeTab === 1 && (
           <div className="space-y-3">
-            {/* Price Comparison */}
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-gray-50 rounded-lg p-2.5">
-                <div className="text-[9px] text-gray-500 mb-0.5">Your Rent</div>
-                <div className="text-lg font-bold text-gray-800">400만</div>
-                <div className="text-[8px] text-gray-400">at ₩18.0억 deposit</div>
+            {/* Price Comparison - Stack on very small screens */}
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                <div className="bg-gray-50 rounded-lg p-2 sm:p-2.5 text-center">
+                  <div className="text-[8px] sm:text-[9px] text-gray-500">Your Rent</div>
+                  <div className="text-base sm:text-lg font-bold text-gray-800">400만</div>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-2 sm:p-2.5 text-center">
+                  <div className="text-[8px] sm:text-[9px] text-blue-600">Expected</div>
+                  <div className="text-base sm:text-lg font-bold text-blue-600">353만</div>
+                </div>
+                <div className="bg-red-50 rounded-lg p-2 sm:p-2.5 text-center">
+                  <div className="text-[8px] sm:text-[9px] text-red-600">Diff</div>
+                  <div className="text-base sm:text-lg font-bold text-red-500">+47만</div>
+                </div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-2.5">
-                <div className="text-[9px] text-blue-600 mb-0.5">Expected</div>
-                <div className="text-lg font-bold text-blue-600">353만</div>
-                <div className="text-[8px] text-blue-400">at your deposit</div>
-              </div>
-              <div className="bg-red-50 rounded-lg p-2.5">
-                <div className="text-[9px] text-red-600 mb-0.5">Difference</div>
-                <div className="text-lg font-bold text-red-500">+47만</div>
-                <div className="text-[8px] text-red-400">+13.3% vs expected</div>
+              <div className="text-center text-[9px] sm:text-[10px] text-gray-500">
+                +13.3% above market • at ₩18억 deposit
               </div>
             </div>
 
-            {/* Chart */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-[10px] font-medium text-gray-700 mb-2">Rent at Your Deposit Level (12 months)</div>
-              <div className="relative h-20">
-                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[7px] text-gray-400">
-                  <span>450만</span>
-                  <span>350만</span>
-                  <span>250만</span>
+            {/* Simplified Chart for Mobile */}
+            <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3">
+              <div className="text-[9px] sm:text-[10px] font-medium text-gray-700 mb-2">Rent Trend (12 months)</div>
+              <div className="relative h-16 sm:h-20">
+                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[7px] sm:text-[8px] text-gray-400">
+                  <span>450</span>
+                  <span>350</span>
+                  <span>250</span>
                 </div>
-                <div className="ml-7 h-full relative">
+                <div className="ml-6 sm:ml-7 h-full relative">
                   <div className="absolute top-1 left-0 right-0 border-t-2 border-dashed border-red-400"></div>
-                  <span className="absolute -top-0.5 right-0 text-[7px] text-red-500 bg-white px-1">Your: 400만</span>
-                  <div className="absolute top-8 left-0 right-0 border-t-2 border-blue-400"></div>
-                  <span className="absolute top-6 right-0 text-[7px] text-blue-500 bg-white px-1">Expected: 353만</span>
-                  <div className="absolute top-6 left-[15%] w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="absolute top-10 left-[40%] w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="absolute top-12 left-[65%] w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="absolute top-8 left-[85%] w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="absolute top-7 sm:top-8 left-0 right-0 border-t-2 border-blue-400"></div>
+                  <div className="absolute top-5 sm:top-6 left-[15%] w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
+                  <div className="absolute top-8 sm:top-10 left-[40%] w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
+                  <div className="absolute top-10 sm:top-12 left-[65%] w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
+                  <div className="absolute top-7 sm:top-8 left-[85%] w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
                 </div>
               </div>
-              <div className="flex items-center justify-center gap-4 mt-2 text-[8px]">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full"></span> Transactions</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-400"></span> Expected</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-0.5 border-t-2 border-dashed border-red-400"></span> Your rent</span>
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 text-[7px] sm:text-[8px]">
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></span>Txns</span>
+                <span className="flex items-center gap-1"><span className="w-2 sm:w-3 h-0.5 bg-blue-400"></span>Expected</span>
+                <span className="flex items-center gap-1"><span className="w-2 sm:w-3 h-0.5 border-t border-dashed border-red-400"></span>Yours</span>
               </div>
             </div>
 
-            {/* Market Alert */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-semibold text-amber-700">Above Market (+13.3%)</span>
-              </div>
-              <p className="text-[9px] text-amber-600">You're paying ₩47만/month more than market expectation. Room for negotiation.</p>
+            {/* Alerts */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 sm:p-2.5">
+              <div className="text-[9px] sm:text-[10px] font-semibold text-amber-700 mb-0.5">Above Market (+13.3%)</div>
+              <p className="text-[9px] sm:text-[10px] text-amber-600">₩47만/month over expected. Room for negotiation.</p>
             </div>
 
-            {/* Price Trend */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-2.5">
-              <div className="flex items-center gap-2 mb-1">
-                <svg className="w-3 h-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                </svg>
-                <span className="text-[10px] font-semibold text-green-700">Price Trend: Declining (-4.3%)</span>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-2.5">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[9px] sm:text-[10px] font-semibold text-green-700">Trend: Declining (-4.3%)</span>
               </div>
-              <p className="text-[9px] text-green-600">Rental prices appear to be declining. Market may favor tenants.</p>
+              <p className="text-[9px] sm:text-[10px] text-green-600">Market favors tenants.</p>
             </div>
 
-            {/* Recent Transactions */}
-            <div className="bg-white border border-gray-200 rounded-lg p-2.5">
-              <div className="text-[10px] font-semibold text-gray-700 mb-2">Recent Transactions (4)</div>
-              <div className="space-y-1 text-[9px]">
-                <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                  <span className="text-gray-500">2025.11.26</span>
-                  <span className="text-gray-600">165㎡ • 23F</span>
-                  <span className="font-medium">₩16억 / 460만</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                  <span className="text-gray-500">2025.11.17</span>
-                  <span className="text-gray-600">165㎡ • 29F</span>
-                  <span className="font-medium">₩16억 / 380만</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                  <span className="text-gray-500">2025.07.23</span>
-                  <span className="text-gray-600">165㎡ • 8F</span>
-                  <span className="font-medium">₩18억 / 320만</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-gray-500">2025.04.14</span>
-                  <span className="text-gray-600">165㎡ • 7F</span>
-                  <span className="font-medium">₩15억 / 500만</span>
-                </div>
+            {/* Recent Transactions - Simplified for mobile */}
+            <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-2.5">
+              <div className="text-[9px] sm:text-[10px] font-semibold text-gray-700 mb-2">Recent Transactions</div>
+              <div className="space-y-1.5 text-[9px] sm:text-[10px]">
+                {[
+                  { date: '11.26', floor: '23F', price: '₩16억/460만' },
+                  { date: '11.17', floor: '29F', price: '₩16억/380만' },
+                  { date: '07.23', floor: '8F', price: '₩18억/320만' },
+                  { date: '04.14', floor: '7F', price: '₩15억/500만' },
+                ].map((tx, i) => (
+                  <div key={i} className="flex items-center justify-between py-1 border-b border-gray-50 last:border-0">
+                    <span className="text-gray-500">{tx.date}</span>
+                    <span className="text-gray-500">{tx.floor}</span>
+                    <span className="font-medium text-gray-700">{tx.price}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Savings */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 text-center">
-              <div className="text-[9px] text-green-600 mb-0.5">Potential Savings</div>
-              <div className="text-xl font-bold text-green-600">₩564만<span className="text-xs font-normal">/year</span></div>
-              <p className="text-[8px] text-green-500">If negotiated to expected rent level</p>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-2.5 text-center">
+              <div className="text-[8px] sm:text-[9px] text-green-600">Potential Savings</div>
+              <div className="text-lg sm:text-xl font-bold text-green-600">₩564만<span className="text-[10px] sm:text-xs font-normal">/yr</span></div>
             </div>
           </div>
         )}
@@ -736,100 +697,75 @@ function ReportPreview() {
         {/* Tab 3: Action Items */}
         {activeTab === 2 && (
           <div className="space-y-3">
-            {/* Mandatory Actions - Critical */}
-            <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className="text-[10px] font-bold text-red-700">🚨 Mandatory Actions</span>
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex items-start gap-2">
-                  <span className="text-red-500 text-xs">✗</span>
-                  <span className="text-[10px] text-red-700 font-medium">DO NOT SIGN THIS CONTRACT - Risk is too high</span>
+            {/* Mandatory Actions */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-2.5">
+              <div className="text-[9px] sm:text-[10px] font-bold text-red-700 mb-1.5">🚨 Mandatory</div>
+              <div className="space-y-1">
+                <div className="flex items-start gap-1.5">
+                  <span className="text-red-500 text-[10px]">✗</span>
+                  <span className="text-[9px] sm:text-[10px] text-red-700 font-medium">DO NOT SIGN - Risk too high</span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-red-500 text-xs">✗</span>
-                  <span className="text-[10px] text-red-700">Look for a different property with better fundamentals</span>
+                <div className="flex items-start gap-1.5">
+                  <span className="text-red-500 text-[10px]">✗</span>
+                  <span className="text-[9px] sm:text-[10px] text-red-700">Find different property</span>
                 </div>
               </div>
             </div>
 
             {/* Negotiation Scripts */}
             <div className="space-y-2">
-              <div className="text-[10px] font-semibold text-gray-700">Negotiation Scripts</div>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-2.5">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-semibold text-green-700">Expected Rent</span>
-                    <span className="px-1 py-0.5 bg-green-500 text-white text-[7px] font-bold rounded">RECOMMENDED</span>
+              <div className="text-[9px] sm:text-[10px] font-semibold text-gray-700">Negotiation Scripts</div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] sm:text-[10px] font-semibold text-green-700">Expected Rent</span>
+                    <span className="px-1 py-0.5 bg-green-500 text-white text-[6px] sm:text-[7px] font-bold rounded">REC</span>
                   </div>
-                  <span className="text-[9px] font-bold text-green-600">Save ₩564만/yr</span>
+                  <span className="text-[8px] sm:text-[9px] font-bold text-green-600">Save ₩564만/yr</span>
                 </div>
-                <div className="bg-white rounded p-2 text-[9px] text-gray-600 leading-relaxed border border-green-100 italic">
-                  "Based on 5 recent contracts, the expected rent at ₩18억 deposit is 353만원. I'd like to adjust to this level."
+                <div className="bg-white rounded p-1.5 sm:p-2 text-[8px] sm:text-[9px] text-gray-600 leading-relaxed border border-green-100 italic">
+                  "Based on recent contracts, expected rent at ₩18억 is 353만원. I'd like to adjust to this level."
                 </div>
-                <button className="mt-1.5 w-full py-1 bg-green-600 text-white text-[9px] font-medium rounded hover:bg-green-700">
+                <button className="mt-1.5 w-full py-1.5 bg-green-600 text-white text-[8px] sm:text-[9px] font-medium rounded active:bg-green-700">
                   Copy Script
                 </button>
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-2.5">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-semibold text-blue-700">5% Discount Request</span>
-                  <span className="text-[9px] font-bold text-blue-600">Save ₩776만/yr</span>
+                  <span className="text-[9px] sm:text-[10px] font-semibold text-blue-700">5% Discount</span>
+                  <span className="text-[8px] sm:text-[9px] font-bold text-blue-600">Save ₩776만/yr</span>
                 </div>
-                <div className="bg-white rounded p-2 text-[9px] text-gray-600 leading-relaxed border border-blue-100 italic">
-                  "Given current market conditions, I'm hoping for 335만원 - a modest 5% discount. I'm ready to sign immediately."
+                <div className="bg-white rounded p-1.5 sm:p-2 text-[8px] sm:text-[9px] text-gray-600 leading-relaxed border border-blue-100 italic">
+                  "Given market conditions, I'm hoping for 335만원 - a modest 5% discount."
                 </div>
-                <button className="mt-1.5 w-full py-1 bg-blue-600 text-white text-[9px] font-medium rounded hover:bg-blue-700">
+                <button className="mt-1.5 w-full py-1.5 bg-blue-600 text-white text-[8px] sm:text-[9px] font-medium rounded active:bg-blue-700">
                   Copy Script
                 </button>
               </div>
             </div>
 
-            {/* Before Signing Checklist */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-              <div className="text-[10px] font-semibold text-amber-800 mb-2">Before Signing</div>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 border border-amber-400 rounded bg-white"></div>
-                  <span className="text-[9px] text-amber-700">Verify 등기부등본 on signing day</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 border border-amber-400 rounded bg-white"></div>
-                  <span className="text-[9px] text-amber-700">Confirm no new debts registered</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 border border-amber-400 rounded bg-white"></div>
-                  <span className="text-[9px] text-amber-700">Use certified bank transfer for deposit</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 border border-amber-400 rounded bg-white"></div>
-                  <span className="text-[9px] text-amber-700">Include special terms in contract</span>
-                </div>
+            {/* Checklists */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 sm:p-2.5">
+              <div className="text-[9px] sm:text-[10px] font-semibold text-amber-800 mb-1.5">Before Signing</div>
+              <div className="space-y-1">
+                {['Verify 등기부등본', 'Confirm no new debts', 'Bank transfer for deposit', 'Special contract terms'].map((item) => (
+                  <div key={item} className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 border border-amber-400 rounded bg-white flex-shrink-0"></div>
+                    <span className="text-[8px] sm:text-[9px] text-amber-700">{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* After Signing Checklist */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
-              <div className="text-[10px] font-semibold text-blue-800 mb-2">After Signing</div>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 border border-blue-400 rounded bg-white"></div>
-                  <span className="text-[9px] text-blue-700">Move in and occupy the property</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 border border-blue-400 rounded bg-white"></div>
-                  <span className="text-[9px] text-blue-700">Register move-in (전입신고) - same day</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 border border-blue-400 rounded bg-white"></div>
-                  <span className="text-[9px] text-blue-700">Get confirmation date (확정일자)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 border border-blue-400 rounded bg-white flex items-center justify-center">
-                    <span className="text-[7px] text-blue-500">F</span>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-2.5">
+              <div className="text-[9px] sm:text-[10px] font-semibold text-blue-800 mb-1.5">After Signing</div>
+              <div className="space-y-1">
+                {['Move in & occupy', '전입신고 (same day)', '확정일자 at 주민센터', 'F-visa: 체류지변경신고'].map((item) => (
+                  <div key={item} className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 border border-blue-400 rounded bg-white flex-shrink-0"></div>
+                    <span className="text-[8px] sm:text-[9px] text-blue-700">{item}</span>
                   </div>
-                  <span className="text-[9px] text-blue-700">F-visa: 체류지변경신고 at Immigration</span>
-                </div>
+                ))}
               </div>
             </div>
           </div>
