@@ -490,7 +490,7 @@ export default function LandingPage() {
 // Tabbed Report Preview Component
 function ReportPreview() {
   const [activeTab, setActiveTab] = useState(0);
-  const tabs = ['Risk Analysis', 'Market', 'Negotiation'];
+  const tabs = ['Risk Analysis', 'Market Position', 'Action Items'];
 
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
@@ -502,7 +502,7 @@ function ReportPreview() {
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
             <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
           </div>
-          <span className="text-[10px] text-gray-400 font-medium">Sample Report</span>
+          <span className="text-[10px] text-gray-400 font-medium">Sample Report • 반포자이 122동</span>
         </div>
       </div>
 
@@ -512,7 +512,7 @@ function ReportPreview() {
           <button
             key={tab}
             onClick={() => setActiveTab(i)}
-            className={`flex-1 px-4 py-3 text-xs font-medium transition-colors ${
+            className={`flex-1 px-3 py-2.5 text-[11px] font-medium transition-colors ${
               activeTab === i
                 ? 'text-amber-600 border-b-2 border-amber-500 bg-amber-50/50'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -524,10 +524,11 @@ function ReportPreview() {
       </div>
 
       {/* Tab Content */}
-      <div className="p-4 min-h-[340px]">
+      <div className="p-4 min-h-[400px] max-h-[400px] overflow-y-auto">
+        {/* Tab 1: Risk Analysis */}
         {activeTab === 0 && (
-          <div className="space-y-4">
-            {/* Safety Score */}
+          <div className="space-y-3">
+            {/* Safety Score Header */}
             <div className="text-center pb-3 border-b border-gray-100">
               <div className="inline-block px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-semibold rounded-full mb-2">
                 Critical Risk
@@ -536,176 +537,298 @@ function ReportPreview() {
               <div className="text-3xl font-bold text-red-500">23<span className="text-sm text-gray-400">/100</span></div>
             </div>
 
-            {/* Risk Metrics Grid */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-                <div className="text-[10px] text-gray-500 mb-0.5">LTV Ratio</div>
-                <div className="text-lg font-bold text-red-500">138%</div>
-                <div className="w-full h-1 bg-gray-200 rounded-full mt-1">
-                  <div className="w-full h-1 bg-red-500 rounded-full"></div>
+            {/* Detailed Scores */}
+            <div className="space-y-2">
+              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Detailed Scores</div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-600">Loan-to-Value (40%)</span>
+                  <span className="text-[10px] font-semibold text-red-500">0/100</span>
+                </div>
+                <div className="w-full h-1.5 bg-gray-100 rounded-full">
+                  <div className="w-0 h-1.5 bg-red-500 rounded-full"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-600">Legal Issues (30%)</span>
+                  <span className="text-[10px] font-semibold text-red-500">0/100</span>
+                </div>
+                <div className="w-full h-1.5 bg-gray-100 rounded-full">
+                  <div className="w-0 h-1.5 bg-red-500 rounded-full"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-600">Market Trend (15%)</span>
+                  <span className="text-[10px] font-semibold text-green-500">85/100</span>
+                </div>
+                <div className="w-full h-1.5 bg-gray-100 rounded-full">
+                  <div className="w-[85%] h-1.5 bg-green-500 rounded-full"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-600">Building Age (15%)</span>
+                  <span className="text-[10px] font-semibold text-amber-500">70/100</span>
+                </div>
+                <div className="w-full h-1.5 bg-gray-100 rounded-full">
+                  <div className="w-[70%] h-1.5 bg-amber-500 rounded-full"></div>
                 </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-                <div className="text-[10px] text-gray-500 mb-0.5">Legal Issues</div>
-                <div className="text-lg font-bold text-red-500">4</div>
-                <div className="w-full h-1 bg-gray-200 rounded-full mt-1">
-                  <div className="w-full h-1 bg-red-500 rounded-full"></div>
+            </div>
+
+            {/* Debt & Priority */}
+            <div className="bg-gray-50 rounded-lg p-2.5">
+              <div className="text-[10px] font-semibold text-gray-700 mb-2">Debt & Priority Analysis</div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-[9px] text-gray-500">Total Debt</div>
+                  <div className="text-sm font-bold text-red-500">₩70.5억</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-gray-500">Your Deposit</div>
+                  <div className="text-sm font-bold text-amber-600">₩18.0억</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-gray-500">Equity</div>
+                  <div className="text-sm font-bold text-red-600">-₩24.4억</div>
                 </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-                <div className="text-[10px] text-gray-500 mb-0.5">Building Score</div>
-                <div className="text-lg font-bold text-amber-500">70</div>
-                <div className="w-full h-1 bg-gray-200 rounded-full mt-1">
-                  <div className="w-[70%] h-1 bg-amber-500 rounded-full"></div>
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-                <div className="text-[10px] text-gray-500 mb-0.5">Debt Rank</div>
-                <div className="text-lg font-bold text-gray-700">#8 <span className="text-[10px] font-normal text-gray-500">of 8</span></div>
-                <div className="text-[10px] text-red-500 mt-0.5">Last Priority</div>
+              <div className="mt-2 text-[9px] text-red-600 text-center bg-red-50 rounded py-1">
+                Negative equity detected! Debt exceeds property value.
               </div>
             </div>
 
             {/* Detected Risks */}
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-gray-700">Detected Risks (8)</div>
-              <div className="bg-red-50 border border-red-100 rounded-lg p-2.5">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-1.5 py-0.5 bg-red-500 text-white text-[8px] font-bold rounded">CRITICAL</span>
-                  <span className="text-xs font-medium text-red-800">Seizure</span>
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold text-gray-700">Detected Risks (8)</div>
+              <div className="bg-red-50 border border-red-100 rounded-lg p-2">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="px-1 py-0.5 bg-red-500 text-white text-[7px] font-bold rounded">CRITICAL</span>
+                  <span className="text-[10px] font-medium text-red-800">Seizure</span>
                 </div>
-                <p className="text-[10px] text-red-600">Property has active seizure. Creditors blocking sale/transfer.</p>
+                <p className="text-[9px] text-red-600">Property has active seizure. AVOID THIS PROPERTY.</p>
               </div>
-              <div className="bg-red-50 border border-red-100 rounded-lg p-2.5">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-1.5 py-0.5 bg-red-500 text-white text-[8px] font-bold rounded">CRITICAL</span>
-                  <span className="text-xs font-medium text-red-800">Auction</span>
+              <div className="bg-red-50 border border-red-100 rounded-lg p-2">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="px-1 py-0.5 bg-red-500 text-white text-[7px] font-bold rounded">CRITICAL</span>
+                  <span className="text-[10px] font-medium text-red-800">Auction</span>
                 </div>
-                <p className="text-[10px] text-red-600">Property is in foreclosure. You could lose your deposit.</p>
+                <p className="text-[9px] text-red-600">Property is in foreclosure auction. DO NOT PROCEED.</p>
+              </div>
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="px-1 py-0.5 bg-amber-500 text-white text-[7px] font-bold rounded">HIGH</span>
+                  <span className="text-[10px] font-medium text-amber-800">Senior Mortgage</span>
+                </div>
+                <p className="text-[9px] text-amber-700">₩12.8억 mortgage exists. They get paid first.</p>
+              </div>
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="px-1 py-0.5 bg-amber-500 text-white text-[7px] font-bold rounded">HIGH</span>
+                  <span className="text-[10px] font-medium text-amber-800">Existing Jeonse</span>
+                </div>
+                <p className="text-[9px] text-amber-700">2 registered tenants with ₩51.0억 total deposits.</p>
               </div>
             </div>
           </div>
         )}
 
+        {/* Tab 2: Market Position */}
         {activeTab === 1 && (
-          <div className="space-y-4">
-            {/* Market Comparison */}
+          <div className="space-y-3">
+            {/* Price Comparison */}
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-gray-50 rounded-lg p-3">
-                <div className="text-[10px] text-gray-500 mb-1">Your Rent</div>
+              <div className="bg-gray-50 rounded-lg p-2.5">
+                <div className="text-[9px] text-gray-500 mb-0.5">Your Rent</div>
                 <div className="text-lg font-bold text-gray-800">400만</div>
+                <div className="text-[8px] text-gray-400">at ₩18.0억 deposit</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-3">
-                <div className="text-[10px] text-blue-600 mb-1">Expected</div>
+              <div className="bg-blue-50 rounded-lg p-2.5">
+                <div className="text-[9px] text-blue-600 mb-0.5">Expected</div>
                 <div className="text-lg font-bold text-blue-600">353만</div>
+                <div className="text-[8px] text-blue-400">at your deposit</div>
               </div>
-              <div className="bg-amber-50 rounded-lg p-3">
-                <div className="text-[10px] text-amber-600 mb-1">Difference</div>
-                <div className="text-lg font-bold text-amber-600">+47만</div>
+              <div className="bg-red-50 rounded-lg p-2.5">
+                <div className="text-[9px] text-red-600 mb-0.5">Difference</div>
+                <div className="text-lg font-bold text-red-500">+47만</div>
+                <div className="text-[8px] text-red-400">+13.3% vs expected</div>
               </div>
             </div>
 
-            {/* Chart Mockup */}
+            {/* Chart */}
             <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-xs font-medium text-gray-700 mb-3">Rent at Your Deposit Level</div>
-              <div className="relative h-24">
-                {/* Y axis */}
-                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[8px] text-gray-400">
+              <div className="text-[10px] font-medium text-gray-700 mb-2">Rent at Your Deposit Level (12 months)</div>
+              <div className="relative h-20">
+                <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[7px] text-gray-400">
                   <span>450만</span>
                   <span>350만</span>
                   <span>250만</span>
                 </div>
-                {/* Chart area */}
-                <div className="ml-8 h-full relative">
-                  {/* Your rent line */}
-                  <div className="absolute top-2 left-0 right-0 border-t-2 border-dashed border-red-400"></div>
-                  <span className="absolute top-0 right-0 text-[8px] text-red-500">Your rent</span>
-                  {/* Expected line */}
-                  <div className="absolute top-10 left-0 right-0 border-t-2 border-blue-400"></div>
-                  <span className="absolute top-8 right-0 text-[8px] text-blue-500">Expected</span>
-                  {/* Data points */}
-                  <div className="absolute top-8 left-[20%] w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="absolute top-12 left-[50%] w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="absolute top-14 left-[70%] w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="absolute top-10 left-[90%] w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="ml-7 h-full relative">
+                  <div className="absolute top-1 left-0 right-0 border-t-2 border-dashed border-red-400"></div>
+                  <span className="absolute -top-0.5 right-0 text-[7px] text-red-500 bg-white px-1">Your: 400만</span>
+                  <div className="absolute top-8 left-0 right-0 border-t-2 border-blue-400"></div>
+                  <span className="absolute top-6 right-0 text-[7px] text-blue-500 bg-white px-1">Expected: 353만</span>
+                  <div className="absolute top-6 left-[15%] w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="absolute top-10 left-[40%] w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="absolute top-12 left-[65%] w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="absolute top-8 left-[85%] w-2 h-2 bg-green-500 rounded-full"></div>
+                </div>
+              </div>
+              <div className="flex items-center justify-center gap-4 mt-2 text-[8px]">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full"></span> Transactions</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-400"></span> Expected</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 border-t-2 border-dashed border-red-400"></span> Your rent</span>
+              </div>
+            </div>
+
+            {/* Market Alert */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-semibold text-amber-700">Above Market (+13.3%)</span>
+              </div>
+              <p className="text-[9px] text-amber-600">You're paying ₩47만/month more than market expectation. Room for negotiation.</p>
+            </div>
+
+            {/* Price Trend */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2.5">
+              <div className="flex items-center gap-2 mb-1">
+                <svg className="w-3 h-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                </svg>
+                <span className="text-[10px] font-semibold text-green-700">Price Trend: Declining (-4.3%)</span>
+              </div>
+              <p className="text-[9px] text-green-600">Rental prices appear to be declining. Market may favor tenants.</p>
+            </div>
+
+            {/* Recent Transactions */}
+            <div className="bg-white border border-gray-200 rounded-lg p-2.5">
+              <div className="text-[10px] font-semibold text-gray-700 mb-2">Recent Transactions (4)</div>
+              <div className="space-y-1 text-[9px]">
+                <div className="flex justify-between items-center py-1 border-b border-gray-100">
+                  <span className="text-gray-500">2025.11.26</span>
+                  <span className="text-gray-600">165㎡ • 23F</span>
+                  <span className="font-medium">₩16억 / 460만</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-100">
+                  <span className="text-gray-500">2025.11.17</span>
+                  <span className="text-gray-600">165㎡ • 29F</span>
+                  <span className="font-medium">₩16억 / 380만</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-100">
+                  <span className="text-gray-500">2025.07.23</span>
+                  <span className="text-gray-600">165㎡ • 8F</span>
+                  <span className="font-medium">₩18억 / 320만</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-gray-500">2025.04.14</span>
+                  <span className="text-gray-600">165㎡ • 7F</span>
+                  <span className="font-medium">₩15억 / 500만</span>
                 </div>
               </div>
             </div>
 
-            {/* Market Position Alert */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span className="text-xs font-semibold text-amber-700">Above Market (+13.3%)</span>
-              </div>
-              <p className="text-[11px] text-amber-600">You're paying ₩47만/month more than the market expectation. Room for negotiation.</p>
-            </div>
-
-            {/* Potential Savings */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <div className="text-xs font-semibold text-green-700 mb-1">Potential Savings</div>
-              <div className="text-2xl font-bold text-green-600">₩564만<span className="text-sm font-normal">/year</span></div>
-              <p className="text-[10px] text-green-600 mt-1">If negotiated to expected rent level</p>
+            {/* Savings */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 text-center">
+              <div className="text-[9px] text-green-600 mb-0.5">Potential Savings</div>
+              <div className="text-xl font-bold text-green-600">₩564만<span className="text-xs font-normal">/year</span></div>
+              <p className="text-[8px] text-green-500">If negotiated to expected rent level</p>
             </div>
           </div>
         )}
 
+        {/* Tab 3: Action Items */}
         {activeTab === 2 && (
-          <div className="space-y-4">
-            {/* Negotiation Header */}
-            <div className="text-center pb-3 border-b border-gray-100">
-              <div className="text-xs text-gray-500 mb-1">You're paying above market</div>
-              <div className="text-2xl font-bold text-amber-600">+₩47만<span className="text-sm font-normal text-gray-500">/month</span></div>
+          <div className="space-y-3">
+            {/* Mandatory Actions - Critical */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-[10px] font-bold text-red-700">🚨 Mandatory Actions</span>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <span className="text-red-500 text-xs">✗</span>
+                  <span className="text-[10px] text-red-700 font-medium">DO NOT SIGN THIS CONTRACT - Risk is too high</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-red-500 text-xs">✗</span>
+                  <span className="text-[10px] text-red-700">Look for a different property with better fundamentals</span>
+                </div>
+              </div>
             </div>
 
-            {/* Negotiation Script 1 */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <div className="flex items-center justify-between mb-2">
+            {/* Negotiation Scripts */}
+            <div className="space-y-2">
+              <div className="text-[10px] font-semibold text-gray-700">Negotiation Scripts</div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-semibold text-green-700">Expected Rent</span>
+                    <span className="px-1 py-0.5 bg-green-500 text-white text-[7px] font-bold rounded">RECOMMENDED</span>
+                  </div>
+                  <span className="text-[9px] font-bold text-green-600">Save ₩564만/yr</span>
+                </div>
+                <div className="bg-white rounded p-2 text-[9px] text-gray-600 leading-relaxed border border-green-100 italic">
+                  "Based on 5 recent contracts, the expected rent at ₩18억 deposit is 353만원. I'd like to adjust to this level."
+                </div>
+                <button className="mt-1.5 w-full py-1 bg-green-600 text-white text-[9px] font-medium rounded hover:bg-green-700">
+                  Copy Script
+                </button>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-semibold text-blue-700">5% Discount Request</span>
+                  <span className="text-[9px] font-bold text-blue-600">Save ₩776만/yr</span>
+                </div>
+                <div className="bg-white rounded p-2 text-[9px] text-gray-600 leading-relaxed border border-blue-100 italic">
+                  "Given current market conditions, I'm hoping for 335만원 - a modest 5% discount. I'm ready to sign immediately."
+                </div>
+                <button className="mt-1.5 w-full py-1 bg-blue-600 text-white text-[9px] font-medium rounded hover:bg-blue-700">
+                  Copy Script
+                </button>
+              </div>
+            </div>
+
+            {/* Before Signing Checklist */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+              <div className="text-[10px] font-semibold text-amber-800 mb-2">Before Signing</div>
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-green-700">Expected Rent</span>
-                  <span className="px-1.5 py-0.5 bg-green-500 text-white text-[8px] font-bold rounded">RECOMMENDED</span>
+                  <div className="w-3.5 h-3.5 border border-amber-400 rounded bg-white"></div>
+                  <span className="text-[9px] text-amber-700">Verify 등기부등본 on signing day</span>
                 </div>
-                <span className="text-xs font-bold text-green-600">Save ₩564만/yr</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 border border-amber-400 rounded bg-white"></div>
+                  <span className="text-[9px] text-amber-700">Confirm no new debts registered</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 border border-amber-400 rounded bg-white"></div>
+                  <span className="text-[9px] text-amber-700">Use certified bank transfer for deposit</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 border border-amber-400 rounded bg-white"></div>
+                  <span className="text-[9px] text-amber-700">Include special terms in contract</span>
+                </div>
               </div>
-              <div className="bg-white rounded p-2.5 text-[11px] text-gray-600 leading-relaxed border border-green-100">
-                "Based on 5 recent contracts in this building, the expected rent at my deposit of ₩18억 is <span className="font-semibold">353만원</span>. I'd like to adjust to this expected rent level."
-              </div>
-              <button className="mt-2 w-full py-1.5 bg-green-600 text-white text-[10px] font-medium rounded hover:bg-green-700 transition-colors">
-                Copy Script
-              </button>
             </div>
 
-            {/* Negotiation Script 2 */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-blue-700">5% Discount</span>
-                <span className="text-xs font-bold text-blue-600">Save ₩776만/yr</span>
-              </div>
-              <div className="bg-white rounded p-2.5 text-[11px] text-gray-600 leading-relaxed border border-blue-100">
-                "I've researched recent transactions and the expected rent is 353만원. Given current market conditions, I'm hoping for <span className="font-semibold">335만원</span> - a modest 5% discount."
-              </div>
-              <button className="mt-2 w-full py-1.5 bg-blue-600 text-white text-[10px] font-medium rounded hover:bg-blue-700 transition-colors">
-                Copy Script
-              </button>
-            </div>
-
-            {/* Recent Transactions */}
-            <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-xs font-semibold text-gray-700 mb-2">Recent Transactions</div>
-              <div className="space-y-1.5 text-[10px]">
-                <div className="flex justify-between text-gray-600">
-                  <span>2025.11.26 • 23F</span>
-                  <span>₩16억 / 460만</span>
+            {/* After Signing Checklist */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+              <div className="text-[10px] font-semibold text-blue-800 mb-2">After Signing</div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 border border-blue-400 rounded bg-white"></div>
+                  <span className="text-[9px] text-blue-700">Move in and occupy the property</span>
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>2025.11.17 • 29F</span>
-                  <span>₩16억 / 380만</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 border border-blue-400 rounded bg-white"></div>
+                  <span className="text-[9px] text-blue-700">Register move-in (전입신고) - same day</span>
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>2025.07.23 • 8F</span>
-                  <span>₩18억 / 320만</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 border border-blue-400 rounded bg-white"></div>
+                  <span className="text-[9px] text-blue-700">Get confirmation date (확정일자)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 border border-blue-400 rounded bg-white flex items-center justify-center">
+                    <span className="text-[7px] text-blue-500">F</span>
+                  </div>
+                  <span className="text-[9px] text-blue-700">F-visa: 체류지변경신고 at Immigration</span>
                 </div>
               </div>
             </div>
