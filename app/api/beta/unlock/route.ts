@@ -96,10 +96,14 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       console.error('[Beta Unlock] Error inserting email capture:', insertError);
-      // Continue anyway to not block user flow
+      // Don't decrement counter if email capture failed
+      return NextResponse.json(
+        { error: 'Failed to save email', success: false },
+        { status: 500 }
+      );
     }
 
-    // Decrement counter
+    // Decrement counter only after successful email capture
     const newRemaining = settings ? settings.free_unlocks_remaining - 1 : 46;
 
     const { error: updateError } = await supabase
