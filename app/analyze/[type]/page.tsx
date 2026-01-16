@@ -30,6 +30,7 @@ export default function PropertyInfoPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [freeUnlocksRemaining, setFreeUnlocksRemaining] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     city: '서울특별시',
@@ -46,6 +47,16 @@ export default function PropertyInfoPage() {
 
   useEffect(() => {
     setMounted(true);
+
+    // Fetch beta counter
+    fetch('/api/beta/counter')
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.remaining === 'number') {
+          setFreeUnlocksRemaining(data.remaining);
+        }
+      })
+      .catch(() => setFreeUnlocksRemaining(47));
   }, []);
 
   // Get available districts for selected city
@@ -456,15 +467,18 @@ export default function PropertyInfoPage() {
           </form>
         </div>
 
-        {/* Price Info */}
-        <div className={`text-center p-4 bg-${accentColor}-50 rounded-2xl border border-${accentColor}-100`}>
-          <p className="text-[#4A5568]">
-            Full analysis for <span className={`font-bold text-${accentColor}-700`}>₩39,900</span>
-          </p>
-          <p className="text-sm text-[#718096] mt-1">
-            Includes risk analysis, market position, and action items
-          </p>
-        </div>
+        {/* Free Beta Info */}
+        {freeUnlocksRemaining !== null && freeUnlocksRemaining > 0 && (
+          <div className={`text-center p-4 bg-red-50 rounded-2xl border border-red-100`}>
+            <p className="text-[#4A5568] flex items-center justify-center gap-2">
+              <span className="text-lg">🔥</span>
+              <span><span className="font-bold text-red-600">{freeUnlocksRemaining}</span> free reports remaining</span>
+            </p>
+            <p className="text-sm text-[#718096] mt-1">
+              Includes risk analysis, market position, and action items
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
