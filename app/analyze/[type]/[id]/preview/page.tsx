@@ -22,6 +22,27 @@ export default function PreviewPage() {
 
   const isWolse = type === 'wolse';
 
+  // Email gate state
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
+  const [freeUnlocksRemaining, setFreeUnlocksRemaining] = useState<number | null>(null); // Will be fetched from DB
+
+  // Fetch beta counter on mount
+  useEffect(() => {
+    fetch('/api/beta/counter')
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.remaining === 'number') {
+          setFreeUnlocksRemaining(data.remaining);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch beta counter:', err);
+        setFreeUnlocksRemaining(47); // Fallback
+      });
+  }, []);
+
   // Initialize reportData from sessionStorage if available (cached by processing page)
   const [reportData, setReportData] = useState<any>(() => {
     if (typeof window !== 'undefined') {
@@ -295,6 +316,67 @@ export default function PreviewPage() {
     router.push(`/analyze/${type}/${analysisId}/report`);
   };
 
+  // Email gate submission handler
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError('');
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      setEmailError('Please enter your email address');
+      return;
+    }
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
+    // For wolse, ensure analysis is complete before submitting
+    if (isWolse && !wolseAnalysisComplete) {
+      return;
+    }
+
+    setIsSubmittingEmail(true);
+
+    try {
+      // Save email and decrement counter via API
+      const response = await fetch('/api/beta/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          analysisId,
+          type
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        if (data.error === 'NO_FREE_UNLOCKS') {
+          setEmailError('Free beta has ended. Please use paid unlock.');
+          setFreeUnlocksRemaining(0);
+          return;
+        }
+        throw new Error(data.error || 'Failed to unlock');
+      }
+
+      const data = await response.json();
+      setFreeUnlocksRemaining(data.remaining);
+
+      // Cache report data and navigate to full report
+      if (reportData) {
+        sessionStorage.setItem(`report-${analysisId}`, JSON.stringify(reportData));
+      }
+      router.push(`/analyze/${type}/${analysisId}/report`);
+    } catch (err) {
+      console.error('[Email Gate] Error:', err);
+      setEmailError('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmittingEmail(false);
+    }
+  };
+
   // Extract API data with correct nested structure
   const property = reportData?.property || {};
   const riskAnalysis = reportData?.riskAnalysis || {};
@@ -387,39 +469,84 @@ export default function PreviewPage() {
 
       {/* Floating CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-white via-white to-transparent">
-        <div className="max-w-2xl mx-auto flex flex-col gap-3">
-          <button
-            onClick={handleUnlock}
-            className={`w-full px-8 py-5 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white font-bold text-lg rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 flex items-center justify-center gap-3`}
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-            </svg>
-            Unlock Full Report — ₩39,900
-          </button>
-          <button
-            onClick={handleUnlockFree}
-            disabled={isWolse && !wolseAnalysisComplete}
-            className={`w-full px-8 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
-              isWolse && !wolseAnalysisComplete
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {isWolse && !wolseAnalysisComplete ? (
-              <>
-                <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                Analyzing Market Data...
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Unlock for Free (Testing)
-              </>
-            )}
-          </button>
+        <div className="max-w-2xl mx-auto">
+          {/* Email Gate for Free Unlock */}
+          {freeUnlocksRemaining === null ? (
+            /* Loading state */
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : freeUnlocksRemaining > 0 ? (
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-5">
+              {/* Scarcity Counter */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <span className="text-xl">🔥</span>
+                <span className="text-red-600 font-bold">{freeUnlocksRemaining}</span>
+                <span className="text-gray-700 font-medium">free unlocks remaining</span>
+              </div>
+
+              {/* Email Form */}
+              <form onSubmit={handleEmailSubmit} className="space-y-3">
+                <div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                    placeholder="your@email.com"
+                    disabled={isSubmittingEmail || (isWolse && !wolseAnalysisComplete)}
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-center text-lg transition-colors ${
+                      emailError
+                        ? 'border-red-300 focus:border-red-500'
+                        : 'border-gray-200 focus:border-amber-500'
+                    } outline-none disabled:bg-gray-50 disabled:text-gray-400`}
+                  />
+                  {emailError && (
+                    <p className="mt-1.5 text-sm text-red-600 text-center">{emailError}</p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingEmail || (isWolse && !wolseAnalysisComplete)}
+                  className={`w-full px-8 py-4 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2`}
+                >
+                  {isSubmittingEmail ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Unlocking...
+                    </>
+                  ) : isWolse && !wolseAnalysisComplete ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Analyzing Market Data...
+                    </>
+                  ) : (
+                    <>
+                      Unlock Free
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <p className="mt-3 text-center text-sm text-gray-500">
+                After free beta: <span className="font-semibold">₩39,900</span>
+              </p>
+            </div>
+          ) : (
+            /* Paid-only CTA when free unlocks are exhausted */
+            <button
+              onClick={handleUnlock}
+              className={`w-full px-8 py-5 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white font-bold text-lg rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 flex items-center justify-center gap-3`}
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+              </svg>
+              Unlock Full Report — ₩39,900
+            </button>
+          )}
         </div>
       </div>
 
@@ -468,35 +595,71 @@ export default function PreviewPage() {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-3">Unlock Full Analysis</h3>
-              <p className="text-gray-600 max-w-sm mx-auto mb-6">
+              <p className="text-gray-600 max-w-sm mx-auto mb-4">
                 Get detailed risk analysis, debt rankings, market position, and actionable recommendations.
               </p>
-              <div className="flex flex-col gap-3">
+
+              {/* Inline Email Gate */}
+              {freeUnlocksRemaining === null ? (
+                /* Loading state */
+                <div className="flex justify-center py-4">
+                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : freeUnlocksRemaining > 0 ? (
+                <div className="max-w-sm mx-auto">
+                  {/* Scarcity Counter */}
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <span className="text-lg">🔥</span>
+                    <span className="text-red-600 font-bold">{freeUnlocksRemaining}</span>
+                    <span className="text-gray-700 text-sm font-medium">free unlocks left</span>
+                  </div>
+
+                  <form onSubmit={handleEmailSubmit} className="space-y-2">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                      placeholder="your@email.com"
+                      disabled={isSubmittingEmail || (isWolse && !wolseAnalysisComplete)}
+                      className={`w-full px-4 py-3 border-2 rounded-xl text-center transition-colors ${
+                        emailError ? 'border-red-300' : 'border-gray-200 focus:border-amber-500'
+                      } outline-none bg-white disabled:bg-gray-50`}
+                    />
+                    {emailError && (
+                      <p className="text-xs text-red-600 text-center">{emailError}</p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={isSubmittingEmail || (isWolse && !wolseAnalysisComplete)}
+                      className={`w-full px-6 py-3 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+                    >
+                      {isSubmittingEmail ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Unlocking...
+                        </>
+                      ) : isWolse && !wolseAnalysisComplete ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        'Unlock Free →'
+                      )}
+                    </button>
+                  </form>
+                  <p className="mt-2 text-center text-xs text-gray-500">
+                    After free beta: ₩39,900
+                  </p>
+                </div>
+              ) : (
                 <button
                   onClick={handleUnlock}
                   className={`px-8 py-4 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all`}
                 >
                   Unlock for ₩39,900
                 </button>
-                <button
-                  onClick={handleUnlockFree}
-                  disabled={isWolse && !wolseAnalysisComplete}
-                  className={`px-8 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                    isWolse && !wolseAnalysisComplete
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-white/80 text-gray-700 hover:bg-white'
-                  }`}
-                >
-                  {isWolse && !wolseAnalysisComplete ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    'Unlock for Free (Testing)'
-                  )}
-                </button>
-              </div>
+              )}
             </div>
           </div>
 

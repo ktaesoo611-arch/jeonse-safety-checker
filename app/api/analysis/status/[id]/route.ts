@@ -19,19 +19,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceRoleClient } from '@/lib/supabase-server';
 import { analysisService } from '@/lib/services/analysis-service';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Create service role client (bypasses RLS)
+    const supabase = createServiceRoleClient();
+
     const resolvedParams = await params;
     const analysisId = resolvedParams.id;
 

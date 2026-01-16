@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceRoleClient } from '@/lib/supabase-server';
 import { promises as fs } from 'fs';
 import { ocrService } from '@/lib/services/ocr-service';
 import { DeunggibuParser } from '@/lib/analyzers/deunggibu-parser';
@@ -26,10 +26,8 @@ import { PropertyValuationEngine } from '@/lib/analyzers/property-valuation';
 import { PropertyDetails, ValuationResult } from '@/lib/types';
 import { analysisService } from '@/lib/services/analysis-service';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Module-level supabase client (service role for bypassing RLS)
+const supabase = createServiceRoleClient();
 
 interface ParseDocumentRequest {
   documentId: string;

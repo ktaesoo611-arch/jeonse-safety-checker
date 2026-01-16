@@ -39,6 +39,7 @@ export default function LandingPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [freeUnlocksRemaining, setFreeUnlocksRemaining] = useState(47);
 
   // Scroll animations for sections
   const howItWorksSection = useScrollAnimation({ threshold: 0.2 });
@@ -60,6 +61,16 @@ export default function LandingPage() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
+
+    // Fetch beta counter
+    fetch('/api/beta/counter')
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.remaining === 'number') {
+          setFreeUnlocksRemaining(data.remaining);
+        }
+      })
+      .catch(err => console.error('Failed to fetch beta counter:', err));
 
     return () => subscription.unsubscribe();
   }, []);
@@ -239,25 +250,35 @@ export default function LandingPage() {
       <section className="pt-28 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold text-[#1A202C] leading-tight mb-6 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            Check your Korean rental.
+            Stop overpaying for rent in Korea.
           </h1>
-          <p className={`text-lg md:text-xl text-[#4A5568] mb-10 max-w-xl mx-auto transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            Jeonse or wolse. Fair price or overpriced. Safe or risky. Get answers in English.
+          <p className={`text-lg md:text-xl text-[#4A5568] mb-8 max-w-xl mx-auto transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            Upload your quote. See if it's fair. Get negotiation scripts if it's not.
           </p>
+          {/* Scarcity Counter */}
+          {freeUnlocksRemaining > 0 && (
+            <div className={`mb-8 transition-all duration-700 delay-150 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              <span className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-full text-red-700 font-medium text-sm">
+                <span className="text-lg">🔥</span>
+                <span><span className="font-bold">{freeUnlocksRemaining}</span> free checks remaining</span>
+                <span className="text-red-400">(then ₩39,900)</span>
+              </span>
+            </div>
+          )}
           <div className={`transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <Link href="/check">
               <button className="group relative px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl hover:shadow-2xl hover:shadow-amber-300/50 transition-all duration-300 hover:-translate-y-1 hover:scale-105 animate-hero-pulse">
                 {/* Glow effect */}
                 <span className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 blur-lg opacity-50 group-hover:opacity-75 transition-opacity animate-hero-glow" />
                 <span className="relative flex items-center gap-3">
-                  Start Free Check
+                  Check My Rent Free
                   <svg className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 </span>
               </button>
             </Link>
-            <p className="mt-5 text-sm text-[#718096]">Free during beta • Results in 2 minutes</p>
+            <p className="mt-5 text-sm text-[#718096]">Results in 2 minutes</p>
           </div>
         </div>
       </section>
@@ -307,7 +328,7 @@ export default function LandingPage() {
           <div className={`text-center transition-all duration-700 ${howItWorksSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '450ms' }}>
             <Link href="/check">
               <button className="group px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3">
-                Start Free Check
+                Check My Rent Free
                 <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
@@ -405,13 +426,22 @@ export default function LandingPage() {
         className={`py-20 px-6 bg-gradient-to-br from-amber-500 to-orange-500 transition-all duration-1000 ${ctaSection.isVisible ? 'opacity-100' : 'opacity-0'}`}
       >
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className={`text-2xl md:text-3xl font-bold text-white mb-8 transition-all duration-700 ${ctaSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <h2 className={`text-2xl md:text-3xl font-bold text-white mb-4 transition-all duration-700 ${ctaSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             Ready to check your rental?
           </h2>
+          {/* Scarcity Counter */}
+          {freeUnlocksRemaining > 0 && (
+            <div className={`mb-8 transition-all duration-700 ${ctaSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '100ms' }}>
+              <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white font-medium text-sm">
+                <span className="text-lg">🔥</span>
+                <span><span className="font-bold">{freeUnlocksRemaining}</span> free checks remaining</span>
+              </span>
+            </div>
+          )}
           <div className={`transition-all duration-700 ${ctaSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '150ms' }}>
             <Link href="/check">
               <button className="group px-10 py-5 bg-white text-amber-600 font-bold text-lg rounded-2xl hover:shadow-2xl transition-all hover:-translate-y-1 inline-flex items-center gap-3">
-                Start Free Check
+                Check My Rent Free
                 <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
@@ -419,7 +449,7 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className={`mt-6 text-sm text-white/80 transition-all duration-700 ${ctaSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '300ms' }}>
-            Free during beta • Results in 2 minutes
+            Results in 2 minutes
           </p>
         </div>
       </section>

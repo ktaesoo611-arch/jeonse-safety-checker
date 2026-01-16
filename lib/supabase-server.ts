@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
@@ -24,6 +25,20 @@ export async function createServerSupabaseClient() {
           }
         },
       },
+    }
+  );
+}
+
+// Service role client that bypasses RLS - use for anonymous operations
+export function createServiceRoleClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
     }
   );
 }

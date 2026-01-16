@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import { useRouter, useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { analytics } from '@/lib/analytics';
 
 export default function UploadPage() {
@@ -66,46 +65,25 @@ export default function UploadPage() {
       setIsUploading(true);
       setUploadProgress(10);
 
-      // Generate unique file path
-      const timestamp = Date.now();
-      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const storagePath = `${analysisId}/deunggibu_${timestamp}_${sanitizedFileName}`;
+      // Upload via server API (bypasses RLS for anonymous users)
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('analysisId', analysisId);
+      formData.append('documentType', 'deunggibu');
 
       setUploadProgress(20);
 
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(storagePath, file, {
-          contentType: 'application/pdf',
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
-
-      setUploadProgress(50);
-
-      // Register the upload in database
-      const registerResponse = await fetch('/api/documents/register', {
+      const uploadResponse = await fetch('/api/documents/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          analysisId,
-          documentType: 'deunggibu',
-          fileName: file.name,
-          filePath: storagePath,
-          fileSize: file.size,
-        }),
+        body: formData,
       });
 
-      if (!registerResponse.ok) {
-        const errorData = await registerResponse.json();
-        throw new Error(errorData.error || 'Failed to register document');
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Upload failed');
       }
 
-      const registerData = await registerResponse.json();
+      const uploadData = await uploadResponse.json();
       setUploadProgress(70);
 
       // Track document upload
@@ -115,7 +93,7 @@ export default function UploadPage() {
       fetch('/api/documents/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: registerData.documentId })
+        body: JSON.stringify({ documentId: uploadData.documentId })
       }).catch(err => console.error('Parse request error:', err));
 
       setUploadProgress(100);

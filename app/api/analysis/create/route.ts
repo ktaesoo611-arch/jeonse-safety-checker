@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server';
 
 interface CreateAnalysisRequest {
   address: string;
@@ -31,27 +31,24 @@ interface CreateAnalysisRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const supabase = await createServerSupabaseClient();
+    // Check authentication (optional - anonymous users allowed for beta flow)
+    const authClient = await createServerSupabaseClient();
     const {
       data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
+
+    // Use service role client for DB operations (bypasses RLS for anonymous users)
+    const supabase = createServiceRoleClient();
 
     // Debug logging
     console.log('Auth check:', {
       hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message,
+      userId: user?.id || 'anonymous',
       cookies: request.cookies.getAll().map(c => c.name),
     });
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Please log in to create an analysis.' },
-        { status: 401 }
-      );
-    }
+    // Note: Authentication is now optional - users can create analyses without logging in
+    // Email capture happens at the preview page unlock step
 
     // Parse request body
     const body: CreateAnalysisRequest = await request.json();
@@ -160,7 +157,7 @@ export async function POST(request: NextRequest) {
     // Note: monthly_rent is stored in sessionStorage on client and passed when analysis runs
     const insertData = {
       property_id: propertyId,
-      user_id: user.id,
+      user_id: user?.id || null, // Allow anonymous users
       proposed_jeonse: body.proposedJeonse,
       status: 'pending',
       created_at: new Date().toISOString(),
@@ -193,7 +190,7 @@ export async function POST(request: NextRequest) {
           id: analysisId,
           type: 'wolse_price',
           property_id: propertyId,
-          user_id: user.id,
+          user_id: user?.id || null, // Allow anonymous users
           status: 'pending',
           created_at: new Date().toISOString(),
         });
