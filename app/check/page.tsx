@@ -12,10 +12,21 @@ import { analytics } from '@/lib/analytics';
 export default function CheckPage() {
   const [mounted, setMounted] = useState(false);
   const [selectedType, setSelectedType] = useState<'jeonse' | 'wolse' | null>(null);
+  const [freeUnlocksRemaining, setFreeUnlocksRemaining] = useState<number | null>(null);
   const haptic = useHaptic();
 
   useEffect(() => {
     setMounted(true);
+
+    // Fetch beta counter
+    fetch('/api/beta/counter')
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.remaining === 'number') {
+          setFreeUnlocksRemaining(data.remaining);
+        }
+      })
+      .catch(() => setFreeUnlocksRemaining(47));
   }, []);
 
   return (
@@ -104,7 +115,12 @@ export default function CheckPage() {
                       <span>Price trend with advice</span>
                     </div>
                   </div>
-                  <div className="mt-3 text-sm font-semibold text-amber-600">₩39,900</div>
+                  {freeUnlocksRemaining !== null && freeUnlocksRemaining > 0 && (
+                    <div className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
+                      <span>🔥</span>
+                      <span>{freeUnlocksRemaining} free left</span>
+                    </div>
+                  )}
                 </div>
                 {selectedType === 'jeonse' && (
                   <div className="w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
@@ -157,7 +173,12 @@ export default function CheckPage() {
                       <span>Negotiation scripts included</span>
                     </div>
                   </div>
-                  <div className="mt-3 text-sm font-semibold text-orange-600">₩39,900</div>
+                  {freeUnlocksRemaining !== null && freeUnlocksRemaining > 0 && (
+                    <div className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
+                      <span>🔥</span>
+                      <span>{freeUnlocksRemaining} free left</span>
+                    </div>
+                  )}
                 </div>
                 {selectedType === 'wolse' && (
                   <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
