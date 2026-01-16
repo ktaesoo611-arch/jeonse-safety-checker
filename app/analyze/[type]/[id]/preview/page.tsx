@@ -9,6 +9,7 @@ import {
   MarketPositionSection,
   ActionItemsSection
 } from '@/components/report';
+import { analytics } from '@/lib/analytics';
 
 export default function PreviewPage() {
   const router = useRouter();
@@ -363,6 +364,9 @@ export default function PreviewPage() {
 
       const data = await response.json();
       setFreeUnlocksRemaining(data.remaining);
+
+      // Track email capture event
+      analytics.emailCaptured(analysisId, type as 'jeonse' | 'wolse');
 
       // Cache report data and navigate to full report
       if (reportData) {

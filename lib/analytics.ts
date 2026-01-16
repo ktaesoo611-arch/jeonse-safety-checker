@@ -119,6 +119,14 @@ export const analytics = {
     });
   },
 
+  // User submits email on preview page (beta email capture)
+  emailCaptured: (analysisId: string, rentalType: 'jeonse' | 'wolse') => {
+    trackEvent('email_captured', {
+      analysis_id: analysisId,
+      rental_type: rentalType,
+    });
+  },
+
   // User views the final report
   reportViewed: (
     analysisId: string,
