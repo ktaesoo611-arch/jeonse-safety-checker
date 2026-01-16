@@ -23,6 +23,7 @@
 | Add scarcity counter to /analyze page | ✅ Done | Jan 16 | Replaced ₩39,900 price |
 | Test full flow end-to-end | ✅ Done | Jan 16 | Anonymous user can complete full flow |
 | Database migration | ✅ Done | Jan 16 | `beta_settings` + `beta_email_captures` tables |
+| Fix counter decrement bug | ✅ Done | Jan 16 | Counter now only decrements after successful email capture |
 
 ### Technical Changes Made
 - `app/page.tsx` - Homepage hero with scarcity counter
@@ -110,12 +111,17 @@ I built K-Rent Safety — a free tool that checks if your jeonse or wolse quote 
 ### Email Captures
 | Date | Emails Captured | Total |
 |------|-----------------|-------|
-| Jan 16 | 0 | 0 |
+| Jan 16 | 1 | 1 |
 
 ### Free Reports Used
 | Date | Reports | Remaining |
 |------|---------|-----------|
-| Jan 16 | 0 | 50 |
+| Jan 16 | 1 | 49 |
+
+### Bug Fixes
+| Date | Issue | Resolution |
+|------|-------|------------|
+| Jan 16 | Counter showed 48 but only 1 email captured | Fixed unlock API to not decrement counter if email insert fails. Reset counter to 49. |
 
 ### Testimonials Collected
 | Date | From | Quote |
@@ -147,3 +153,4 @@ I built K-Rent Safety — a free tool that checks if your jeonse or wolse quote 
 | c1821e5 | Jan 16 | Week 1 launch - remove login wall, add email gate & scarcity counter |
 | 1e902a8 | Jan 16 | Replace price with scarcity counter on check page |
 | 869c2b4 | Jan 16 | Replace price with scarcity counter on property input page |
+| 1d9dc20 | Jan 16 | Fix counter decrement bug when email capture fails |
