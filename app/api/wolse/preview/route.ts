@@ -8,14 +8,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { WolsePriceAnalyzer } from '@/lib/analyzers/wolse-price-analyzer';
 import { wolseCacheService } from '@/lib/services/wolse-cache';
+import type { BuildingType } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
     // Parse request body
     const body = await request.json();
 
-    // Validate required fields
-    const requiredFields = ['city', 'district', 'dong', 'apartmentName', 'exclusiveArea', 'deposit', 'monthlyRent'];
+    // Extract buildingType (defaults to 'apartment' for backwards compatibility)
+    const buildingType = body.buildingType || 'apartment';
+
+    // Validate required fields - apartmentName not required for multifamily
+    const requiredFields = buildingType === 'multifamily'
+      ? ['city', 'district', 'dong', 'exclusiveArea', 'deposit', 'monthlyRent']
+      : ['city', 'district', 'dong', 'apartmentName', 'exclusiveArea', 'deposit', 'monthlyRent'];
     for (const field of requiredFields) {
       if (!body[field]) {
         return NextResponse.json(
@@ -29,7 +35,7 @@ export async function POST(request: NextRequest) {
       city,
       district,
       dong,
-      apartmentName,
+      apartmentName = '', // Optional for multifamily
       exclusiveArea,
       deposit,
       monthlyRent
@@ -61,7 +67,8 @@ export async function POST(request: NextRequest) {
     console.log('📊 WOLSE PREVIEW REQUEST (No DB Save)');
     console.log('='.repeat(60));
     console.log(`   Location: ${city} ${district} ${dong}`);
-    console.log(`   Building: ${apartmentName}`);
+    console.log(`   Building: ${apartmentName || '(multifamily - dong level)'}`);
+    console.log(`   Building Type: ${buildingType}`);
     console.log(`   Area: ${exclusiveArea}㎡`);
     console.log(`   Quote: ${(deposit / 10000).toLocaleString()}만원 보증금 / ${(monthlyRent / 10000).toLocaleString()}만원 월세`);
     console.log('='.repeat(60));
@@ -83,7 +90,8 @@ export async function POST(request: NextRequest) {
       dong,
       apartmentName,
       exclusiveArea,
-      { deposit, monthlyRent }
+      { deposit, monthlyRent },
+      buildingType
     );
 
     // Cache the market rate data for future use (this is just caching, not saving analysis)
@@ -122,7 +130,8 @@ export async function POST(request: NextRequest) {
         apartmentName,
         exclusiveArea,
         deposit,
-        monthlyRent
+        monthlyRent,
+        buildingType
       }
     }, { status: 200 });
 

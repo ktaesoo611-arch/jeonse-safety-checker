@@ -11,6 +11,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { WolsePriceAnalyzer } from '@/lib/analyzers/wolse-price-analyzer';
 import { wolseCacheService } from '@/lib/services/wolse-cache';
 import { analysisService } from '@/lib/services/analysis-service';
+import type { BuildingType } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -84,10 +85,11 @@ export async function POST(request: NextRequest) {
       city,
       district,
       dong,
-      apartmentName,
+      apartmentName = '', // Optional for multifamily
       exclusiveArea,
       deposit,
-      monthlyRent
+      monthlyRent,
+      buildingType = 'apartment' as BuildingType
     } = inputData;
 
     // Update status to processing
@@ -110,7 +112,8 @@ export async function POST(request: NextRequest) {
     console.log('='.repeat(60));
     console.log(`   Analysis ID: ${analysisId}`);
     console.log(`   Location: ${city} ${district} ${dong}`);
-    console.log(`   Building: ${apartmentName}`);
+    console.log(`   Building: ${apartmentName || '(multifamily - dong level)'}`);
+    console.log(`   Building Type: ${buildingType}`);
     console.log('='.repeat(60));
 
     // Run wolse analysis
@@ -121,7 +124,8 @@ export async function POST(request: NextRequest) {
       dong,
       apartmentName,
       exclusiveArea,
-      { deposit, monthlyRent }
+      { deposit, monthlyRent },
+      buildingType
     );
 
     // Set property ID in result

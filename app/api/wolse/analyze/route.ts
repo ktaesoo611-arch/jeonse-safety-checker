@@ -22,7 +22,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { WolsePriceAnalyzer } from '@/lib/analyzers/wolse-price-analyzer';
 import { wolseCacheService } from '@/lib/services/wolse-cache';
 import { analysisService } from '@/lib/services/analysis-service';
-import { WolseAnalysisRequest } from '@/lib/types';
+import type { WolseAnalysisRequest, BuildingType } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,8 +33,13 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body = await request.json();
 
-    // Validate required fields
-    const requiredFields = ['city', 'district', 'dong', 'apartmentName', 'exclusiveArea', 'deposit', 'monthlyRent'];
+    // Extract buildingType (defaults to 'apartment' for backwards compatibility)
+    const buildingType: BuildingType = body.buildingType || 'apartment';
+
+    // Validate required fields - apartmentName not required for multifamily
+    const requiredFields = buildingType === 'multifamily'
+      ? ['city', 'district', 'dong', 'exclusiveArea', 'deposit', 'monthlyRent']
+      : ['city', 'district', 'dong', 'apartmentName', 'exclusiveArea', 'deposit', 'monthlyRent'];
     for (const field of requiredFields) {
       if (!body[field]) {
         return NextResponse.json(
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
       city,
       district,
       dong,
-      apartmentName,
+      apartmentName = '', // Optional for multifamily
       exclusiveArea,
       deposit,
       monthlyRent
@@ -80,7 +85,8 @@ export async function POST(request: NextRequest) {
     console.log('📊 WOLSE ANALYSIS REQUEST');
     console.log('='.repeat(60));
     console.log(`   Location: ${city} ${district} ${dong}`);
-    console.log(`   Building: ${apartmentName}`);
+    console.log(`   Building: ${apartmentName || '(multifamily - dong level)'}`);
+    console.log(`   Building Type: ${buildingType}`);
     console.log(`   Area: ${exclusiveArea}㎡`);
     console.log(`   Deposit (raw): ${deposit} (type: ${typeof deposit})`);
     console.log(`   MonthlyRent (raw): ${monthlyRent} (type: ${typeof monthlyRent})`);
@@ -141,7 +147,8 @@ export async function POST(request: NextRequest) {
       dong,
       apartmentName,
       exclusiveArea,
-      { deposit, monthlyRent }
+      { deposit, monthlyRent },
+      buildingType
     );
 
     // Set property ID in result
