@@ -3,7 +3,8 @@ import {
   WolseQuote,
   WolseAnalysisResult,
   WolseNegotiationOption,
-  WolseTransaction
+  WolseTransaction,
+  BuildingType
 } from '../types';
 
 /**
@@ -156,18 +157,22 @@ export class WolsePriceAnalyzer {
     dong: string,
     apartmentName: string,
     exclusiveArea: number,
-    quote: WolseQuote
+    quote: WolseQuote,
+    buildingType: BuildingType = 'apartment' // Default for backwards compatibility
   ): Promise<WolseAnalysisResult> {
     console.log('\n🔍 Starting Wolse Price Analysis');
+    console.log(`   Building Type: ${buildingType}`);
     console.log(`   Quote: ${(quote.deposit / 10000).toLocaleString()}만원 보증금 / ${(quote.monthlyRent / 10000).toLocaleString()}만원 월세`);
 
-    // Step 1: Get market rate data
+    // Step 1: Get market rate data (routes to correct API based on building type)
     const marketData = await this.rateCalculator.calculateMarketRate(
       city,
       district,
       dong,
       apartmentName,
-      exclusiveArea
+      exclusiveArea,
+      12, // monthsBack
+      buildingType
     );
 
     // Step 2: Compare user's rent to market expectation (Option B: Raw Regression + MK Adjustment)

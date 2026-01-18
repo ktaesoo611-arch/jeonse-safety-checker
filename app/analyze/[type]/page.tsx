@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { SEOUL_DISTRICTS, GYEONGGI_DISTRICTS, SUPPORTED_CITIES, getDistrictsByCity, Apartment } from '@/lib/data/address-data';
 import { useHaptic } from '@/lib/hooks/useHaptic';
 import { analytics } from '@/lib/analytics';
+import { BuildingType } from '@/lib/types';
 
 type RentalType = 'jeonse' | 'wolse';
 
@@ -37,10 +38,16 @@ export default function PropertyInfoPage() {
     district: '',
     dong: '',
     building: '',
+    jibunBun: '', // 본번 (main lot number)
+    jibunJi: '',  // 부번 (sub lot number)
     exclusiveArea: '',
     deposit: '',
     monthlyRent: ''
   });
+  const [buildingType, setBuildingType] = useState<BuildingType>('apartment');
+  const [buildingTypeDetected, setBuildingTypeDetected] = useState(false);
+  const [detectingBuildingType, setDetectingBuildingType] = useState(false);
+  const [detectedBuildingName, setDetectedBuildingName] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apartmentSearch, setApartmentSearch] = useState('');
   const [filteredApartments, setFilteredApartments] = useState<Apartment[]>([]);
@@ -70,6 +77,67 @@ export default function PropertyInfoPage() {
     const selectedDistrict = availableDistricts.find(d => d.name === formData.district);
     return selectedDistrict?.dongs || [];
   }, [formData.district, availableDistricts]);
+
+  // Get selected dong's bjdongCd
+  const selectedDongCode = useMemo(() => {
+    if (!formData.dong) return null;
+    const dong = availableDongs.find(d => d.name === formData.dong);
+    return dong?.code || null;
+  }, [formData.dong, availableDongs]);
+
+  // Get selected district's sigunguCd
+  const selectedDistrictCode = useMemo(() => {
+    if (!formData.district) return null;
+    const district = availableDistricts.find(d => d.name === formData.district);
+    return district?.code || null;
+  }, [formData.district, availableDistricts]);
+
+  // Auto-detect building type when jibun is entered
+  const detectBuildingType = async () => {
+    if (!selectedDistrictCode || !selectedDongCode || !formData.jibunBun) {
+      return;
+    }
+
+    setDetectingBuildingType(true);
+    setBuildingTypeDetected(false);
+    setDetectedBuildingName(null);
+
+    try {
+      const response = await fetch('/api/building-registry/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sigunguCd: selectedDistrictCode,
+          bjdongCd: selectedDongCode,
+          bun: formData.jibunBun,
+          ji: formData.jibunJi || '0'
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.buildingType) {
+        setBuildingType(data.buildingType);
+        setBuildingTypeDetected(true);
+        setDetectedBuildingName(data.buildingName || null);
+        haptic.success();
+      }
+    } catch (error) {
+      console.error('Failed to detect building type:', error);
+    } finally {
+      setDetectingBuildingType(false);
+    }
+  };
+
+  // Trigger detection when jibun changes
+  useEffect(() => {
+    if (formData.jibunBun && formData.jibunBun.length >= 1 && selectedDistrictCode && selectedDongCode) {
+      const timer = setTimeout(() => {
+        detectBuildingType();
+      }, 500); // Debounce 500ms
+      return () => clearTimeout(timer);
+    }
+  }, [formData.jibunBun, formData.jibunJi, selectedDistrictCode, selectedDongCode]);
 
   // Fetch apartments from API
   useEffect(() => {
@@ -145,7 +213,10 @@ export default function PropertyInfoPage() {
     const newErrors: Record<string, string> = {};
     if (!formData.district) newErrors.district = 'Please select a district';
     if (!formData.dong) newErrors.dong = 'Please select a neighborhood';
-    if (!formData.building) newErrors.building = 'Please enter building name';
+    // Building name is required for apartments, optional for multifamily
+    if (buildingType === 'apartment' && !formData.building) {
+      newErrors.building = 'Please enter building name';
+    }
     if (!formData.deposit) newErrors.deposit = 'Please enter deposit amount';
 
     if (isWolse) {
@@ -188,7 +259,8 @@ export default function PropertyInfoPage() {
           city: formData.city,
           district: formData.district,
           dong: formData.dong,
-          building: formData.building,
+          building: formData.building || undefined, // Optional for multifamily
+          buildingType, // 'apartment' or 'multifamily'
           proposedJeonse: deposit,
           analysisType: rentalType,
           exclusiveArea: exclusiveArea || undefined,
@@ -205,7 +277,8 @@ export default function PropertyInfoPage() {
           city: formData.city,
           district: formData.district,
           dong: formData.dong,
-          building: formData.building,
+          building: formData.building || null,
+          buildingType,
           exclusiveArea: exclusiveArea || null,
           deposit,
           monthlyRent: isWolse ? monthlyRent : null
@@ -320,6 +393,95 @@ export default function PropertyInfoPage() {
                 error={errors.dong}
                 disabled={!formData.district}
               />
+
+              {/* Jibun Address for Auto-Detection */}
+              <div className="pt-2">
+                <label className="block text-sm font-semibold text-[#2D3748] mb-2">
+                  Jibun Address (지번) - Optional
+                </label>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Input
+                      label=""
+                      placeholder="본번 (e.g., 123)"
+                      value={formData.jibunBun}
+                      onChange={(e) => setFormData({ ...formData, jibunBun: e.target.value.replace(/[^0-9]/g, '') })}
+                      disabled={!formData.dong}
+                    />
+                  </div>
+                  <span className="flex items-center text-gray-400 font-bold">-</span>
+                  <div className="flex-1">
+                    <Input
+                      label=""
+                      placeholder="부번 (e.g., 45)"
+                      value={formData.jibunJi}
+                      onChange={(e) => setFormData({ ...formData, jibunJi: e.target.value.replace(/[^0-9]/g, '') })}
+                      disabled={!formData.dong}
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-[#718096] mt-2">
+                  Enter jibun to auto-detect building type (from 건축물대장)
+                </p>
+
+                {/* Detection Status */}
+                {detectingBuildingType && (
+                  <div className={`mt-3 p-3 bg-${accentColor}-50 rounded-xl border border-${accentColor}-200 flex items-center gap-2`}>
+                    <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-[#4A5568]">Detecting building type...</span>
+                  </div>
+                )}
+
+                {buildingTypeDetected && !detectingBuildingType && (
+                  <div className={`mt-3 p-3 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2`}>
+                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-sm text-green-700">
+                      Detected: <span className="font-semibold">{buildingType === 'apartment' ? '아파트' : '연립/다세대'}</span>
+                      {detectedBuildingName && <span className="text-green-600"> ({detectedBuildingName})</span>}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Manual Building Type Override */}
+              <div className="pt-2">
+                <label className="block text-sm font-semibold text-[#2D3748] mb-2">
+                  Building Type {buildingTypeDetected ? '(Auto-detected)' : '*'}
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setBuildingType('apartment'); setBuildingTypeDetected(false); }}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
+                      buildingType === 'apartment'
+                        ? `border-${accentColor}-500 bg-${accentColor}-50 text-${accentColor}-700`
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="font-semibold">아파트</div>
+                    <div className="text-xs mt-1 opacity-75">Apartment (5+ floors)</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setBuildingType('multifamily'); setBuildingTypeDetected(false); }}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
+                      buildingType === 'multifamily'
+                        ? `border-${accentColor}-500 bg-${accentColor}-50 text-${accentColor}-700`
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="font-semibold">연립/다세대</div>
+                    <div className="text-xs mt-1 opacity-75">Villa / Townhouse</div>
+                  </button>
+                </div>
+                <p className="text-sm text-[#718096] mt-2">
+                  {buildingType === 'multifamily'
+                    ? 'Building name is optional for 연립/다세대'
+                    : buildingTypeDetected ? 'You can override the detected type if needed' : 'Select building type based on your property'}
+                </p>
+              </div>
             </div>
 
             {/* Building Section */}
@@ -331,8 +493,11 @@ export default function PropertyInfoPage() {
 
               <div className="relative">
                 <Input
-                  label="Building / Apartment Name *"
-                  placeholder="Type to search: e.g., 래미안역삼, Raemian"
+                  label={buildingType === 'apartment' ? "Building / Apartment Name *" : "Building Name (Optional)"}
+                  placeholder={buildingType === 'apartment'
+                    ? "Type to search: e.g., 래미안역삼, Raemian"
+                    : "Optional: e.g., XX빌라, YY연립"
+                  }
                   value={formData.building || apartmentSearch}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -342,7 +507,10 @@ export default function PropertyInfoPage() {
                     setApartmentSearch(value);
                   }}
                   error={errors.building}
-                  helperText="Search by Korean or English name"
+                  helperText={buildingType === 'apartment'
+                    ? "Search by Korean or English name"
+                    : "For 연립/다세대, we use neighborhood-level data for analysis"
+                  }
                 />
 
                 {apartmentSearch && !formData.building && (

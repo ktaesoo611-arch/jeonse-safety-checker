@@ -1,5 +1,5 @@
 import { MolitWolseAPI, getDistrictCode } from '../apis/molit-wolse';
-import { WolseTransaction, WolseMarketRate } from '../types';
+import { WolseTransaction, WolseMarketRate, BuildingType } from '../types';
 
 /**
  * Current legal conversion rate limits (Housing Lease Protection Act)
@@ -196,7 +196,8 @@ export class WolseRateCalculator {
   }
 
   /**
-   * Calculate market rate for a specific apartment
+   * Calculate market rate for a specific property
+   * Supports both apartments and multifamily (연립/다세대) buildings
    */
   async calculateMarketRate(
     city: string,
@@ -204,7 +205,8 @@ export class WolseRateCalculator {
     dong: string,
     apartmentName: string,
     exclusiveArea: number,
-    monthsBack: number = 12  // 12 months for better Mann-Kendall trend detection
+    monthsBack: number = 12,  // 12 months for better Mann-Kendall trend detection
+    buildingType: BuildingType = 'apartment' // Default for backwards compatibility
   ): Promise<MarketRateResult> {
     const lawdCd = getDistrictCode(city, district);
     if (!lawdCd) {
@@ -212,36 +214,53 @@ export class WolseRateCalculator {
     }
 
     console.log('\n📊 Starting Wolse Market Rate Calculation');
-    console.log(`   Building: ${apartmentName}`);
+    console.log(`   Building Type: ${buildingType}`);
+    console.log(`   Building: ${apartmentName || '(dong-level)'}`);
     console.log(`   Area: ${exclusiveArea}㎡`);
     console.log(`   District: ${district} (${lawdCd})`);
 
-    // Step 1: Fetch transactions from same building
-    let transactions = await this.wolseAPI.getRecentWolseForApartment(
-      lawdCd,
-      apartmentName,
-      exclusiveArea,
-      monthsBack
-    );
-
+    let transactions: WolseTransaction[] = [];
     let dataSource = 'building';
     let confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT' = 'HIGH';
 
-    // Step 2: Fall back to dong-level if insufficient data
-    if (transactions.length < 5) {
-      console.log(`\n⚠️ Only ${transactions.length} building transactions. Expanding to dong level...`);
-      // Use 12 months and ±5% area tolerance for dong-level (stricter filtering, more data)
-      const dongMonthsBack = 12;
-      const dongTransactions = await this.wolseAPI.getWolseForDong(
+    // For multifamily (연립/다세대), always start with dong-level data
+    // Building names are unreliable in MOLIT data for these property types
+    if (buildingType === 'multifamily') {
+      console.log(`\n🏘️ Multifamily property: Using dong-level data directly`);
+      transactions = await this.wolseAPI.getRecentWolseForMultifamilyByDong(
         lawdCd,
         dong,
         exclusiveArea,
-        dongMonthsBack,
-        0.05  // ±5% area tolerance (stricter than default ±10%)
+        monthsBack,
+        0.10  // ±10% area tolerance for dong-level multifamily
       );
-      transactions = dongTransactions;
       dataSource = 'dong';
-      confidenceLevel = 'LOW';
+      confidenceLevel = transactions.length >= 10 ? 'MEDIUM' : 'LOW';
+    } else {
+      // For apartments, try building-level first
+      transactions = await this.wolseAPI.getRecentWolseForApartment(
+        lawdCd,
+        apartmentName,
+        exclusiveArea,
+        monthsBack
+      );
+
+      // Step 2: Fall back to dong-level if insufficient data
+      if (transactions.length < 5) {
+        console.log(`\n⚠️ Only ${transactions.length} building transactions. Expanding to dong level...`);
+        // Use 12 months and ±5% area tolerance for dong-level (stricter filtering, more data)
+        const dongMonthsBack = 12;
+        const dongTransactions = await this.wolseAPI.getWolseForDong(
+          lawdCd,
+          dong,
+          exclusiveArea,
+          dongMonthsBack,
+          0.05  // ±5% area tolerance (stricter than default ±10%)
+        );
+        transactions = dongTransactions;
+        dataSource = 'dong';
+        confidenceLevel = 'LOW';
+      }
     }
 
     // Step 2.5: Filter out renewal contracts (갱신)

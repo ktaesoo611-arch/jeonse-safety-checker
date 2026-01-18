@@ -1,6 +1,6 @@
 import { MolitAPI, getDistrictCode } from '../apis/molit';
 import { supabaseAdmin } from '../supabase';
-import { PropertyDetails, ValuationResult, MolitTransaction } from '../types';
+import { PropertyDetails, ValuationResult, MolitTransaction, BuildingType } from '../types';
 
 export class PropertyValuationEngine {
   private molitAPI: MolitAPI;
@@ -10,7 +10,8 @@ export class PropertyValuationEngine {
   }
 
   async calculatePropertyValue(
-    property: PropertyDetails
+    property: PropertyDetails,
+    buildingType: BuildingType = 'apartment' // Default for backwards compatibility
   ): Promise<ValuationResult> {
     // Step 1: Get recent transaction data from MOLIT
     const lawdCd = getDistrictCode(property.city, property.district);
@@ -19,11 +20,20 @@ export class PropertyValuationEngine {
       throw new Error(`District code not found for ${property.city} ${property.district}`);
     }
 
+    // For apartments: use building name as identifier
+    // For multifamily (연립/다세대): use dong as identifier (building names are unreliable)
+    const identifier = buildingType === 'apartment'
+      ? property.buildingName
+      : property.dong;
+
+    console.log(`📊 Valuation for ${buildingType}: identifier="${identifier}", area=${property.exclusiveArea}㎡`);
+
     // Fetch 12 months of data for better statistical reliability
     // 12 months provides: more data points, full seasonal coverage, better R² values
-    const recentTransactions = await this.molitAPI.getRecentTransactionsForApartment(
+    const recentTransactions = await this.molitAPI.getRecentTransactionsByType(
+      buildingType,
       lawdCd,
-      property.buildingName,
+      identifier,
       property.exclusiveArea,
       12 // Last 12 months (changed from 6 for better trend accuracy)
     );
@@ -48,9 +58,10 @@ export class PropertyValuationEngine {
     // Step 1b: Fetch JEONSE (전세) transactions for jeonse price analysis
     let jeonseTransactions: MolitTransaction[] = [];
     try {
-      jeonseTransactions = await this.molitAPI.getRecentJeonseTransactionsForApartment(
+      jeonseTransactions = await this.molitAPI.getRecentJeonseTransactionsByType(
+        buildingType,
         lawdCd,
-        property.buildingName,
+        identifier,
         property.exclusiveArea,
         12 // Last 12 months
       );

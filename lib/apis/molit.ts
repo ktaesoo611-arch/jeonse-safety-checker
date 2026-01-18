@@ -1,10 +1,14 @@
 import axios from 'axios';
-import { MolitTransaction } from '../types';
+import { MolitTransaction, BuildingType } from '../types';
 
 export class MolitAPI {
   private apiKey: string;
+  // Apartment (아파트) endpoints
   private baseUrlTrade = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade';
   private baseUrlRent = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent';
+  // Multi-family (연립/다세대) endpoints
+  private baseUrlMultifamilyTrade = 'https://apis.data.go.kr/1613000/RTMSDataSvcRHTrade';
+  private baseUrlMultifamilyRent = 'https://apis.data.go.kr/1613000/RTMSDataSvcRHRent';
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -300,6 +304,305 @@ export class MolitAPI {
     // String format: "123,456" (in 만원)
     const cleanAmount = amount.replace(/,/g, '');
     return parseInt(cleanAmount) * 10000; // Convert to won
+  }
+
+  // ==========================================
+  // 연립/다세대 (Multi-family) Methods
+  // ==========================================
+
+  /**
+   * Get 연립/다세대 SALE (매매) transaction data
+   * @param lawdCd - Legal district code (법정동코드)
+   * @param dealYmd - Year-month (YYYYMM)
+   */
+  async getMultifamilyTransactions(
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<MolitTransaction[]> {
+    try {
+      const response = await axios.get(
+        `${this.baseUrlMultifamilyTrade}/getRTMSDataSvcRHTrade`,
+        {
+          params: {
+            serviceKey: this.apiKey,
+            pageNo: 1,
+            numOfRows: 1000,
+            LAWD_CD: lawdCd,
+            DEAL_YMD: dealYmd
+          },
+          timeout: 30000
+        }
+      );
+
+      const result = response.data;
+      const items = result.response?.body?.items?.item || [];
+      const transactions = Array.isArray(items) ? items : [items];
+
+      console.log(`MOLIT 연립/다세대 API: Found ${transactions.length} transactions for ${lawdCd} ${dealYmd}`);
+
+      return transactions.map((item: any) => ({
+        apartmentName: item.aptNm?.trim() || item.houseNm?.trim() || '', // May be empty
+        legalDong: item.umdNm?.trim() || '',
+        exclusiveArea: parseFloat(item.excluUseAr || item.exclusiveArea || '0'),
+        floor: parseInt(item.floor || '1'),
+        transactionAmount: this.parseAmount(item.dealAmount),
+        year: parseInt(item.dealYear),
+        month: parseInt(item.dealMonth),
+        day: parseInt(item.dealDay),
+        buildingYear: item.buildYear ? parseInt(item.buildYear) : undefined
+      }));
+    } catch (error) {
+      console.error('MOLIT 연립/다세대 API Error:', error);
+      throw new Error('Failed to fetch 연립/다세대 transaction data');
+    }
+  }
+
+  /**
+   * Get 연립/다세대 JEONSE (전세) transaction data
+   * @param lawdCd - Legal district code (법정동코드)
+   * @param dealYmd - Year-month (YYYYMM)
+   */
+  async getMultifamilyJeonseTransactions(
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<MolitTransaction[]> {
+    try {
+      const response = await axios.get(
+        `${this.baseUrlMultifamilyRent}/getRTMSDataSvcRHRent`,
+        {
+          params: {
+            serviceKey: this.apiKey,
+            pageNo: 1,
+            numOfRows: 1000,
+            LAWD_CD: lawdCd,
+            DEAL_YMD: dealYmd
+          },
+          timeout: 30000
+        }
+      );
+
+      const result = response.data;
+      const items = result.response?.body?.items?.item || [];
+      const allTransactions = Array.isArray(items) ? items : [items];
+
+      // Filter to only pure jeonse (monthlyRent = 0)
+      const jeonseOnly = allTransactions.filter((item: any) => {
+        const monthlyRent = parseInt(String(item.monthlyRent || '0').replace(/,/g, ''));
+        return monthlyRent === 0;
+      });
+
+      console.log(`MOLIT 연립/다세대 Jeonse API: Found ${jeonseOnly.length} pure jeonse (filtered from ${allTransactions.length} total) for ${lawdCd} ${dealYmd}`);
+
+      return jeonseOnly.map((item: any) => ({
+        apartmentName: item.aptNm?.trim() || item.houseNm?.trim() || '', // May be empty
+        legalDong: item.umdNm?.trim() || '',
+        exclusiveArea: parseFloat(item.excluUseAr || item.exclusiveArea || '0'),
+        floor: parseInt(item.floor || '1'),
+        transactionAmount: this.parseAmountSafe(item.deposit),
+        year: parseInt(item.dealYear),
+        month: parseInt(item.dealMonth),
+        day: parseInt(item.dealDay),
+        contractType: item.contractType?.trim() || undefined,
+        buildingYear: item.buildYear ? parseInt(item.buildYear) : undefined
+      }));
+    } catch (error) {
+      console.error('MOLIT 연립/다세대 Jeonse API Error:', error);
+      throw new Error('Failed to fetch 연립/다세대 jeonse data');
+    }
+  }
+
+  /**
+   * Get recent JEONSE transactions for 연립/다세대 by dong (neighborhood)
+   * Since building names are often missing for 연립/다세대, we filter by dong instead
+   */
+  async getRecentMultifamilyJeonseByDong(
+    lawdCd: string,
+    dong: string,
+    area: number | undefined,
+    monthsBack: number = 12
+  ): Promise<MolitTransaction[]> {
+    console.log(`\n🔍 MOLIT 연립/다세대 Jeonse Query (Dong-level):`);
+    console.log(`   lawdCd: "${lawdCd}"`);
+    console.log(`   dong: "${dong}"`);
+    console.log(`   area: ${area}`);
+    console.log(`   monthsBack: ${monthsBack}`);
+
+    const transactions: MolitTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        console.log(`\n📅 Fetching 연립/다세대 jeonse ${yearMonth}...`);
+        const monthData = await this.getMultifamilyJeonseTransactions(lawdCd, yearMonth);
+        console.log(`   → Got ${monthData.length} total transactions for this district+month`);
+
+        // Filter by dong and optionally by area
+        const filtered = monthData.filter(t => {
+          // Match by dong (neighborhood)
+          const dongMatches = t.legalDong === dong ||
+            t.legalDong.includes(dong) ||
+            dong.includes(t.legalDong);
+
+          if (!dongMatches) return false;
+
+          // If area specified, filter by area (within tolerance)
+          if (area !== undefined) {
+            const areaTolerance = 2; // ㎡
+            return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+          }
+
+          return true;
+        });
+
+        console.log(`   → After filtering: ${filtered.length} transactions match`);
+        if (filtered.length > 0) {
+          console.log(`   ✅ Sample: ${filtered[0].apartmentName || '(no name)'}, ${filtered[0].legalDong}, ${filtered[0].exclusiveArea}㎡, ₩${(filtered[0].transactionAmount / 100000000).toFixed(2)}억`);
+        }
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch 연립/다세대 jeonse data for ${yearMonth}:`, error);
+      }
+    }
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  /**
+   * Get recent SALE transactions for 연립/다세대 by dong
+   */
+  async getRecentMultifamilyByDong(
+    lawdCd: string,
+    dong: string,
+    area: number | undefined,
+    monthsBack: number = 12
+  ): Promise<MolitTransaction[]> {
+    console.log(`\n🔍 MOLIT 연립/다세대 Sales Query (Dong-level):`);
+    console.log(`   lawdCd: "${lawdCd}"`);
+    console.log(`   dong: "${dong}"`);
+    console.log(`   area: ${area}`);
+    console.log(`   monthsBack: ${monthsBack}`);
+
+    const transactions: MolitTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        console.log(`\n📅 Fetching 연립/다세대 sales ${yearMonth}...`);
+        const monthData = await this.getMultifamilyTransactions(lawdCd, yearMonth);
+        console.log(`   → Got ${monthData.length} total transactions for this district+month`);
+
+        const filtered = monthData.filter(t => {
+          const dongMatches = t.legalDong === dong ||
+            t.legalDong.includes(dong) ||
+            dong.includes(t.legalDong);
+
+          if (!dongMatches) return false;
+
+          if (area !== undefined) {
+            const areaTolerance = 2;
+            return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+          }
+
+          return true;
+        });
+
+        console.log(`   → After filtering: ${filtered.length} transactions match`);
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch 연립/다세대 sales data for ${yearMonth}:`, error);
+      }
+    }
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  // ==========================================
+  // Unified Methods (routes by building type)
+  // ==========================================
+
+  /**
+   * Get transactions by building type - routes to appropriate API
+   */
+  async getTransactionsByType(
+    buildingType: BuildingType,
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<MolitTransaction[]> {
+    if (buildingType === 'multifamily') {
+      return this.getMultifamilyTransactions(lawdCd, dealYmd);
+    }
+    return this.getApartmentTransactions(lawdCd, dealYmd);
+  }
+
+  /**
+   * Get jeonse transactions by building type
+   */
+  async getJeonseTransactionsByType(
+    buildingType: BuildingType,
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<MolitTransaction[]> {
+    if (buildingType === 'multifamily') {
+      return this.getMultifamilyJeonseTransactions(lawdCd, dealYmd);
+    }
+    return this.getApartmentJeonseTransactions(lawdCd, dealYmd);
+  }
+
+  /**
+   * Get recent transactions - routes based on building type
+   * For apartments: uses building name matching
+   * For 연립/다세대: uses dong-level filtering
+   */
+  async getRecentTransactionsByType(
+    buildingType: BuildingType,
+    lawdCd: string,
+    identifierOrDong: string, // apartmentName for apartments, dong for multifamily
+    area: number | undefined,
+    monthsBack: number = 12
+  ): Promise<MolitTransaction[]> {
+    if (buildingType === 'multifamily') {
+      return this.getRecentMultifamilyByDong(lawdCd, identifierOrDong, area, monthsBack);
+    }
+    return this.getRecentTransactionsForApartment(lawdCd, identifierOrDong, area, monthsBack);
+  }
+
+  /**
+   * Get recent jeonse transactions - routes based on building type
+   */
+  async getRecentJeonseTransactionsByType(
+    buildingType: BuildingType,
+    lawdCd: string,
+    identifierOrDong: string,
+    area: number | undefined,
+    monthsBack: number = 12
+  ): Promise<MolitTransaction[]> {
+    if (buildingType === 'multifamily') {
+      return this.getRecentMultifamilyJeonseByDong(lawdCd, identifierOrDong, area, monthsBack);
+    }
+    return this.getRecentJeonseTransactionsForApartment(lawdCd, identifierOrDong, area, monthsBack);
   }
 }
 

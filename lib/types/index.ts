@@ -1,3 +1,6 @@
+// Building Types
+export type BuildingType = 'apartment' | 'multifamily';
+
 // Property Types
 export interface PropertyDetails {
   address: string;
@@ -9,11 +12,15 @@ export interface PropertyDetails {
   floor: number;
   unit: string;
   exclusiveArea: number;
+  buildingType?: BuildingType; // 아파트 or 연립/다세대
+  jibunAddress?: string; // 지번 주소 (e.g., "역삼동 123-45")
 }
 
 // Transaction Types
+// Used for both 아파트 (RTMSDataSvcAptTrade) and 연립/다세대 (RTMSDataSvcRHTrade)
+// Note: For 연립/다세대, apartmentName may be empty or inconsistent
 export interface MolitTransaction {
-  apartmentName: string;
+  apartmentName: string; // Building name (may be empty for 연립/다세대)
   legalDong: string;
   exclusiveArea: number;
   floor: number;
@@ -22,6 +29,7 @@ export interface MolitTransaction {
   month: number;
   day: number;
   contractType?: string; // 신규, 갱신 - for filtering renewal contracts
+  buildingYear?: number; // 건축년도 - available in 연립/다세대 API
 }
 
 // Valuation Types

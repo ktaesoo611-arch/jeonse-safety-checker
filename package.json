@@ -54,6 +54,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
     "dotenv": "^17.2.3",
+    "supabase": "^2.72.7",
     "tsx": "^4.20.6"
   }
 }

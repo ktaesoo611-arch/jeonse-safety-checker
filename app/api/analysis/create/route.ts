@@ -17,12 +17,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server';
 
+import { BuildingType } from '@/lib/types';
+
 interface CreateAnalysisRequest {
   address: string;
   city?: string;
   district?: string;
   dong?: string;
   building?: string;
+  buildingType?: BuildingType; // 'apartment' or 'multifamily'
   proposedJeonse: number;
   analysisType?: 'jeonse' | 'wolse';
   exclusiveArea?: number;
@@ -73,9 +76,12 @@ export async function POST(request: NextRequest) {
     const district = body.district || body.address.split(' ')[1];
     const dong = body.dong || body.address.split(' ')[2];
     const building = body.building || '';
+    const buildingType = body.buildingType || 'apartment'; // Default to apartment for backwards compatibility
     const analysisType = body.analysisType || 'jeonse';
     const exclusiveArea = body.exclusiveArea || null;
     const monthlyRent = body.monthlyRent || null;
+
+    console.log(`Creating analysis: type=${analysisType}, buildingType=${buildingType}, building="${building || '(none)'}"`);
 
     // Validate required fields (city, district, dong are NOT NULL in database)
     if (!city || !district || !dong) {
@@ -202,6 +208,7 @@ export async function POST(request: NextRequest) {
       {
         analysisId: analysisId,
         propertyId: propertyId,
+        buildingType: buildingType, // Include for downstream use
         status: analysisStatus,
         createdAt: analysisCreatedAt,
         message: 'Analysis created successfully',

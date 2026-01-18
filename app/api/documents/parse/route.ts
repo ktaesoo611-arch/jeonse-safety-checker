@@ -23,7 +23,7 @@ import { MolitAPI, getDistrictCode } from '@/lib/apis/molit';
 import { parseFromTables } from '@/lib/analyzers/table-parser';
 import { LLMParser } from '@/lib/services/llm-parser';
 import { PropertyValuationEngine } from '@/lib/analyzers/property-valuation';
-import { PropertyDetails, ValuationResult } from '@/lib/types';
+import { PropertyDetails, ValuationResult, BuildingType } from '@/lib/types';
 import { analysisService } from '@/lib/services/analysis-service';
 
 // Module-level supabase client (service role for bypassing RLS)
@@ -46,12 +46,14 @@ async function fetchPropertyValuation(
   address: string,
   buildingName: string | undefined,
   area: number,
-  floor?: number
+  floor?: number,
+  buildingType: BuildingType = 'apartment' // Default for backwards compatibility
 ): Promise<ValuationResult | null> {
   try {
     console.log('🏠 Fetching property valuation using PropertyValuationEngine...');
     console.log('   Address:', address);
     console.log('   Building:', buildingName);
+    console.log('   Building Type:', buildingType);
     console.log('   Area:', area);
 
     // Parse address to extract city, district, dong
@@ -98,11 +100,13 @@ async function fetchPropertyValuation(
     };
 
     // Check if we have required fields
-    if (!propertyDetails.exclusiveArea || !propertyDetails.buildingName) {
-      console.warn('Missing required fields for valuation:', {
-        exclusiveArea: propertyDetails.exclusiveArea,
-        buildingName: propertyDetails.buildingName
-      });
+    // For multifamily, building name is optional (we use dong-level matching)
+    if (!propertyDetails.exclusiveArea) {
+      console.warn('Missing exclusive area for valuation');
+      return null;
+    }
+    if (buildingType === 'apartment' && !propertyDetails.buildingName) {
+      console.warn('Missing building name for apartment valuation');
       return null;
     }
 
@@ -110,7 +114,8 @@ async function fetchPropertyValuation(
     const valuationEngine = new PropertyValuationEngine(process.env.MOLIT_API_KEY!);
 
     // Calculate property value using regression-based methodology
-    const valuation = await valuationEngine.calculatePropertyValue(propertyDetails);
+    // Routes to correct MOLIT endpoint based on building type
+    const valuation = await valuationEngine.calculatePropertyValue(propertyDetails, buildingType);
 
     console.log('✅ Valuation complete:', {
       valueMid: valuation.valueMid,

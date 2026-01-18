@@ -1,14 +1,18 @@
 import axios from 'axios';
-import { WolseTransaction } from '../types';
+import { WolseTransaction, BuildingType } from '../types';
 
 /**
  * MOLIT Wolse (Monthly Rent) API Service
- * Endpoint: 아파트 전월세 실거래가 API
+ * Endpoints:
+ * - 아파트 전월세 실거래가 API (RTMSDataSvcAptRent)
+ * - 연립/다세대 전월세 실거래가 API (RTMSDataSvcRHRent)
+ *
  * Data includes both jeonse (전세) and wolse (월세) transactions
  */
 export class MolitWolseAPI {
   private apiKey: string;
   private baseUrl = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent';
+  private baseUrlMultifamily = 'https://apis.data.go.kr/1613000/RTMSDataSvcRHRent';
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -201,6 +205,171 @@ export class MolitWolseAPI {
       const dateB = new Date(b.year, b.month - 1, b.day);
       return dateB.getTime() - dateA.getTime();
     });
+  }
+
+  // ============ 연립/다세대 (Multifamily) Methods ============
+
+  /**
+   * Get multifamily rent transaction data for a district and month
+   * Uses RTMSDataSvcRHRent endpoint for 연립/다세대
+   */
+  async getMultifamilyRentTransactions(
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<WolseTransaction[]> {
+    try {
+      const response = await axios.get(
+        `${this.baseUrlMultifamily}/getRTMSDataSvcRHRent`,
+        {
+          params: {
+            serviceKey: this.apiKey,
+            pageNo: 1,
+            numOfRows: 1000,
+            LAWD_CD: lawdCd,
+            DEAL_YMD: dealYmd
+          },
+          timeout: 30000
+        }
+      );
+
+      const result = response.data;
+      const items = result.response?.body?.items?.item || [];
+      const transactions = Array.isArray(items) ? items : (items ? [items] : []);
+
+      console.log(`MOLIT Multifamily Wolse API: Found ${transactions.length} rent transactions for ${lawdCd} ${dealYmd}`);
+
+      return transactions.map((item: any) => ({
+        apartmentName: item.bldNm?.trim() || '', // Building name (often empty for 연립/다세대)
+        legalDong: item.umdNm?.trim() || '',
+        exclusiveArea: parseFloat(item.excluUseAr) || 0,
+        floor: parseInt(item.floor) || 0,
+        deposit: this.parseAmount(item.deposit),
+        monthlyRent: this.parseAmount(item.monthlyRent),
+        year: parseInt(item.dealYear),
+        month: parseInt(item.dealMonth),
+        day: parseInt(item.dealDay),
+        contractType: item.contractType?.trim() || undefined
+      }));
+    } catch (error) {
+      console.error('MOLIT Multifamily Wolse API Error:', error);
+      throw new Error('Failed to fetch multifamily rent transaction data');
+    }
+  }
+
+  /**
+   * Get multifamily wolse-only transactions (filter out pure jeonse)
+   */
+  async getMultifamilyWolseTransactions(
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<WolseTransaction[]> {
+    const allTransactions = await this.getMultifamilyRentTransactions(lawdCd, dealYmd);
+    return allTransactions.filter(t => t.monthlyRent > 0);
+  }
+
+  /**
+   * Get recent wolse transactions for a dong (for 연립/다세대)
+   * Since 연립/다세대 building names are unreliable, we filter by dong and area
+   */
+  async getRecentWolseForMultifamilyByDong(
+    lawdCd: string,
+    dong: string,
+    area?: number,
+    monthsBack: number = 6,
+    areaToleranceRatio: number = 0.1
+  ): Promise<WolseTransaction[]> {
+    console.log(`\n🏘️ MOLIT Multifamily Wolse API - Dong-level Query:`);
+    console.log(`   lawdCd: "${lawdCd}", dong: "${dong}"`);
+    console.log(`   Period: ${monthsBack} months, Area tolerance: ±${(areaToleranceRatio * 100).toFixed(0)}%`);
+
+    const transactions: WolseTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        const monthData = await this.getMultifamilyWolseTransactions(lawdCd, yearMonth);
+
+        // Filter by dong and area
+        const filtered = monthData.filter(t => {
+          const dongMatches = t.legalDong === dong || t.legalDong.includes(dong);
+          if (!dongMatches) return false;
+
+          if (area !== undefined) {
+            const areaTolerance = area * areaToleranceRatio;
+            return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+          }
+          return true;
+        });
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch multifamily dong data for ${yearMonth}:`, error);
+      }
+    }
+
+    console.log(`   → Total: ${transactions.length} transactions found`);
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  // ============ Unified Methods (Route by Building Type) ============
+
+  /**
+   * Get rent transactions based on building type
+   * Routes to apartment or multifamily endpoint
+   */
+  async getRentTransactionsByType(
+    buildingType: BuildingType,
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<WolseTransaction[]> {
+    return buildingType === 'apartment'
+      ? this.getRentTransactions(lawdCd, dealYmd)
+      : this.getMultifamilyRentTransactions(lawdCd, dealYmd);
+  }
+
+  /**
+   * Get wolse transactions based on building type
+   */
+  async getWolseTransactionsByType(
+    buildingType: BuildingType,
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<WolseTransaction[]> {
+    return buildingType === 'apartment'
+      ? this.getWolseTransactions(lawdCd, dealYmd)
+      : this.getMultifamilyWolseTransactions(lawdCd, dealYmd);
+  }
+
+  /**
+   * Get recent wolse transactions based on building type
+   * For apartments: uses building name matching
+   * For multifamily: uses dong-level matching (building names are unreliable)
+   */
+  async getRecentWolseByType(
+    buildingType: BuildingType,
+    lawdCd: string,
+    identifier: string, // apartment name for 'apartment', dong name for 'multifamily'
+    area?: number,
+    monthsBack: number = 6
+  ): Promise<WolseTransaction[]> {
+    if (buildingType === 'apartment') {
+      return this.getRecentWolseForApartment(lawdCd, identifier, area, monthsBack);
+    } else {
+      // For 연립/다세대, identifier is dong name
+      return this.getRecentWolseForMultifamilyByDong(lawdCd, identifier, area, monthsBack);
+    }
   }
 
   /**
