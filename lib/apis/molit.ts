@@ -414,17 +414,22 @@ export class MolitAPI {
   /**
    * Get recent JEONSE transactions for 연립/다세대 by dong (neighborhood)
    * Since building names are often missing for 연립/다세대, we filter by dong instead
+   * @param areaFilterPercent - Percentage-based area filter (e.g., 15 = ±15%). Default 15%.
    */
   async getRecentMultifamilyJeonseByDong(
     lawdCd: string,
     dong: string,
     area: number | undefined,
-    monthsBack: number = 12
+    monthsBack: number = 12,
+    areaFilterPercent: number = 15 // ±15% default for triple-weighted approach
   ): Promise<MolitTransaction[]> {
+    const areaTolerance = area !== undefined ? area * (areaFilterPercent / 100) : undefined;
+
     console.log(`\n🔍 MOLIT 연립/다세대 Jeonse Query (Dong-level):`);
     console.log(`   lawdCd: "${lawdCd}"`);
     console.log(`   dong: "${dong}"`);
-    console.log(`   area: ${area}`);
+    console.log(`   area: ${area}㎡`);
+    console.log(`   areaFilter: ±${areaFilterPercent}% (±${areaTolerance?.toFixed(1) || 'N/A'}㎡)`);
     console.log(`   monthsBack: ${monthsBack}`);
 
     const transactions: MolitTransaction[] = [];
@@ -439,9 +444,7 @@ export class MolitAPI {
       const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
 
       try {
-        console.log(`\n📅 Fetching 연립/다세대 jeonse ${yearMonth}...`);
         const monthData = await this.getMultifamilyJeonseTransactions(lawdCd, yearMonth);
-        console.log(`   → Got ${monthData.length} total transactions for this district+month`);
 
         // Filter by dong and optionally by area
         const filtered = monthData.filter(t => {
@@ -453,17 +456,15 @@ export class MolitAPI {
           if (!dongMatches) return false;
 
           // If area specified, filter by area (within tolerance)
-          if (area !== undefined) {
-            const areaTolerance = 2; // ㎡
+          if (area !== undefined && areaTolerance !== undefined) {
             return Math.abs(t.exclusiveArea - area) <= areaTolerance;
           }
 
           return true;
         });
 
-        console.log(`   → After filtering: ${filtered.length} transactions match`);
         if (filtered.length > 0) {
-          console.log(`   ✅ Sample: ${filtered[0].apartmentName || '(no name)'}, ${filtered[0].legalDong}, ${filtered[0].exclusiveArea}㎡, ₩${(filtered[0].transactionAmount / 100000000).toFixed(2)}억`);
+          console.log(`   📅 ${yearMonth}: ${filtered.length} jeonse transactions`);
         }
 
         transactions.push(...filtered);
@@ -471,6 +472,8 @@ export class MolitAPI {
         console.error(`Failed to fetch 연립/다세대 jeonse data for ${yearMonth}:`, error);
       }
     }
+
+    console.log(`   ✓ Total: ${transactions.length} jeonse transactions`);
 
     return transactions.sort((a, b) => {
       const dateA = new Date(a.year, a.month - 1, a.day);
@@ -481,17 +484,22 @@ export class MolitAPI {
 
   /**
    * Get recent SALE transactions for 연립/다세대 by dong
+   * @param areaFilterPercent - Percentage-based area filter (e.g., 15 = ±15%). Default 15%.
    */
   async getRecentMultifamilyByDong(
     lawdCd: string,
     dong: string,
     area: number | undefined,
-    monthsBack: number = 12
+    monthsBack: number = 12,
+    areaFilterPercent: number = 15 // ±15% default for triple-weighted approach
   ): Promise<MolitTransaction[]> {
+    const areaTolerance = area !== undefined ? area * (areaFilterPercent / 100) : undefined;
+
     console.log(`\n🔍 MOLIT 연립/다세대 Sales Query (Dong-level):`);
     console.log(`   lawdCd: "${lawdCd}"`);
     console.log(`   dong: "${dong}"`);
-    console.log(`   area: ${area}`);
+    console.log(`   area: ${area}㎡`);
+    console.log(`   areaFilter: ±${areaFilterPercent}% (±${areaTolerance?.toFixed(1) || 'N/A'}㎡)`);
     console.log(`   monthsBack: ${monthsBack}`);
 
     const transactions: MolitTransaction[] = [];
@@ -506,9 +514,7 @@ export class MolitAPI {
       const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
 
       try {
-        console.log(`\n📅 Fetching 연립/다세대 sales ${yearMonth}...`);
         const monthData = await this.getMultifamilyTransactions(lawdCd, yearMonth);
-        console.log(`   → Got ${monthData.length} total transactions for this district+month`);
 
         const filtered = monthData.filter(t => {
           const dongMatches = t.legalDong === dong ||
@@ -517,20 +523,23 @@ export class MolitAPI {
 
           if (!dongMatches) return false;
 
-          if (area !== undefined) {
-            const areaTolerance = 2;
+          if (area !== undefined && areaTolerance !== undefined) {
             return Math.abs(t.exclusiveArea - area) <= areaTolerance;
           }
 
           return true;
         });
 
-        console.log(`   → After filtering: ${filtered.length} transactions match`);
+        if (filtered.length > 0) {
+          console.log(`   📅 ${yearMonth}: ${filtered.length} transactions`);
+        }
         transactions.push(...filtered);
       } catch (error) {
         console.error(`Failed to fetch 연립/다세대 sales data for ${yearMonth}:`, error);
       }
     }
+
+    console.log(`   ✓ Total: ${transactions.length} transactions`);
 
     return transactions.sort((a, b) => {
       const dateA = new Date(a.year, a.month - 1, a.day);

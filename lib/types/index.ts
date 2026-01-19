@@ -13,6 +13,7 @@ export interface PropertyDetails {
   unit: string;
   exclusiveArea: number;
   buildingType?: BuildingType; // 아파트 or 연립/다세대
+  buildingYear?: number; // 건축년도 - used for age similarity weighting in valuation
   jibunAddress?: string; // 지번 주소 (e.g., "역삼동 123-45")
 }
 

@@ -2,6 +2,32 @@ import { MolitAPI, getDistrictCode } from '../apis/molit';
 import { supabaseAdmin } from '../supabase';
 import { PropertyDetails, ValuationResult, MolitTransaction, BuildingType } from '../types';
 
+/**
+ * Triple-Weighted Valuation Configuration
+ *
+ * For 연립다세대, we use three weighting factors:
+ * 1. Recency: Recent transactions are weighted higher (60-day half-life)
+ * 2. Age Similarity: Similar-age buildings are weighted higher (10-year half-life)
+ * 3. Area Similarity: Similar-size units are weighted higher (20% of target area half-life)
+ *
+ * Combined Weight = exp(-daysAgo/60) × exp(-|yearDiff|/10) × exp(-|areaDiff|/(targetArea×0.20))
+ */
+const VALUATION_CONFIG = {
+  // Recency weighting
+  RECENCY_HALFLIFE_DAYS: 60,
+
+  // Age similarity weighting (building year)
+  AGE_HALFLIFE_YEARS: 10,
+  DEFAULT_AGE_WEIGHT: 0.5, // When building year is unknown
+
+  // Area similarity weighting (percentage-based)
+  AREA_HALFLIFE_PERCENT: 20, // 20% of target area
+  AREA_FILTER_PERCENT: 15, // ±15% pre-filter for multifamily
+
+  // For apartments, we use tighter area filtering (building-level data is more consistent)
+  APARTMENT_AREA_TOLERANCE: 2, // ±2㎡ for apartments
+};
+
 export class PropertyValuationEngine {
   private molitAPI: MolitAPI;
 
@@ -71,8 +97,13 @@ export class PropertyValuationEngine {
       // Continue without jeonse data
     }
 
-    // Step 2: Calculate base value from recent sales
-    const baseValue = this.calculateBaseValue(recentTransactions);
+    // Step 2: Calculate base value from recent sales using triple-weighted approach
+    const baseValue = this.calculateTripleWeightedValue(
+      recentTransactions,
+      property.exclusiveArea,
+      property.buildingYear,
+      buildingType
+    );
 
     // Step 3: Apply floor premium/discount
     const totalFloors = this.getTotalFloorsFromTransactions(recentTransactions);
@@ -118,6 +149,112 @@ export class PropertyValuationEngine {
     };
   }
 
+  /**
+   * Calculate base value using triple-weighted approach
+   *
+   * Combined Weight = Recency × Age Similarity × Area Similarity
+   *
+   * For apartments: Uses recency only (building-level data is consistent)
+   * For multifamily: Uses all three weights (dong-level data needs more filtering)
+   *
+   * @param transactions - Filtered transactions from MOLIT API
+   * @param targetArea - Target property's exclusive area (㎡)
+   * @param targetBuildingYear - Target property's building year (optional)
+   * @param buildingType - 'apartment' or 'multifamily'
+   */
+  private calculateTripleWeightedValue(
+    transactions: MolitTransaction[],
+    targetArea: number,
+    targetBuildingYear: number | undefined,
+    buildingType: BuildingType
+  ): number {
+    if (transactions.length === 0) return 0;
+
+    const now = new Date();
+    const useTripleWeight = buildingType === 'multifamily';
+
+    // Area half-life in absolute terms (20% of target area)
+    const areaHalfLife = targetArea * (VALUATION_CONFIG.AREA_HALFLIFE_PERCENT / 100);
+
+    console.log(`\n📊 ${useTripleWeight ? 'Triple' : 'Single'}-Weighted Valuation:`);
+    console.log(`   Transactions: ${transactions.length}`);
+    if (useTripleWeight) {
+      console.log(`   Target Area: ${targetArea}㎡ (half-life: ${areaHalfLife.toFixed(1)}㎡)`);
+      console.log(`   Target Year: ${targetBuildingYear || 'unknown'}`);
+    }
+
+    // Calculate weights for each transaction
+    const weightedData = transactions.map(t => {
+      const transactionDate = new Date(t.year, t.month - 1, t.day);
+      const daysAgo = (now.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24);
+
+      // 1. Recency weight (always applied)
+      const recencyWeight = Math.exp(-daysAgo / VALUATION_CONFIG.RECENCY_HALFLIFE_DAYS);
+
+      // 2. Age similarity weight (for multifamily only)
+      let ageWeight = 1.0;
+      if (useTripleWeight) {
+        if (targetBuildingYear && t.buildingYear) {
+          const yearDiff = Math.abs(t.buildingYear - targetBuildingYear);
+          ageWeight = Math.exp(-yearDiff / VALUATION_CONFIG.AGE_HALFLIFE_YEARS);
+        } else {
+          ageWeight = VALUATION_CONFIG.DEFAULT_AGE_WEIGHT;
+        }
+      }
+
+      // 3. Area similarity weight (for multifamily only)
+      let areaWeight = 1.0;
+      if (useTripleWeight) {
+        const areaDiff = Math.abs(t.exclusiveArea - targetArea);
+        areaWeight = Math.exp(-areaDiff / areaHalfLife);
+      }
+
+      // Combined weight
+      const combinedWeight = recencyWeight * ageWeight * areaWeight;
+
+      return {
+        transaction: t,
+        daysAgo,
+        recencyWeight,
+        ageWeight,
+        areaWeight,
+        combinedWeight,
+        weightedAmount: t.transactionAmount * combinedWeight
+      };
+    });
+
+    // Sort by combined weight to show top contributors
+    const sorted = [...weightedData].sort((a, b) => b.combinedWeight - a.combinedWeight);
+
+    // Log top 5 contributors
+    if (useTripleWeight) {
+      console.log(`\n   Top 5 contributors:`);
+      sorted.slice(0, 5).forEach((w, i) => {
+        const t = w.transaction;
+        const pct = (w.weightedAmount / weightedData.reduce((s, x) => s + x.weightedAmount, 0) * 100);
+        console.log(`   ${i + 1}. ${(t.transactionAmount / 100000000).toFixed(2)}억 × ${w.combinedWeight.toFixed(3)} = ${(w.weightedAmount / 100000000).toFixed(3)}억 (${pct.toFixed(1)}%)`);
+        console.log(`      Area: ${t.exclusiveArea}㎡, Built: ${t.buildingYear || '?'}, ${w.daysAgo.toFixed(0)}d ago`);
+      });
+    }
+
+    // Calculate weighted average
+    const totalWeightedAmount = weightedData.reduce((sum, w) => sum + w.weightedAmount, 0);
+    const totalWeight = weightedData.reduce((sum, w) => sum + w.combinedWeight, 0);
+    const baseValue = totalWeightedAmount / totalWeight;
+
+    // Calculate effective sample size: (Σw)² / Σw²
+    const sumSqWeights = weightedData.reduce((sum, w) => sum + Math.pow(w.combinedWeight, 2), 0);
+    const effectiveSampleSize = Math.pow(totalWeight, 2) / sumSqWeights;
+
+    console.log(`\n   Weighted Average: ₩${(baseValue / 100000000).toFixed(2)}억`);
+    console.log(`   Effective Sample Size: ${effectiveSampleSize.toFixed(1)}`);
+
+    return baseValue;
+  }
+
+  /**
+   * Legacy single-weight calculation (kept for backwards compatibility)
+   */
   private calculateBaseValue(transactions: MolitTransaction[]): number {
     if (transactions.length === 0) return 0;
 
