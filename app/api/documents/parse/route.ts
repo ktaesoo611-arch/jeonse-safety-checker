@@ -107,9 +107,11 @@ async function fetchPropertyValuation(
       console.warn('Missing exclusive area for valuation');
       return null;
     }
+    // If apartment but no building name, fall back to multifamily (dong-level matching)
+    // This handles cases where building type detection failed or building name wasn't provided
     if (buildingType === 'apartment' && !propertyDetails.buildingName) {
-      console.warn('Missing building name for apartment valuation');
-      return null;
+      console.warn('Missing building name for apartment valuation, falling back to multifamily (dong-level)');
+      buildingType = 'multifamily';
     }
 
     // Initialize PropertyValuationEngine with MOLIT API key
