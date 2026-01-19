@@ -103,9 +103,9 @@ async function fetchPropertyValuation(
 
     // Check if we have required fields
     // For multifamily, building name is optional (we use dong-level matching)
+    // Note: We no longer require exclusiveArea - jeonse transactions can still be fetched without it
     if (!propertyDetails.exclusiveArea) {
-      console.warn('Missing exclusive area for valuation');
-      return null;
+      console.warn('Missing exclusive area for valuation - will fetch jeonse transactions without area filter');
     }
     // If apartment but no building name, fall back to multifamily (dong-level matching)
     // This handles cases where building type detection failed or building name wasn't provided

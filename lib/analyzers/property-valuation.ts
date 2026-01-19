@@ -64,7 +64,41 @@ export class PropertyValuationEngine {
       12 // Last 12 months (changed from 6 for better trend accuracy)
     );
 
+    // Step 1b: Fetch JEONSE (전세) transactions for jeonse price analysis
+    // Moved BEFORE the sales check so we can still get jeonse data even if no sales
+    let jeonseTransactions: MolitTransaction[] = [];
+    try {
+      jeonseTransactions = await this.molitAPI.getRecentJeonseTransactionsByType(
+        buildingType,
+        lawdCd,
+        identifier,
+        property.exclusiveArea,
+        12 // Last 12 months
+      );
+      console.log(`📊 Jeonse transaction data: ${jeonseTransactions.length} txns`);
+    } catch (error) {
+      console.error('Failed to fetch jeonse transactions:', error);
+      // Continue without jeonse data
+    }
+
     if (recentTransactions.length === 0) {
+      // No sale transactions, but we may have jeonse transactions
+      // Return a minimal valuation with just jeonse data
+      if (jeonseTransactions.length > 0) {
+        console.log('⚠️ No sale transactions found, but have jeonse transactions - returning partial valuation');
+        return {
+          valueLow: 0,
+          valueMid: 0,
+          valueHigh: 0,
+          confidence: 0,
+          trend: 'stable' as const,
+          trendPercentage: 0,
+          recentSales: [],
+          pricePerPyeong: 0,
+          dataSources: [],
+          allJeonseTransactions: jeonseTransactions // Include jeonse data for scatter plot
+        };
+      }
       throw new Error('No recent transaction data found for this property');
     }
 
@@ -79,22 +113,6 @@ export class PropertyValuationEngine {
     console.log(`📊 Sale transaction data: 6M=${transactions6M.length} txns, 12M=${recentTransactions.length} txns`);
     if (recentTransactions.length >= transactions6M.length * 1.5) {
       console.log(`   ✅ 12-month period provides ${((recentTransactions.length / Math.max(1, transactions6M.length) - 1) * 100).toFixed(0)}% more data points`);
-    }
-
-    // Step 1b: Fetch JEONSE (전세) transactions for jeonse price analysis
-    let jeonseTransactions: MolitTransaction[] = [];
-    try {
-      jeonseTransactions = await this.molitAPI.getRecentJeonseTransactionsByType(
-        buildingType,
-        lawdCd,
-        identifier,
-        property.exclusiveArea,
-        12 // Last 12 months
-      );
-      console.log(`📊 Jeonse transaction data: ${jeonseTransactions.length} txns`);
-    } catch (error) {
-      console.error('Failed to fetch jeonse transactions:', error);
-      // Continue without jeonse data
     }
 
     // Step 2: Calculate base value from recent sales using triple-weighted approach
