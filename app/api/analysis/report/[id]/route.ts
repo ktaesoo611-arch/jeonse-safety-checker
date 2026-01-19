@@ -304,7 +304,38 @@ export async function GET(
           allJeonseTransactions,
           userArea
         );
-        console.log('📊 Jeonse analysis (new schema): Using jeonse transactions');
+
+        // Even if analysis returns null (insufficient data for regression),
+        // preserve raw transaction data for the transaction table
+        if (!jeonseAnalysis && allJeonseTransactions.length > 0) {
+          console.log('📊 Jeonse analysis (new schema): Insufficient data for regression, but preserving raw transactions');
+          const now = new Date();
+          jeonseAnalysis = {
+            proposedJeonse: newSchemaResult.proposed_jeonse,
+            expectedJeonse: null,
+            jeonseDifference: null,
+            jeonseDifferencePercent: null,
+            assessment: null,
+            assessmentDetails: null,
+            potentialSavings: 0,
+            trend: null,
+            transactionData: allJeonseTransactions.map((t: any) => {
+              const txDate = new Date(t.year, t.month - 1, t.day);
+              const daysAgo = Math.floor((now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24));
+              return {
+                daysAgo,
+                price: t.transactionAmount / 100000000, // Convert to 억
+                date: `${t.year}.${String(t.month).padStart(2, '0')}.${String(t.day).padStart(2, '0')}`,
+                floor: t.floor,
+                exclusiveArea: t.exclusiveArea
+              };
+            }),
+            regressionLine: null,
+            contractCount: allJeonseTransactions.length,
+          };
+        } else {
+          console.log('📊 Jeonse analysis (new schema): Using jeonse transactions');
+        }
       } else {
         console.log('📊 Jeonse analysis (new schema): No jeonse transactions available');
       }
@@ -546,7 +577,38 @@ export async function GET(
         allJeonseTransactionsFallback,
         userArea
       );
-      console.log('📊 Jeonse analysis (fallback): Using jeonse transactions -', jeonseAnalysisFallback ? 'completed' : 'no result');
+
+      // Even if analysis returns null (insufficient data for regression),
+      // preserve raw transaction data for the transaction table
+      if (!jeonseAnalysisFallback && allJeonseTransactionsFallback.length > 0) {
+        console.log('📊 Jeonse analysis (fallback): Insufficient data for regression, but preserving raw transactions');
+        const now = new Date();
+        jeonseAnalysisFallback = {
+          proposedJeonse: analysis.proposed_jeonse,
+          expectedJeonse: null,
+          jeonseDifference: null,
+          jeonseDifferencePercent: null,
+          assessment: null,
+          assessmentDetails: null,
+          potentialSavings: 0,
+          trend: null,
+          transactionData: allJeonseTransactionsFallback.map((t: any) => {
+            const txDate = new Date(t.year, t.month - 1, t.day);
+            const daysAgo = Math.floor((now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24));
+            return {
+              daysAgo,
+              price: t.transactionAmount / 100000000, // Convert to 억
+              date: `${t.year}.${String(t.month).padStart(2, '0')}.${String(t.day).padStart(2, '0')}`,
+              floor: t.floor,
+              exclusiveArea: t.exclusiveArea
+            };
+          }),
+          regressionLine: null,
+          contractCount: allJeonseTransactionsFallback.length,
+        };
+      } else {
+        console.log('📊 Jeonse analysis (fallback): Using jeonse transactions -', jeonseAnalysisFallback ? 'completed' : 'no result');
+      }
     } else {
       console.log('📊 Jeonse analysis (fallback): No jeonse transactions available');
     }
