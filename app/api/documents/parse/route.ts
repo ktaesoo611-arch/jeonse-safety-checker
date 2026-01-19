@@ -25,6 +25,8 @@ import { LLMParser } from '@/lib/services/llm-parser';
 import { PropertyValuationEngine } from '@/lib/analyzers/property-valuation';
 import { PropertyDetails, ValuationResult, BuildingType } from '@/lib/types';
 import { analysisService } from '@/lib/services/analysis-service';
+import { buildingRegistryAPI } from '@/lib/apis/building-registry';
+import { parseKoreanAddress } from '@/lib/utils/address-parser';
 
 // Module-level supabase client (service role for bypassing RLS)
 const supabase = createServiceRoleClient();
@@ -239,10 +241,36 @@ async function performRealAnalysis(
       area: deunggibuData.area
     });
 
+    // Step 3.5: Detect building type using Building Registry API
+    // This is crucial for correctly querying jeonse transactions (apartment vs multifamily)
+    let detectedBuildingType: BuildingType = 'apartment'; // Default
+    try {
+      const addressComponents = parseKoreanAddress(addressForValuation);
+      if (addressComponents) {
+        console.log('🏠 Detecting building type for:', addressForValuation);
+        console.log('   Address components:', addressComponents);
+        const rawBuildingType = await buildingRegistryAPI.detectBuildingType(
+          addressComponents.sigunguCd,
+          addressComponents.bjdongCd,
+          addressComponents.bun,
+          addressComponents.ji
+        );
+        // Handle 'unknown' by defaulting to 'apartment'
+        detectedBuildingType = rawBuildingType === 'unknown' ? 'apartment' : rawBuildingType;
+        console.log(`   ✅ Detected building type: ${detectedBuildingType}${rawBuildingType === 'unknown' ? ' (defaulted from unknown)' : ''}`);
+      } else {
+        console.log('⚠️ Could not parse address for building type detection, defaulting to apartment');
+      }
+    } catch (error) {
+      console.error('⚠️ Building type detection failed, defaulting to apartment:', error);
+    }
+
     const molitValuation = await fetchPropertyValuation(
       addressForValuation,
       buildingNameForValuation,
-      deunggibuData.area
+      deunggibuData.area,
+      undefined, // floor
+      detectedBuildingType
     );
 
     // If MOLIT data is available, use it; otherwise fall back to estimation
