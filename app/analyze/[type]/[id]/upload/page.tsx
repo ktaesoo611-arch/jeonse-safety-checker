@@ -89,11 +89,26 @@ export default function UploadPage() {
       // Track document upload
       analytics.documentUploaded(analysisId, 'deunggibu');
 
+      // Get buildingType from sessionStorage (stored when analysis was created)
+      let buildingType = 'apartment'; // Default fallback
+      try {
+        const storedData = sessionStorage.getItem(`analysis-${analysisId}`);
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          buildingType = parsed.buildingType || 'apartment';
+        }
+      } catch (e) {
+        console.warn('Could not read buildingType from sessionStorage:', e);
+      }
+
       // Start parsing and analysis (run in background)
       fetch('/api/documents/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: uploadData.documentId })
+        body: JSON.stringify({
+          documentId: uploadData.documentId,
+          buildingType // Pass user-selected building type to avoid re-detection
+        })
       }).catch(err => console.error('Parse request error:', err));
 
       setUploadProgress(100);

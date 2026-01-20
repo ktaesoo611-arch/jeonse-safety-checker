@@ -33,6 +33,7 @@ const supabase = createServiceRoleClient();
 
 interface ParseDocumentRequest {
   documentId: string;
+  buildingType?: BuildingType; // User-selected building type from frontend
 }
 
 /**
@@ -142,7 +143,8 @@ async function performRealAnalysis(
   buffer: Buffer,
   analysisId: string,
   proposedJeonse: number,
-  address: string
+  address: string,
+  userBuildingType?: BuildingType // User-selected building type from frontend
 ) {
   try {
     console.log('Starting OCR extraction...');
@@ -243,28 +245,34 @@ async function performRealAnalysis(
       area: deunggibuData.area
     });
 
-    // Step 3.5: Detect building type using Building Registry API
-    // This is crucial for correctly querying jeonse transactions (apartment vs multifamily)
-    let detectedBuildingType: BuildingType = 'apartment'; // Default
-    try {
-      const addressComponents = parseKoreanAddress(addressForValuation);
-      if (addressComponents) {
-        console.log('🏠 Detecting building type for:', addressForValuation);
-        console.log('   Address components:', addressComponents);
-        const rawBuildingType = await buildingRegistryAPI.detectBuildingType(
-          addressComponents.sigunguCd,
-          addressComponents.bjdongCd,
-          addressComponents.bun,
-          addressComponents.ji
-        );
-        // Handle 'unknown' by defaulting to 'apartment'
-        detectedBuildingType = rawBuildingType === 'unknown' ? 'apartment' : rawBuildingType;
-        console.log(`   ✅ Detected building type: ${detectedBuildingType}${rawBuildingType === 'unknown' ? ' (defaulted from unknown)' : ''}`);
-      } else {
-        console.log('⚠️ Could not parse address for building type detection, defaulting to apartment');
+    // Step 3.5: Use user-provided building type or detect using Building Registry API
+    // User-provided type is preferred as it's selected by the user on the frontend
+    let detectedBuildingType: BuildingType = userBuildingType || 'apartment';
+
+    if (userBuildingType) {
+      console.log(`🏠 Using user-provided building type: ${userBuildingType}`);
+    } else {
+      // Fall back to Building Registry API detection if not provided
+      try {
+        const addressComponents = parseKoreanAddress(addressForValuation);
+        if (addressComponents) {
+          console.log('🏠 Detecting building type for:', addressForValuation);
+          console.log('   Address components:', addressComponents);
+          const rawBuildingType = await buildingRegistryAPI.detectBuildingType(
+            addressComponents.sigunguCd,
+            addressComponents.bjdongCd,
+            addressComponents.bun,
+            addressComponents.ji
+          );
+          // Handle 'unknown' by defaulting to 'apartment'
+          detectedBuildingType = rawBuildingType === 'unknown' ? 'apartment' : rawBuildingType;
+          console.log(`   ✅ Detected building type: ${detectedBuildingType}${rawBuildingType === 'unknown' ? ' (defaulted from unknown)' : ''}`);
+        } else {
+          console.log('⚠️ Could not parse address for building type detection, defaulting to apartment');
+        }
+      } catch (error) {
+        console.error('⚠️ Building type detection failed, defaulting to apartment:', error);
       }
-    } catch (error) {
-      console.error('⚠️ Building type detection failed, defaulting to apartment:', error);
     }
 
     const molitValuation = await fetchPropertyValuation(
@@ -891,7 +899,13 @@ export async function POST(request: NextRequest) {
       // Perform real OCR and analysis
       // Note: performRealAnalysis() handles all database updates internally,
       // including saving parsed_data to uploaded_documents and risk analysis to analysis_results
-      const result = await performRealAnalysis(buffer, document.analysis_id, proposedJeonse, address);
+      const result = await performRealAnalysis(
+        buffer,
+        document.analysis_id,
+        proposedJeonse,
+        address,
+        body.buildingType // Pass user-selected building type
+      );
 
       // Don't overwrite the parsed_data - it was already saved inside performRealAnalysis
       // Just set a flag so we skip the update below
