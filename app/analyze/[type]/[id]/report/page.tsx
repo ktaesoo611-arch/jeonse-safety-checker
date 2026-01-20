@@ -163,10 +163,12 @@ export default function ReportPage() {
     },
     metrics: {
       ltv: riskAnalysis?.metrics?.ltv || 0,
+      ltvRange: riskAnalysis?.metrics?.ltvRange || null,
       totalDebt: riskAnalysis?.metrics?.totalDebt || 0,
       availableEquity: riskAnalysis?.metrics?.availableEquity || 0,
       debtCount: riskAnalysis?.metrics?.debtCount || 0,
     },
+    tierEstimates: valuation?.tierEstimates || null,
     debtRanking: riskAnalysis?.debtRanking || [],
     smallAmountPriority: riskAnalysis?.smallAmountPriority || null,
     risks: riskAnalysis?.risks || [],

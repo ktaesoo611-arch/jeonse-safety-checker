@@ -24,6 +24,21 @@ interface RiskItem {
   category?: 'debt' | 'legal' | 'market' | 'building' | 'priority';
 }
 
+interface LTVRange {
+  conservative: number;
+  moderate: number;
+  optimistic: number;
+  conservativeLabel: string;
+  optimisticLabel: string;
+}
+
+interface TierEstimate {
+  tier: string;
+  label: string;
+  value: number;
+  unitPrice: number;
+}
+
 interface RiskAnalysisSectionProps {
   scores: {
     ltvScore: number;
@@ -34,10 +49,12 @@ interface RiskAnalysisSectionProps {
   };
   metrics: {
     ltv: number;
+    ltvRange?: LTVRange | null;
     totalDebt: number;
     availableEquity: number;
     debtCount: number;
   };
+  tierEstimates?: TierEstimate[] | null;
   debtRanking?: MortgageRanking[];
   smallAmountPriority?: SmallAmountPriority;
   risks: RiskItem[];
@@ -49,6 +66,7 @@ interface RiskAnalysisSectionProps {
 export default function RiskAnalysisSection({
   scores,
   metrics,
+  tierEstimates,
   debtRanking,
   smallAmountPriority,
   risks,
@@ -119,6 +137,14 @@ export default function RiskAnalysisSection({
                 <div>
                   <p className="font-bold text-gray-900 mb-1">Loan-to-Value Ratio</p>
                   <p className="text-gray-700 text-sm">Total debt + your deposit divided by property value. Lower is safer.</p>
+                  {metrics.ltvRange && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-gray-900 font-semibold text-xs mb-1">LTV Range (by tier):</p>
+                      <p className="text-gray-600 text-xs">Conservative: {metrics.ltvRange.conservative.toFixed(0)}%</p>
+                      <p className="text-gray-600 text-xs">Moderate: {metrics.ltvRange.moderate.toFixed(0)}%</p>
+                      <p className="text-gray-600 text-xs">Optimistic: {metrics.ltvRange.optimistic.toFixed(0)}%</p>
+                    </div>
+                  )}
                   <p className="text-gray-500 text-xs mt-2">&lt;60% Safe | 60-70% OK | 70-80% Risky | &gt;80% Danger</p>
                 </div>
               }>
@@ -134,6 +160,12 @@ export default function RiskAnalysisSection({
             }`}>
               {metrics.ltv.toFixed(0)}%
             </p>
+            {/* LTV Range indicator */}
+            {metrics.ltvRange && (
+              <p className="text-xs text-gray-500 mt-1">
+                {metrics.ltvRange.optimistic.toFixed(0)}% ~ {metrics.ltvRange.conservative.toFixed(0)}%
+              </p>
+            )}
             <div className="w-full h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
               <div
                 className={`h-full rounded-full ${
@@ -421,7 +453,33 @@ export default function RiskAnalysisSection({
             </h4>
             <div className="space-y-2 text-sm sm:text-base">
               <div className="flex justify-between py-3 border-b border-gray-200">
-                <span className="text-gray-700">Estimated Property Value</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-700">Estimated Property Value</span>
+                  {tierEstimates && tierEstimates.length > 0 && (
+                    <Tooltip content={
+                      <div>
+                        <p className="font-bold text-gray-900 mb-2">Property Value by Tier</p>
+                        <p className="text-gray-700 text-sm mb-3">Values vary by quality tier. Safety scoring uses the conservative (Budget) tier.</p>
+                        <div className="space-y-1">
+                          {tierEstimates.map((tier) => (
+                            <div key={tier.tier} className="flex justify-between text-sm">
+                              <span className={`text-gray-700 ${tier.tier === 'budget' ? 'font-semibold' : ''}`}>
+                                {tier.label}{tier.tier === 'budget' ? ' (Safety)' : ''}:
+                              </span>
+                              <span className={`font-medium ${tier.tier === 'budget' ? 'text-blue-600' : 'text-gray-900'}`}>
+                                {(tier.value / 100000000).toFixed(2)}억
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    }>
+                      <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </Tooltip>
+                  )}
+                </div>
                 <span className="font-bold text-gray-900">{formatAmount(estimatedValue || 0)}</span>
               </div>
               <div className="flex justify-between py-3 border-b border-gray-200">
