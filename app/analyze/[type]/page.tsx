@@ -473,7 +473,7 @@ export default function PropertyInfoPage() {
                     }`}
                   >
                     <div className="font-semibold">연립/다세대</div>
-                    <div className="text-xs mt-1 opacity-75">Villa / Townhouse</div>
+                    <div className="text-xs mt-1 opacity-75">Villa / Low-rise Apt</div>
                   </button>
                 </div>
                 <p className="text-sm text-[#718096] mt-2">

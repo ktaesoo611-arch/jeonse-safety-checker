@@ -415,7 +415,7 @@ export default function LandingPage() {
             Apartments & 연립/다세대 in Seoul & Gyeonggi
           </h2>
           <p className={`text-lg text-[#4A5568] max-w-xl mx-auto transition-all duration-700 ${coverageSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '150ms' }}>
-            10,800+ apartments searchable by name, plus full support for 연립/다세대 (villa/townhouse) properties using neighborhood-level analysis.
+            10,800+ apartments searchable by name, plus full support for 연립/다세대 (villa/low-rise apartment) properties using neighborhood-level analysis.
           </p>
         </div>
       </section>

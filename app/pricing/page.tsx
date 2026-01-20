@@ -252,7 +252,7 @@ export default function PricingPage() {
               />
               <FAQItem
                 question="What areas and property types do you cover?"
-                answer="We support apartments and 연립/다세대 (villa/townhouse) in Seoul and Gyeonggi Province (경기도). For apartments, we have 10,800+ properties searchable by name. For 연립/다세대, we use neighborhood-level market data for accurate valuation. We're working to expand to Incheon and officetels soon."
+                answer="We support apartments and 연립/다세대 (villa/low-rise apartment) in Seoul and Gyeonggi Province (경기도). For apartments, we have 10,800+ properties searchable by name. For 연립/다세대, we use neighborhood-level market data for accurate valuation. We're working to expand to Incheon and officetels soon."
               />
             </div>
           </div>
