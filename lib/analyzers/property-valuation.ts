@@ -69,31 +69,31 @@ const TIERED_CONFIG = {
   // Recency half-life for tiered calculation (days)
   RECENCY_HALFLIFE_DAYS: 90,
 
-  // Tier selection guidance for users
+  // Tier selection guidance for users (English)
   GUIDANCE: {
     premium: [
-      '브랜드 건설사 (대림, 현대, 삼성 등)',
-      '역세권 (도보 5분 이내)',
-      '최근 리모델링 완료',
-      '대로변 / 공원 조망',
-      '주차 충분 (세대당 1대 이상)',
+      'Major brand builder (Daelim, Hyundai, Samsung, etc.)',
+      'Near subway station (within 5 min walk)',
+      'Recently renovated',
+      'Main road / park view',
+      'Ample parking (1+ per unit)',
     ],
     mid: [
-      '중견 건설사',
-      '역세권 (도보 10분 이내)',
-      '관리 양호',
-      '기본 편의시설 구비',
+      'Mid-tier builder',
+      'Near subway (within 10 min walk)',
+      'Well-maintained',
+      'Basic amenities available',
     ],
     standard: [
-      '일반 건설사',
-      '대중교통 접근 양호',
-      '기본 시설 유지 상태',
+      'Local builder',
+      'Good public transit access',
+      'Basic facilities maintained',
     ],
     budget: [
-      '노후 건물 (20년+)',
-      '대중교통 접근 불편',
-      '주차 부족',
-      '리모델링 필요',
+      'Older building (20+ years)',
+      'Limited public transit',
+      'Insufficient parking',
+      'Needs renovation',
     ],
   } as TierGuidance,
 };
@@ -242,9 +242,32 @@ export class PropertyValuationEngine {
     const confidence = this.determineConfidence(recentTransactions, trend.rSquared);
 
     // Step 6: Determine value range
-    const valueLow = Math.floor(floorAdjustedValue * 0.95);
-    const valueMid = Math.floor(floorAdjustedValue);
-    const valueHigh = Math.floor(floorAdjustedValue * 1.05);
+    // For multifamily with tier estimates, use tier values for consistency
+    // This ensures the "Est. Value" matches the tier breakdown
+    let valueLow: number;
+    let valueMid: number;
+    let valueHigh: number;
+
+    if (tierEstimates && tierEstimates.length >= 4) {
+      // Use tier values: Budget for low, Mid tier for mid, Premium for high
+      const budgetTier = tierEstimates.find(t => t.tier === 'budget');
+      const midTier = tierEstimates.find(t => t.tier === 'mid');
+      const premiumTier = tierEstimates.find(t => t.tier === 'premium');
+
+      valueLow = budgetTier?.value || Math.floor(floorAdjustedValue * 0.95);
+      valueMid = midTier?.value || Math.floor(floorAdjustedValue);
+      valueHigh = premiumTier?.value || Math.floor(floorAdjustedValue * 1.05);
+
+      console.log('📊 Using tier-based value range for multifamily:');
+      console.log(`   Low (Budget): ${(valueLow / 100000000).toFixed(2)}억`);
+      console.log(`   Mid: ${(valueMid / 100000000).toFixed(2)}억`);
+      console.log(`   High (Premium): ${(valueHigh / 100000000).toFixed(2)}억`);
+    } else {
+      // Traditional ±5% range for apartments or when no tier data
+      valueLow = Math.floor(floorAdjustedValue * 0.95);
+      valueMid = Math.floor(floorAdjustedValue);
+      valueHigh = Math.floor(floorAdjustedValue * 1.05);
+    }
 
     // Step 7: Cache results
     await this.cacheResults(property, recentTransactions);
