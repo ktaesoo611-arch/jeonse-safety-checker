@@ -1,6 +1,13 @@
 'use client';
 
+import React from 'react';
 import Tooltip from '@/components/Tooltip';
+import {
+  calculateLtvScore,
+  calculateOverallScore,
+  determineRiskLevel,
+  type RiskLevel,
+} from '@/lib/utils/scoring';
 
 interface MortgageRanking {
   rank: number;
@@ -41,6 +48,15 @@ interface TierEstimate {
 
 type TierKey = 'budget' | 'standard' | 'mid' | 'premium';
 
+interface RecalculatedScores {
+  ltvScore: number;
+  overallScore: number;
+  riskLevel: RiskLevel;
+  ltv: number;
+  equity: number;
+  propertyValue: number;
+}
+
 interface RiskAnalysisSectionProps {
   scores: {
     ltvScore: number;
@@ -58,6 +74,7 @@ interface RiskAnalysisSectionProps {
   };
   tierEstimates?: TierEstimate[] | null;
   selectedTier?: TierKey;
+  onScoresRecalculated?: (scores: RecalculatedScores) => void;
   debtRanking?: MortgageRanking[];
   smallAmountPriority?: SmallAmountPriority;
   risks: RiskItem[];
@@ -71,6 +88,7 @@ export default function RiskAnalysisSection({
   metrics,
   tierEstimates,
   selectedTier = 'mid',
+  onScoresRecalculated,
   debtRanking,
   smallAmountPriority,
   risks,
@@ -93,6 +111,30 @@ export default function RiskAnalysisSection({
 
   // Calculate available equity based on selected tier
   const calculatedEquity = displayPropertyValue - metrics.totalDebt - proposedDeposit;
+
+  // Recalculate scores based on selected tier
+  const recalculatedLtvScore = calculateLtvScore(calculatedLtv);
+  const recalculatedOverallScore = calculateOverallScore(
+    recalculatedLtvScore,
+    scores.legalScore,
+    scores.marketScore,
+    scores.buildingScore
+  );
+  const recalculatedRiskLevel = determineRiskLevel(recalculatedOverallScore, risks);
+
+  // Notify parent of recalculated scores
+  React.useEffect(() => {
+    if (onScoresRecalculated && tierEstimates && tierEstimates.length > 0) {
+      onScoresRecalculated({
+        ltvScore: recalculatedLtvScore,
+        overallScore: recalculatedOverallScore,
+        riskLevel: recalculatedRiskLevel,
+        ltv: calculatedLtv,
+        equity: calculatedEquity,
+        propertyValue: displayPropertyValue,
+      });
+    }
+  }, [selectedTier, recalculatedLtvScore, recalculatedOverallScore, recalculatedRiskLevel, calculatedLtv, calculatedEquity, displayPropertyValue, onScoresRecalculated, tierEstimates]);
 
   // Format with 2 decimal places for small amount priority thresholds
   const formatAmountPrecise = (amount: number) => {
@@ -131,8 +173,16 @@ export default function RiskAnalysisSection({
     }
   };
 
-  // Filter out debtScore from display
-  const displayScores = Object.entries(scores).filter(([key]) => key !== 'debtScore');
+  // Filter out debtScore from display and use recalculated LTV score
+  const displayScores = Object.entries(scores)
+    .filter(([key]) => key !== 'debtScore')
+    .map(([key, value]) => {
+      // Replace ltvScore with recalculated value based on selected tier
+      if (key === 'ltvScore' && tierEstimates && tierEstimates.length > 0) {
+        return [key, recalculatedLtvScore] as [string, number];
+      }
+      return [key, value] as [string, number];
+    });
 
   return (
     <div className="mb-12">

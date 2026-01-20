@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -10,6 +10,16 @@ import {
   ActionItemsSection,
   TierEstimatesSection
 } from '@/components/report';
+import { generateVerdict as generateVerdictFromScores, type RiskLevel } from '@/lib/utils/scoring';
+
+interface RecalculatedScores {
+  ltvScore: number;
+  overallScore: number;
+  riskLevel: RiskLevel;
+  ltv: number;
+  equity: number;
+  propertyValue: number;
+}
 
 export default function ReportPage() {
   const params = useParams();
@@ -43,6 +53,13 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null);
   // Selected tier for LTV calculation - default to 'mid'
   const [selectedTier, setSelectedTier] = useState<'budget' | 'standard' | 'mid' | 'premium'>('mid');
+  // Recalculated scores based on tier selection
+  const [recalculatedScores, setRecalculatedScores] = useState<RecalculatedScores | null>(null);
+
+  // Handle scores recalculation from RiskAnalysisSection
+  const handleScoresRecalculated = useCallback((scores: RecalculatedScores) => {
+    setRecalculatedScores(scores);
+  }, []);
 
   useEffect(() => {
     // Skip fetch if we have cached data
@@ -137,6 +154,15 @@ export default function ReportPage() {
     contractCount: wolseAnalysis?.contractCount
   });
 
+  // Get selected tier label for display
+  const selectedTierData = valuation?.tierEstimates?.find((t: any) => t.tier === selectedTier);
+  const selectedTierLabel = selectedTierData?.label || null;
+
+  // Generate dynamic verdict based on recalculated scores
+  const dynamicVerdict = recalculatedScores
+    ? generateVerdictFromScores(recalculatedScores.riskLevel, recalculatedScores.overallScore)
+    : riskAnalysis?.verdict || summary?.verdict || generateVerdict(reportData);
+
   const heroProps = {
     address: property?.address || 'Address not available',
     buildingNumber: property?.buildingNumber || null,
@@ -147,13 +173,18 @@ export default function ReportPage() {
     deposit: property?.proposedJeonse || wolseAnalysis?.userDeposit || 0,
     monthlyRent: isWolse ? wolseAnalysis?.userMonthlyRent : undefined,
     estimatedValue: property?.estimatedValue || valuation?.valueMid || null,
-    verdict: riskAnalysis?.verdict || summary?.verdict || generateVerdict(reportData),
+    verdict: dynamicVerdict,
     reportDate: new Date(reportData?.completedAt || reportData?.generatedAt || Date.now()).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     }),
     reportType: type as 'jeonse' | 'wolse',
+    // Override values for tier-based recalculation
+    overrideSafetyScore: recalculatedScores?.overallScore,
+    overrideRiskLevel: recalculatedScores?.riskLevel,
+    overrideEstimatedValue: recalculatedScores?.propertyValue,
+    selectedTierLabel: selectedTierLabel,
   };
 
   const riskProps = {
@@ -287,6 +318,7 @@ export default function ReportPage() {
         <RiskAnalysisSection
           {...riskProps}
           selectedTier={selectedTier}
+          onScoresRecalculated={handleScoresRecalculated}
         />
         <MarketPositionSection {...marketProps} />
         <ActionItemsSection {...actionProps} />

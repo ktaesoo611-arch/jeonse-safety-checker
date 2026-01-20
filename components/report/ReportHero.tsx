@@ -13,6 +13,11 @@ interface ReportHeroProps {
   verdict?: string;
   reportDate: string;
   reportType: 'jeonse' | 'wolse';
+  // Override values for tier-based recalculation
+  overrideSafetyScore?: number;
+  overrideRiskLevel?: 'SAFE' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  overrideEstimatedValue?: number;
+  selectedTierLabel?: string;
 }
 
 export default function ReportHero({
@@ -28,9 +33,17 @@ export default function ReportHero({
   verdict,
   reportDate,
   reportType,
+  overrideSafetyScore,
+  overrideRiskLevel,
+  overrideEstimatedValue,
+  selectedTierLabel,
 }: ReportHeroProps) {
+  // Use override values when provided (tier-based recalculation)
+  const displaySafetyScore = overrideSafetyScore ?? safetyScore;
+  const displayRiskLevel = overrideRiskLevel ?? riskLevel;
+  const displayEstimatedValue = overrideEstimatedValue ?? estimatedValue;
   const getRiskPosition = () => {
-    switch (riskLevel) {
+    switch (displayRiskLevel) {
       case 'SAFE': return 0;
       case 'MODERATE': return 1;
       case 'HIGH': return 2;
@@ -41,18 +54,18 @@ export default function ReportHero({
   };
 
   const getRiskText = () => {
-    switch (riskLevel) {
+    switch (displayRiskLevel) {
       case 'SAFE': return 'Safe to Proceed';
       case 'MODERATE': return 'Moderate Risk';
       case 'HIGH': return 'High Risk';
       case 'CRITICAL': return 'Critical Risk';
       case 'UNKNOWN': return 'Analysis Pending';
-      default: return riskLevel;
+      default: return displayRiskLevel;
     }
   };
 
   const getRiskColor = () => {
-    switch (riskLevel) {
+    switch (displayRiskLevel) {
       case 'SAFE': return 'text-emerald-600';
       case 'MODERATE': return 'text-amber-600';
       case 'HIGH': return 'text-orange-600';
@@ -63,7 +76,7 @@ export default function ReportHero({
   };
 
   const getRiskBadgeColor = () => {
-    switch (riskLevel) {
+    switch (displayRiskLevel) {
       case 'SAFE': return 'bg-emerald-100 text-emerald-700';
       case 'MODERATE': return 'bg-amber-100 text-amber-700';
       case 'HIGH': return 'bg-orange-100 text-orange-700';
@@ -169,18 +182,21 @@ export default function ReportHero({
           </div>
 
           <div className={`text-center px-4 sm:px-8 py-5 rounded-2xl border-2 hover:shadow-md transition-all duration-200 ${
-            safetyScore >= 70 ? 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200' :
-            safetyScore >= 50 ? 'bg-amber-50 border-amber-100 hover:bg-amber-100 hover:border-amber-200' :
+            displaySafetyScore >= 70 ? 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200' :
+            displaySafetyScore >= 50 ? 'bg-amber-50 border-amber-100 hover:bg-amber-100 hover:border-amber-200' :
             'bg-red-50 border-red-100 hover:bg-red-100 hover:border-red-200'
           }`}>
             <p className={`text-sm sm:text-base font-medium mb-2 ${
-              safetyScore >= 70 ? 'text-emerald-600' :
-              safetyScore >= 50 ? 'text-amber-600' : 'text-red-600'
+              displaySafetyScore >= 70 ? 'text-emerald-600' :
+              displaySafetyScore >= 50 ? 'text-amber-600' : 'text-red-600'
             }`}>Safety Score</p>
             <p className={`text-xl sm:text-2xl font-bold ${
-              safetyScore >= 70 ? 'text-emerald-900' :
-              safetyScore >= 50 ? 'text-amber-900' : 'text-red-900'
-            }`}>{safetyScore}/100</p>
+              displaySafetyScore >= 70 ? 'text-emerald-900' :
+              displaySafetyScore >= 50 ? 'text-amber-900' : 'text-red-900'
+            }`}>{displaySafetyScore}/100</p>
+            {selectedTierLabel && (
+              <p className="text-xs text-gray-500 mt-1">{selectedTierLabel}</p>
+            )}
           </div>
 
           {monthlyRent !== undefined && (
@@ -190,10 +206,13 @@ export default function ReportHero({
             </div>
           )}
 
-          {estimatedValue && (
+          {displayEstimatedValue && (
             <div className="text-center px-4 sm:px-8 py-5 bg-slate-50 rounded-2xl border-2 border-slate-200 hover:bg-slate-100 hover:shadow-md hover:border-slate-300 transition-all duration-200">
               <p className="text-sm sm:text-base text-slate-600 font-medium mb-2">Est. Value</p>
-              <p className="text-xl sm:text-2xl font-bold text-slate-900">{formatAmount(estimatedValue)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900">{formatAmount(displayEstimatedValue)}</p>
+              {selectedTierLabel && (
+                <p className="text-xs text-gray-500 mt-1">{selectedTierLabel}</p>
+              )}
             </div>
           )}
         </div>
