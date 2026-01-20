@@ -114,15 +114,52 @@ export default function RiskAnalysisSection({
 
   // Recalculate scores based on selected tier
   const recalculatedLtvScore = calculateLtvScore(calculatedLtv);
+
+  // Filter out LTV-related risks and regenerate them based on tier selection
+  const ltvRiskTypes = ['critical_ltv', 'high_ltv', 'elevated_ltv'];
+  const nonLtvRisks = risks.filter(r => !ltvRiskTypes.includes(r.type));
+
+  // Generate dynamic LTV risk based on calculated LTV
+  const dynamicLtvRisk: RiskItem | null = (() => {
+    const ltvRatio = calculatedLtv / 100;
+    if (ltvRatio > 0.80) {
+      return {
+        type: 'critical_ltv',
+        severity: 'CRITICAL',
+        description: `LTV is ${calculatedLtv.toFixed(1)}%, exceeding the safe limit of 80%. In foreclosure, you likely won't recover your deposit.`,
+        category: 'debt' as const,
+      };
+    } else if (ltvRatio > 0.70) {
+      return {
+        type: 'high_ltv',
+        severity: 'HIGH',
+        description: `LTV is ${calculatedLtv.toFixed(1)}%, above the recommended 70% threshold. Your deposit has limited protection in foreclosure.`,
+        category: 'debt' as const,
+      };
+    } else if (ltvRatio > 0.60) {
+      return {
+        type: 'elevated_ltv',
+        severity: 'MEDIUM',
+        description: `LTV is ${calculatedLtv.toFixed(1)}%. While acceptable, it's above the ideal 60% threshold.`,
+        category: 'debt' as const,
+      };
+    }
+    return null;
+  })();
+
+  // Combine non-LTV risks with the dynamic LTV risk
+  const displayRisks = dynamicLtvRisk ? [...nonLtvRisks, dynamicLtvRisk] : nonLtvRisks;
+
+  // Recalculate overall score and risk level using the updated risks
   const recalculatedOverallScore = calculateOverallScore(
     recalculatedLtvScore,
     scores.legalScore,
     scores.marketScore,
     scores.buildingScore
   );
-  const recalculatedRiskLevel = determineRiskLevel(recalculatedOverallScore, risks);
+  const recalculatedRiskLevel = determineRiskLevel(recalculatedOverallScore, displayRisks);
 
-  // Notify parent of recalculated scores
+  // Notify parent of recalculated scores - always notify when tier estimates exist
   React.useEffect(() => {
     if (onScoresRecalculated && tierEstimates && tierEstimates.length > 0) {
       onScoresRecalculated({
@@ -134,7 +171,7 @@ export default function RiskAnalysisSection({
         propertyValue: displayPropertyValue,
       });
     }
-  }, [selectedTier, recalculatedLtvScore, recalculatedOverallScore, recalculatedRiskLevel, calculatedLtv, calculatedEquity, displayPropertyValue, onScoresRecalculated, tierEstimates]);
+  }, [selectedTier, tierEstimates, onScoresRecalculated, recalculatedLtvScore, recalculatedOverallScore, recalculatedRiskLevel, calculatedLtv, calculatedEquity, displayPropertyValue]);
 
   // Format with 2 decimal places for small amount priority thresholds
   const formatAmountPrecise = (amount: number) => {
@@ -636,14 +673,14 @@ export default function RiskAnalysisSection({
       )}
 
       {/* Detected Risks */}
-      {risks.length > 0 ? (
+      {displayRisks.length > 0 ? (
         <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
           <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
             <span className="text-xl sm:text-2xl">⚠️</span>
-            Detected Risks ({risks.length})
+            Detected Risks ({displayRisks.length})
           </h3>
           <div className="space-y-3 sm:space-y-4">
-            {risks.map((risk, index) => (
+            {displayRisks.map((risk, index) => (
               <div
                 key={index}
                 className={`p-4 sm:p-5 rounded-xl border ${
