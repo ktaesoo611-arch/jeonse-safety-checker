@@ -485,25 +485,55 @@ export class BuildingRegistryAPI {
         };
       }
 
-      // Take the first item (or the single item if not an array)
-      const item = Array.isArray(items) ? items[0] : items;
+      // Normalize to array
+      const itemArray = Array.isArray(items) ? items : [items];
 
-      const mainPurpsCdNm = item.mainPurpsCdNm?.trim() || ''; // 주용도코드명 (e.g., "아파트", "연립주택")
-      const groundFloors = item.grndFlrCnt ? parseInt(item.grndFlrCnt) : 0;
-      const buildingType = this.mapBuildingType(mainPurpsCdNm, groundFloors);
+      // For apartment complexes, API may return multiple buildings (동)
+      // We need to analyze all buildings to determine the correct type
+      // Look for the building with the highest floor count for better classification
+      let maxFloorCount = 0;
+      let totalFloorAreaSum = 0;
+      let primaryBuildingType = '';
+      let selectedItem = itemArray[0];
 
-      console.log(`[BuildingRegistry] Found building: ${mainPurpsCdNm}, ${groundFloors}F → ${buildingType}`);
+      for (const item of itemArray) {
+        const floors = item.grndFlrCnt ? parseInt(item.grndFlrCnt) : 0;
+        const area = item.totArea ? parseFloat(item.totArea) : 0;
+        const typeName = item.mainPurpsCdNm?.trim() || '';
+
+        totalFloorAreaSum += area;
+
+        // Track the building with highest floor count
+        if (floors > maxFloorCount) {
+          maxFloorCount = floors;
+          selectedItem = item;
+        }
+
+        // Explicit building types take priority
+        if (typeName === '아파트') {
+          primaryBuildingType = '아파트';
+        } else if (!primaryBuildingType && typeName) {
+          primaryBuildingType = typeName;
+        }
+      }
+
+      const mainPurpsCdNm = primaryBuildingType || selectedItem.mainPurpsCdNm?.trim() || '';
+      // Use max floor count across all buildings for classification
+      const groundFloors = maxFloorCount || (selectedItem.grndFlrCnt ? parseInt(selectedItem.grndFlrCnt) : 0);
+      const buildingType = this.mapBuildingType(mainPurpsCdNm, groundFloors, totalFloorAreaSum);
+
+      console.log(`[BuildingRegistry] Found ${itemArray.length} building(s): ${mainPurpsCdNm}, maxFloors=${maxFloorCount}, totalArea=${totalFloorAreaSum.toFixed(0)}㎡ → ${buildingType}`);
 
       return {
         success: true,
         data: {
           buildingType,
           buildingTypeName: mainPurpsCdNm,
-          mainPurpsCd: item.mainPurpsCd || '',
-          totalFloorArea: item.totArea ? parseFloat(item.totArea) : undefined,
-          groundFloorCount: item.grndFlrCnt ? parseInt(item.grndFlrCnt) : undefined,
-          undergroundFloorCount: item.ugrndFlrCnt ? parseInt(item.ugrndFlrCnt) : undefined,
-          useAprDay: item.useAprDay || undefined
+          mainPurpsCd: selectedItem.mainPurpsCd || '',
+          totalFloorArea: totalFloorAreaSum || undefined,
+          groundFloorCount: maxFloorCount || undefined,
+          undergroundFloorCount: selectedItem.ugrndFlrCnt ? parseInt(selectedItem.ugrndFlrCnt) : undefined,
+          useAprDay: selectedItem.useAprDay || undefined
         }
       };
     } catch (error: any) {
@@ -531,24 +561,40 @@ export class BuildingRegistryAPI {
 
   /**
    * Map Korean building type name to our BuildingType enum
-   * Uses floor count as secondary indicator for ambiguous categories like 공동주택
+   * Uses floor count and total floor area as indicators for ambiguous categories
    *
    * Korean building classification:
    * - 아파트: 5+ stories, typically high-rise
    * - 연립주택: 4 stories or less, total floor area > 660㎡
    * - 다세대주택: 4 stories or less, total floor area ≤ 660㎡
    */
-  private mapBuildingType(koreanName: string, floorCount: number = 0): BuildingType {
+  private mapBuildingType(koreanName: string, floorCount: number = 0, totalFloorArea: number = 0): BuildingType {
     // Direct lookup for explicit types
     if (koreanName === '아파트') return 'apartment';
     if (koreanName === '연립주택' || koreanName === '다세대주택' || koreanName === '다가구주택') {
       return 'multifamily';
     }
 
-    // For 공동주택 (generic apartment housing), use floor count to distinguish
+    // For 공동주택 (generic apartment housing), use multiple heuristics
     // Korean law: 아파트 = 5+ stories, 연립/다세대 = 4 stories or less
     if (koreanName === '공동주택') {
-      return floorCount >= 5 ? 'apartment' : 'multifamily';
+      // If we have floor count data, use it
+      if (floorCount >= 5) {
+        return 'apartment';
+      }
+      // If floor count is between 1-4, it's multifamily
+      if (floorCount > 0 && floorCount < 5) {
+        return 'multifamily';
+      }
+      // Floor count is 0 (missing data) - use total floor area as heuristic
+      // Large floor area (>5000㎡) indicates apartment complex
+      // (Typical 연립/다세대 buildings are much smaller)
+      if (totalFloorArea > 5000) {
+        return 'apartment';
+      }
+      // If no reliable data, default to apartment for 공동주택
+      // (Modern developments registered as 공동주택 are more commonly apartments)
+      return 'apartment';
     }
 
     // Check mapping table
@@ -575,6 +621,11 @@ export class BuildingRegistryAPI {
     // For unknown types, use floor count as heuristic
     // High-rise (5+) more likely to be apartment-style
     if (floorCount >= 5) {
+      return 'apartment';
+    }
+
+    // If total floor area is very large, likely apartment
+    if (totalFloorArea > 5000) {
       return 'apartment';
     }
 
