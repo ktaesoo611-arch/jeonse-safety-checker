@@ -433,7 +433,7 @@ export default function LandingPageV3() {
             <ProcessStep
               number="01"
               title="Select your property"
-              description="Choose from 10,800+ Seoul & Gyeonggi apartments in our database. Search in English or Korean."
+              description="Search 10,800+ apartments by name, or enter address for 연립/다세대. Seoul & Gyeonggi supported."
               time="30 seconds"
             />
             <ProcessStep

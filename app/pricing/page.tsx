@@ -251,8 +251,8 @@ export default function PricingPage() {
                 answer="Our analysis is based on official government data from Ministry of Land (MOLIT) and automated risk assessment algorithms. However, this is for informational purposes and does not replace professional legal or real estate consultation."
               />
               <FAQItem
-                question="What areas do you cover?"
-                answer="We support apartments in Seoul and Gyeonggi Province (경기도) with over 10,800 properties in our database. We're working to expand to Incheon and other property types (villa, officetel, multi-family) soon."
+                question="What areas and property types do you cover?"
+                answer="We support apartments and 연립/다세대 (villa/townhouse) in Seoul and Gyeonggi Province (경기도). For apartments, we have 10,800+ properties searchable by name. For 연립/다세대, we use neighborhood-level market data for accurate valuation. We're working to expand to Incheon and officetels soon."
               />
             </div>
           </div>

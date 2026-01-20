@@ -211,8 +211,8 @@ export default function LandingPageV4() {
           <div className="grid md:grid-cols-3 gap-8">
             <StepCard
               number="1"
-              title="Select your apartment"
-              description="Search from 10,800+ Seoul & Gyeonggi apartments in our database. Works in English or Korean."
+              title="Select your property"
+              description="Search 10,800+ apartments by name, or enter address for 연립/다세대. Seoul & Gyeonggi supported."
               icon={<SearchIcon />}
               delay={0}
             />

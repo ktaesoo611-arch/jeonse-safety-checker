@@ -412,10 +412,10 @@ export default function LandingPage() {
       >
         <div className="max-w-3xl mx-auto text-center">
           <h2 className={`text-2xl md:text-3xl font-bold text-[#1A202C] mb-6 transition-all duration-700 ${coverageSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            10,800+ apartments in Seoul & Gyeonggi
+            Apartments & 연립/다세대 in Seoul & Gyeonggi
           </h2>
           <p className={`text-lg text-[#4A5568] max-w-xl mx-auto transition-all duration-700 ${coverageSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '150ms' }}>
-            Search by building name or address. If your building isn't listed, upload your documents and we'll analyze them.
+            10,800+ apartments searchable by name, plus full support for 연립/다세대 (villa/townhouse) properties using neighborhood-level analysis.
           </p>
         </div>
       </section>

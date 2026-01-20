@@ -309,7 +309,7 @@ export default function LandingPageV2() {
               <StepCardV2
                 number="01"
                 title="Select Property"
-                description="Choose your apartment from our database of 10,800+ Seoul & Gyeonggi properties with English names."
+                description="Search 10,800+ apartments by name, or enter address for 연립/다세대. Seoul & Gyeonggi supported."
                 time="30 sec"
                 align="right"
               />
