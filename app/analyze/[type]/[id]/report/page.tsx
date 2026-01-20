@@ -51,10 +51,25 @@ export default function ReportPage() {
   });
   const [isLoading, setIsLoading] = useState(!reportData);
   const [error, setError] = useState<string | null>(null);
-  // Selected tier for LTV calculation - default to 'mid'
-  const [selectedTier, setSelectedTier] = useState<'budget' | 'standard' | 'mid' | 'premium'>('mid');
+  // Selected tier for LTV calculation - load from sessionStorage or default to 'mid'
+  const [selectedTier, setSelectedTier] = useState<'budget' | 'standard' | 'mid' | 'premium'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem(`tier-${analysisId}`);
+      if (saved && ['budget', 'standard', 'mid', 'premium'].includes(saved)) {
+        return saved as 'budget' | 'standard' | 'mid' | 'premium';
+      }
+    }
+    return 'mid';
+  });
   // Recalculated scores based on tier selection
   const [recalculatedScores, setRecalculatedScores] = useState<RecalculatedScores | null>(null);
+
+  // Persist tier selection to sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(`tier-${analysisId}`, selectedTier);
+    }
+  }, [selectedTier, analysisId]);
 
   // Handle scores recalculation from RiskAnalysisSection
   const handleScoresRecalculated = useCallback((scores: RecalculatedScores) => {

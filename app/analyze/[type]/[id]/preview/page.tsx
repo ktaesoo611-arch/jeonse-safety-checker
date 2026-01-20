@@ -387,6 +387,13 @@ export default function PreviewPage() {
   const summary = reportData?.summary || {};
   const valuation = property?.valuation || {};
 
+  // Check if this is a multifamily property with tier estimates
+  const hasTierEstimates = valuation?.tierEstimates && valuation.tierEstimates.length > 0;
+  const tierEstimates = valuation?.tierEstimates || [];
+  const budgetTier = tierEstimates.find((t: any) => t.tier === 'budget');
+  const premiumTier = tierEstimates.find((t: any) => t.tier === 'premium');
+  const midTier = tierEstimates.find((t: any) => t.tier === 'mid');
+
   // Generate preview data (uses real data when available, falls back to mock)
   const previewData = {
     address: property?.address || '서울특별시 강남구 역삼동 아파트',
@@ -582,11 +589,37 @@ export default function PreviewPage() {
           safetyScore={previewData.safetyScore}
           deposit={previewData.deposit}
           monthlyRent={previewData.monthlyRent}
-          estimatedValue={previewData.estimatedValue}
+          estimatedValue={midTier?.value || previewData.estimatedValue}
           verdict={previewData.verdict}
           reportDate={previewData.reportDate}
           reportType={type as 'jeonse' | 'wolse'}
+          selectedTierLabel={hasTierEstimates ? 'Mid Tier' : undefined}
         />
+
+        {/* Tier Info Banner - For multifamily properties */}
+        {hasTierEstimates && budgetTier && premiumTier && (
+          <div className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">🏠</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900 mb-1">Property Value Varies by Quality Tier</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  This property's value ranges from <strong className="text-blue-700">₩{(budgetTier.value / 100000000).toFixed(2)}억</strong> (Budget)
+                  to <strong className="text-blue-700">₩{(premiumTier.value / 100000000).toFixed(2)}억</strong> (Premium)
+                  depending on condition and amenities.
+                </p>
+                <div className="flex items-center gap-2 text-sm">
+                  <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-gray-500">Unlock to select your property's tier and see adjusted risk analysis</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Blurred Sections */}
         <div className="relative">
