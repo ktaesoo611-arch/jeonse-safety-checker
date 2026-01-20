@@ -149,7 +149,13 @@ export async function GET(
           estimatedValue: riskAnalysis?.valuation?.valueMid || null,
           // Prioritize LLM-extracted area from 등기부등본 over user-entered value
           area: riskAnalysis?.deunggibu?.area || riskAnalysis?.area || wolseParsedData?.area || propertyData?.exclusive_area || null,
-          valuation: riskAnalysis?.valuation || {},
+          valuation: {
+            ...(riskAnalysis?.valuation || {}),
+            // Tiered hierarchy for multifamily (연립다세대)
+            tierEstimates: riskAnalysis?.valuation?.tierEstimates || null,
+            tierGuidance: riskAnalysis?.valuation?.tierGuidance || null,
+            tierPercentiles: riskAnalysis?.valuation?.tierPercentiles || null,
+          },
         },
 
         // Risk analysis from 등기부등본 (if available)
@@ -166,6 +172,7 @@ export async function GET(
           },
           metrics: {
             ltv: riskAnalysis.ltv || (riskAnalysis.ltvRatio ? riskAnalysis.ltvRatio * 100 : 0),
+            ltvRange: riskAnalysis.ltvRange || null, // LTV range across tiers for display
             totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
             availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
             debtCount: riskAnalysis.debtRanking?.length || 0,
@@ -365,6 +372,10 @@ export async function GET(
             valueHigh: newSchemaResult.valuation_data?.valueHigh || riskAnalysis.valuation?.valueHigh || null,
             confidence: newSchemaResult.valuation_data?.confidence || riskAnalysis.valuation?.confidence || null,
             marketTrend: newSchemaResult.valuation_data?.marketTrend || riskAnalysis.valuation?.marketTrend || null,
+            // Tiered hierarchy for multifamily (연립다세대)
+            tierEstimates: newSchemaResult.valuation_data?.tierEstimates || riskAnalysis.valuation?.tierEstimates || null,
+            tierGuidance: newSchemaResult.valuation_data?.tierGuidance || riskAnalysis.valuation?.tierGuidance || null,
+            tierPercentiles: newSchemaResult.valuation_data?.tierPercentiles || riskAnalysis.valuation?.tierPercentiles || null,
           },
         },
 
@@ -383,6 +394,7 @@ export async function GET(
           },
           metrics: {
             ltv: newSchemaResult.ltv_ratio || riskAnalysis.ltv || 0,
+            ltvRange: riskAnalysis.ltvRange || null, // LTV range across tiers for display
             totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
             availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
             debtCount: riskAnalysis.debtRanking?.length || 0,
@@ -650,6 +662,10 @@ export async function GET(
             valueHigh: riskAnalysis.valuation?.valueHigh || null,
             confidence: riskAnalysis.valuation?.confidence || null,
             marketTrend: riskAnalysis.valuation?.marketTrend || null,
+            // Tiered hierarchy for multifamily (연립다세대)
+            tierEstimates: riskAnalysis.valuation?.tierEstimates || null,
+            tierGuidance: riskAnalysis.valuation?.tierGuidance || null,
+            tierPercentiles: riskAnalysis.valuation?.tierPercentiles || null,
           },
         };
       })(),
@@ -678,6 +694,7 @@ export async function GET(
         // Key Metrics
         metrics: {
           ltv: riskAnalysis.ltv || (riskAnalysis.ltvRatio ? riskAnalysis.ltvRatio * 100 : 0),
+          ltvRange: riskAnalysis.ltvRange || null, // LTV range across tiers for display
           totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
           availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
           debtCount: riskAnalysis.debtRanking?.length || 0,
