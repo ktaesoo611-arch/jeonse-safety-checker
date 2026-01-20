@@ -7,7 +7,8 @@ import {
   ReportHero,
   RiskAnalysisSection,
   MarketPositionSection,
-  ActionItemsSection
+  ActionItemsSection,
+  TierEstimatesSection
 } from '@/components/report';
 
 export default function ReportPage() {
@@ -271,6 +272,14 @@ export default function ReportPage() {
       {/* Report Content */}
       <div className="container mx-auto px-6 py-8 max-w-4xl">
         <ReportHero {...heroProps} />
+        {/* Tier Estimates Section - Only show for multifamily properties with tier data */}
+        {valuation?.tierEstimates && valuation.tierEstimates.length > 0 && (
+          <TierEstimatesSection
+            tierEstimates={valuation.tierEstimates}
+            tierGuidance={valuation.tierGuidance || null}
+            valueMid={valuation.valueMid || null}
+          />
+        )}
         <RiskAnalysisSection {...riskProps} />
         <MarketPositionSection {...marketProps} />
         <ActionItemsSection {...actionProps} />
