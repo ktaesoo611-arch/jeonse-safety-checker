@@ -39,6 +39,8 @@ interface TierEstimate {
   unitPrice: number;
 }
 
+type TierKey = 'budget' | 'standard' | 'mid' | 'premium';
+
 interface RiskAnalysisSectionProps {
   scores: {
     ltvScore: number;
@@ -55,6 +57,7 @@ interface RiskAnalysisSectionProps {
     debtCount: number;
   };
   tierEstimates?: TierEstimate[] | null;
+  selectedTier?: TierKey;
   debtRanking?: MortgageRanking[];
   smallAmountPriority?: SmallAmountPriority;
   risks: RiskItem[];
@@ -67,6 +70,7 @@ export default function RiskAnalysisSection({
   scores,
   metrics,
   tierEstimates,
+  selectedTier = 'mid',
   debtRanking,
   smallAmountPriority,
   risks,
@@ -77,6 +81,18 @@ export default function RiskAnalysisSection({
   const formatAmount = (amount: number) => {
     return `₩${(amount / 100000000).toFixed(1)}억`;
   };
+
+  // Calculate property value and LTV based on selected tier (if tier estimates available)
+  const selectedTierData = tierEstimates?.find(t => t.tier === selectedTier);
+  const displayPropertyValue = selectedTierData?.value || estimatedValue || 0;
+
+  // Calculate LTV based on selected tier value
+  const calculatedLtv = displayPropertyValue > 0
+    ? ((metrics.totalDebt + proposedDeposit) / displayPropertyValue) * 100
+    : metrics.ltv;
+
+  // Calculate available equity based on selected tier
+  const calculatedEquity = displayPropertyValue - metrics.totalDebt - proposedDeposit;
 
   // Format with 2 decimal places for small amount priority thresholds
   const formatAmountPrecise = (amount: number) => {
@@ -137,6 +153,12 @@ export default function RiskAnalysisSection({
                 <div>
                   <p className="font-bold text-gray-900 mb-1">Loan-to-Value Ratio</p>
                   <p className="text-gray-700 text-sm">Total debt + your deposit divided by property value. Lower is safer.</p>
+                  {selectedTierData && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-gray-900 font-semibold text-xs mb-1">Current tier: {selectedTierData.label}</p>
+                      <p className="text-gray-600 text-xs">Property value: ₩{(selectedTierData.value / 100000000).toFixed(2)}억</p>
+                    </div>
+                  )}
                   {metrics.ltvRange && (
                     <div className="mt-2 pt-2 border-t border-gray-200">
                       <p className="text-gray-900 font-semibold text-xs mb-1">LTV Range (by tier):</p>
@@ -154,14 +176,20 @@ export default function RiskAnalysisSection({
               </Tooltip>
             </div>
             <p className={`text-2xl sm:text-3xl font-bold ${
-              metrics.ltv > 80 ? 'text-red-600' :
-              metrics.ltv > 70 ? 'text-orange-600' :
-              metrics.ltv > 60 ? 'text-amber-600' : 'text-emerald-600'
+              calculatedLtv > 80 ? 'text-red-600' :
+              calculatedLtv > 70 ? 'text-orange-600' :
+              calculatedLtv > 60 ? 'text-amber-600' : 'text-emerald-600'
             }`}>
-              {metrics.ltv.toFixed(0)}%
+              {calculatedLtv.toFixed(0)}%
             </p>
-            {/* LTV Range indicator */}
-            {metrics.ltvRange && (
+            {/* Tier indicator */}
+            {selectedTierData && (
+              <p className="text-xs text-gray-500 mt-1">
+                {selectedTierData.label}
+              </p>
+            )}
+            {/* LTV Range indicator - only show if no tier selection */}
+            {!selectedTierData && metrics.ltvRange && (
               <p className="text-xs text-gray-500 mt-1">
                 {metrics.ltvRange.optimistic.toFixed(0)}% ~ {metrics.ltvRange.conservative.toFixed(0)}%
               </p>
@@ -169,11 +197,11 @@ export default function RiskAnalysisSection({
             <div className="w-full h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
               <div
                 className={`h-full rounded-full ${
-                  metrics.ltv > 80 ? 'bg-red-500' :
-                  metrics.ltv > 70 ? 'bg-orange-500' :
-                  metrics.ltv > 60 ? 'bg-amber-500' : 'bg-emerald-500'
+                  calculatedLtv > 80 ? 'bg-red-500' :
+                  calculatedLtv > 70 ? 'bg-orange-500' :
+                  calculatedLtv > 60 ? 'bg-amber-500' : 'bg-emerald-500'
                 }`}
-                style={{ width: `${Math.min(metrics.ltv, 100)}%` }}
+                style={{ width: `${Math.min(calculatedLtv, 100)}%` }}
               />
             </div>
           </div>
@@ -450,6 +478,9 @@ export default function RiskAnalysisSection({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
               Equity Calculation
+              {selectedTierData && (
+                <span className="text-sm font-normal text-gray-500">({selectedTierData.label})</span>
+              )}
             </h4>
             <div className="space-y-2 text-sm sm:text-base">
               <div className="flex justify-between py-3 border-b border-gray-200">
@@ -459,14 +490,14 @@ export default function RiskAnalysisSection({
                     <Tooltip content={
                       <div>
                         <p className="font-bold text-gray-900 mb-2">Property Value by Tier</p>
-                        <p className="text-gray-700 text-sm mb-3">Values vary by quality tier. Safety scoring uses the conservative (Budget) tier.</p>
+                        <p className="text-gray-700 text-sm mb-3">Select a tier above to see values. Currently showing: {selectedTierData?.label || 'Default'}</p>
                         <div className="space-y-1">
                           {tierEstimates.map((tier) => (
                             <div key={tier.tier} className="flex justify-between text-sm">
-                              <span className={`text-gray-700 ${tier.tier === 'budget' ? 'font-semibold' : ''}`}>
-                                {tier.label}{tier.tier === 'budget' ? ' (Safety)' : ''}:
+                              <span className={`text-gray-700 ${tier.tier === selectedTier ? 'font-semibold' : ''}`}>
+                                {tier.label}{tier.tier === selectedTier ? ' (Selected)' : ''}:
                               </span>
-                              <span className={`font-medium ${tier.tier === 'budget' ? 'text-blue-600' : 'text-gray-900'}`}>
+                              <span className={`font-medium ${tier.tier === selectedTier ? 'text-blue-600' : 'text-gray-900'}`}>
                                 {(tier.value / 100000000).toFixed(2)}억
                               </span>
                             </div>
@@ -480,7 +511,7 @@ export default function RiskAnalysisSection({
                     </Tooltip>
                   )}
                 </div>
-                <span className="font-bold text-gray-900">{formatAmount(estimatedValue || 0)}</span>
+                <span className="font-bold text-gray-900">{formatAmount(displayPropertyValue)}</span>
               </div>
               <div className="flex justify-between py-3 border-b border-gray-200">
                 <span className="text-gray-700">Total Registered Debt</span>
@@ -493,14 +524,14 @@ export default function RiskAnalysisSection({
               <div className="flex justify-between py-4 bg-white rounded-lg px-4 mt-3">
                 <span className="font-bold text-gray-900">Remaining Equity</span>
                 <span className={`font-bold text-lg sm:text-xl ${
-                  metrics.availableEquity > 0 ? 'text-emerald-700' : 'text-red-700'
+                  calculatedEquity > 0 ? 'text-emerald-700' : 'text-red-700'
                 }`}>
-                  {metrics.availableEquity >= 0 ? '+' : ''}{formatAmount(metrics.availableEquity)}
+                  {calculatedEquity >= 0 ? '+' : ''}{formatAmount(calculatedEquity)}
                 </span>
               </div>
             </div>
 
-            {metrics.availableEquity <= 0 && (
+            {calculatedEquity <= 0 && (
               <div className="mt-4 p-4 sm:p-5 bg-red-100 border-l-4 border-red-600 rounded">
                 <p className="text-red-900 font-semibold flex items-center gap-2 text-sm sm:text-base">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">

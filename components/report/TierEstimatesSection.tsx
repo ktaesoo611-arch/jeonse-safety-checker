@@ -18,16 +18,22 @@ interface TierGuidance {
   premium: string[];
 }
 
+type TierKey = 'budget' | 'standard' | 'mid' | 'premium';
+
 interface TierEstimatesSectionProps {
   tierEstimates: TierEstimate[] | null;
   tierGuidance: TierGuidance | null;
   valueMid: number | null; // Fallback if no tier estimates
+  selectedTier: TierKey;
+  onTierSelect: (tier: TierKey) => void;
 }
 
 export default function TierEstimatesSection({
   tierEstimates,
   tierGuidance,
   valueMid,
+  selectedTier,
+  onTierSelect,
 }: TierEstimatesSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -46,8 +52,10 @@ export default function TierEstimatesSection({
   const midTier = tierEstimates.find(t => t.tier === 'mid');
   const premiumTier = tierEstimates.find(t => t.tier === 'premium');
 
-  // Default display value (Mid tier or valueMid fallback)
-  const displayValue = midTier?.value || valueMid || 0;
+  // Display value based on selected tier
+  const selectedTierData = tierEstimates.find(t => t.tier === selectedTier);
+  const displayValue = selectedTierData?.value || midTier?.value || valueMid || 0;
+  const selectedTierLabel = selectedTierData?.label || 'Mid Tier';
 
   // Tier config for rendering
   const tiers = [
@@ -113,7 +121,7 @@ export default function TierEstimatesSection({
         >
           <div className="flex items-center gap-4">
             <div className="text-left">
-              <p className="text-sm text-gray-500 mb-1">Estimated Value (Mid Tier)</p>
+              <p className="text-sm text-gray-500 mb-1">Estimated Value ({selectedTierLabel})</p>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 ₩{formatAmount(displayValue)}
               </p>
@@ -148,11 +156,11 @@ export default function TierEstimatesSection({
                 <span className="text-xl">ℹ️</span>
                 <div>
                   <p className="text-sm text-blue-800 font-medium">
-                    Property values vary by quality tier
+                    Select your property's quality tier
                   </p>
                   <p className="text-sm text-blue-700 mt-1">
-                    Select the tier that best matches your property's condition to understand its market position.
-                    <strong className="block mt-1">Safety scoring uses Budget tier (conservative estimate) to protect your deposit.</strong>
+                    Click on a tier to see how LTV and risk metrics change based on property condition.
+                    <strong className="block mt-1">Default is Mid Tier. Select the tier that best matches your property.</strong>
                   </p>
                 </div>
               </div>
@@ -163,31 +171,38 @@ export default function TierEstimatesSection({
               {tiers.map((tier) => {
                 if (!tier.data) return null;
 
+                const isSelected = selectedTier === tier.key;
+
                 return (
-                  <div
+                  <button
                     key={tier.key}
-                    className={`rounded-xl border-2 ${tier.borderColor} ${tier.bgColor} p-4 sm:p-5 transition-all duration-200 hover:shadow-md`}
+                    onClick={() => onTierSelect(tier.key as TierKey)}
+                    className={`w-full text-left rounded-xl border-2 p-4 sm:p-5 transition-all duration-200 hover:shadow-md ${
+                      isSelected
+                        ? `${tier.borderColor} ${tier.bgColor} ring-2 ring-offset-2 ${tier.color === 'amber' ? 'ring-amber-500' : tier.color === 'blue' ? 'ring-blue-500' : tier.color === 'emerald' ? 'ring-emerald-500' : 'ring-purple-500'}`
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
                   >
                     {/* Tier Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{tier.icon}</span>
                         <div>
-                          <p className={`font-bold ${tier.textColor}`}>
+                          <p className={`font-bold ${isSelected ? tier.textColor : 'text-gray-700'}`}>
                             {tier.data.label}
                           </p>
-                          {tier.isSafetyTier && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-200 text-amber-800 text-xs font-semibold rounded-full mt-1">
+                          {isSelected && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-200 text-emerald-800 text-xs font-semibold rounded-full mt-1">
                               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
-                              Used for Safety
+                              Selected
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`text-xl sm:text-2xl font-bold ${tier.textColor}`}>
+                        <p className={`text-xl sm:text-2xl font-bold ${isSelected ? tier.textColor : 'text-gray-700'}`}>
                           ₩{formatAmount(tier.data.value)}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
@@ -196,14 +211,14 @@ export default function TierEstimatesSection({
                       </div>
                     </div>
 
-                    {/* Tier Characteristics */}
-                    {tier.guidance.length > 0 && (
+                    {/* Tier Characteristics - Only show for selected tier */}
+                    {isSelected && tier.guidance.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-gray-200/50">
                         <p className="text-xs text-gray-500 mb-2 font-medium">Typical characteristics:</p>
                         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                           {tier.guidance.map((item, idx) => (
                             <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                              <span className={`w-1.5 h-1.5 rounded-full ${tier.bgColor.replace('50', '400')}`} style={{ backgroundColor: tier.color === 'amber' ? '#f59e0b' : tier.color === 'blue' ? '#3b82f6' : tier.color === 'emerald' ? '#10b981' : '#8b5cf6' }} />
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tier.color === 'amber' ? '#f59e0b' : tier.color === 'blue' ? '#3b82f6' : tier.color === 'emerald' ? '#10b981' : '#8b5cf6' }} />
                               {item}
                             </li>
                           ))}
@@ -211,12 +226,14 @@ export default function TierEstimatesSection({
                       </div>
                     )}
 
-                    {/* Transaction Count */}
-                    <div className="mt-3 pt-3 border-t border-gray-200/50 flex items-center justify-between text-xs text-gray-500">
-                      <span>Based on {tier.data.transactionCount} transactions</span>
-                      <span>Depreciation: {(tier.data.depreciationRate * 100).toFixed(1)}%/yr</span>
-                    </div>
-                  </div>
+                    {/* Transaction Count - Only show for selected tier */}
+                    {isSelected && (
+                      <div className="mt-3 pt-3 border-t border-gray-200/50 flex items-center justify-between text-xs text-gray-500">
+                        <span>Based on {tier.data.transactionCount} transactions</span>
+                        <span>Depreciation: {(tier.data.depreciationRate * 100).toFixed(1)}%/yr</span>
+                      </div>
+                    )}
+                  </button>
                 );
               })}
             </div>

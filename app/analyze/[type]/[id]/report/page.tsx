@@ -41,6 +41,8 @@ export default function ReportPage() {
   });
   const [isLoading, setIsLoading] = useState(!reportData);
   const [error, setError] = useState<string | null>(null);
+  // Selected tier for LTV calculation - default to 'mid'
+  const [selectedTier, setSelectedTier] = useState<'budget' | 'standard' | 'mid' | 'premium'>('mid');
 
   useEffect(() => {
     // Skip fetch if we have cached data
@@ -278,9 +280,14 @@ export default function ReportPage() {
             tierEstimates={valuation.tierEstimates}
             tierGuidance={valuation.tierGuidance || null}
             valueMid={valuation.valueMid || null}
+            selectedTier={selectedTier}
+            onTierSelect={setSelectedTier}
           />
         )}
-        <RiskAnalysisSection {...riskProps} />
+        <RiskAnalysisSection
+          {...riskProps}
+          selectedTier={selectedTier}
+        />
         <MarketPositionSection {...marketProps} />
         <ActionItemsSection {...actionProps} />
 
