@@ -33,6 +33,33 @@ export interface MolitTransaction {
   buildingYear?: number; // 건축년도 - available in 연립/다세대 API
 }
 
+// Quality Tier Types (for 연립다세대 tiered valuation)
+export type QualityTier = 'budget' | 'standard' | 'mid' | 'premium';
+
+export interface TierEstimate {
+  tier: QualityTier;
+  label: string;
+  value: number;
+  unitPrice: number; // ₩/㎡
+  transactionCount: number;
+  effectiveSampleSize: number;
+  recentComparables: MolitTransaction[];
+  depreciationRate: number; // Annual depreciation rate used
+}
+
+export interface TierGuidance {
+  premium: string[];
+  mid: string[];
+  standard: string[];
+  budget: string[];
+}
+
+export interface PercentileThresholds {
+  p25: number;  // 25th percentile (won/㎡)
+  p50: number;  // 50th percentile (won/㎡)
+  p75: number;  // 75th percentile (won/㎡)
+}
+
 // Valuation Types
 export interface ValuationResult {
   valueLow: number;
@@ -55,6 +82,10 @@ export interface ValuationResult {
   }>;
   allTransactions?: MolitTransaction[]; // All SALE transactions for price analysis
   allJeonseTransactions?: MolitTransaction[]; // All JEONSE transactions for jeonse price analysis
+  // Tiered hierarchy fields (for 연립다세대)
+  tierEstimates?: TierEstimate[];
+  tierGuidance?: TierGuidance;
+  tierPercentiles?: PercentileThresholds; // Percentile thresholds used for tier classification
 }
 
 // Deunggibu Types

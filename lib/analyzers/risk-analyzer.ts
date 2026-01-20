@@ -11,7 +11,7 @@
  * Generates safety score (0-100) and actionable recommendations
  */
 
-import { DeunggibuData, MortgageInfo, LienInfo } from '../types';
+import { DeunggibuData, MortgageInfo, LienInfo, TierEstimate } from '../types';
 
 export interface PropertyValuation {
   valueLow: number;
@@ -19,6 +19,20 @@ export interface PropertyValuation {
   valueHigh: number;
   confidence: number;
   marketTrend: 'rising' | 'stable' | 'falling';
+  // Tiered estimates for multifamily (연립다세대)
+  tierEstimates?: TierEstimate[];
+}
+
+/**
+ * LTV range showing LTV at different tier valuations
+ * Used for transparency - shows user LTV varies by property quality tier
+ */
+export interface LTVRange {
+  conservative: number;      // LTV using Budget tier (lowest value = highest LTV)
+  moderate: number;          // LTV using Mid tier or valueMid
+  optimistic: number;        // LTV using Premium tier (highest value = lowest LTV)
+  conservativeLabel: string; // Tier label used for conservative
+  optimisticLabel: string;   // Tier label used for optimistic
 }
 
 export interface RiskFactor {
@@ -66,7 +80,8 @@ export interface RiskAnalysisResult {
   };
 
   // Top-level metrics (for API convenience)
-  ltv: number;  // LTV as percentage (0-100)
+  ltv: number;  // LTV as percentage (0-100) - uses conservative (Budget tier) for safety
+  ltvRange?: LTVRange;  // LTV range across tiers (for display/transparency)
   totalDebt: number;
   availableEquity: number;
   debtRanking: MortgageRanking[];
@@ -94,6 +109,17 @@ export class RiskAnalyzer {
 
   /**
    * Main analysis method
+   *
+   * For multifamily properties with tiered estimates:
+   * - Safety scoring uses Budget tier (conservative) value
+   * - LTV range shows LTV across all tiers for transparency
+   * - User tier selection does NOT affect safety score
+   *
+   * @param propertyValue - Traditional single estimate (valueMid)
+   * @param proposedJeonse - Proposed jeonse deposit
+   * @param deunggibu - Parsed deunggibu data
+   * @param valuation - Property valuation including optional tierEstimates
+   * @param buildingAge - Building age in years
    */
   analyze(
     propertyValue: number,
@@ -111,10 +137,46 @@ export class RiskAnalyzer {
     const totalJeonseLeaseDebt = deunggibu.jeonseRights.reduce((sum, j) => sum + j.amount, 0);
     const totalExistingDebt = totalMortgageDebt + totalJeonseLeaseDebt;
 
+    // Determine property value for safety scoring
+    // For multifamily with tiered estimates: use Budget tier (conservative)
+    // This ensures safety score reflects worst-case scenario
+    let safetyPropertyValue = propertyValue;
+    let ltvRange: LTVRange | undefined;
+
+    if (valuation.tierEstimates && valuation.tierEstimates.length > 0) {
+      // Find Budget tier (most conservative)
+      const budgetTier = valuation.tierEstimates.find(t => t.tier === 'budget');
+      // Find Premium tier (most optimistic)
+      const premiumTier = valuation.tierEstimates.find(t => t.tier === 'premium');
+      // Find Mid tier or use valueMid for moderate
+      const midTier = valuation.tierEstimates.find(t => t.tier === 'mid' || t.tier === 'standard');
+
+      // Use Budget tier for safety scoring if available
+      if (budgetTier && budgetTier.value > 0) {
+        safetyPropertyValue = budgetTier.value;
+        console.log(`📊 Using Budget tier for safety scoring: ${(safetyPropertyValue / 100000000).toFixed(2)}억 (conservative)`);
+      }
+
+      // Calculate LTV range for transparency
+      const conservativeValue = budgetTier?.value || propertyValue;
+      const moderateValue = midTier?.value || propertyValue;
+      const optimisticValue = premiumTier?.value || propertyValue;
+
+      ltvRange = {
+        conservative: this.calculateLTV(totalExistingDebt, proposedJeonse, conservativeValue) * 100,
+        moderate: this.calculateLTV(totalExistingDebt, proposedJeonse, moderateValue) * 100,
+        optimistic: this.calculateLTV(totalExistingDebt, proposedJeonse, optimisticValue) * 100,
+        conservativeLabel: budgetTier?.label || '하위 25%',
+        optimisticLabel: premiumTier?.label || '상위 25%',
+      };
+
+      console.log(`📊 LTV Range: ${ltvRange.optimistic.toFixed(1)}% ~ ${ltvRange.conservative.toFixed(1)}%`);
+    }
+
     const ltvRatio = this.calculateLTV(
       totalExistingDebt,  // Include both mortgages AND jeonse rights
       proposedJeonse,
-      propertyValue
+      safetyPropertyValue  // Uses Budget tier for multifamily
     );
 
     const ltvScore = this.scoreLTV(ltvRatio);
@@ -169,9 +231,10 @@ export class RiskAnalyzer {
 
     // Calculate breakdown
     // Use totalEstimatedPrincipal for display consistency with debtRanking
+    // Use safetyPropertyValue (Budget tier for multifamily) for conservative assessment
     const totalDebt = totalExistingDebt;
     const totalExposure = totalDebt + proposedJeonse;
-    const availableEquity = propertyValue - totalExposure;
+    const availableEquity = safetyPropertyValue - totalExposure;
 
     console.log('DEBUG: Risk analyzer values before return:', {
       ltv: ltvRatio * 100,
@@ -194,12 +257,13 @@ export class RiskAnalyzer {
       risks,
       recommendations,
       // Add these at top level for API access
-      ltv: ltvRatio * 100,  // Convert to percentage
+      ltv: ltvRatio * 100,  // Convert to percentage (uses Budget tier for safety)
+      ltvRange,  // LTV range across tiers (for display/transparency)
       totalDebt,
       availableEquity,
       debtRanking,
       breakdown: {
-        totalPropertyValue: propertyValue,
+        totalPropertyValue: safetyPropertyValue,  // Uses Budget tier for multifamily
         totalDebt,
         proposedJeonse,
         totalExposure,

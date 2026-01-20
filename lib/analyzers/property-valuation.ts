@@ -1,6 +1,6 @@
 import { MolitAPI, getDistrictCode } from '../apis/molit';
 import { supabaseAdmin } from '../supabase';
-import { PropertyDetails, ValuationResult, MolitTransaction, BuildingType } from '../types';
+import { PropertyDetails, ValuationResult, MolitTransaction, BuildingType, QualityTier, TierEstimate, TierGuidance, PercentileThresholds } from '../types';
 
 /**
  * Triple-Weighted Valuation Configuration
@@ -27,6 +27,95 @@ const VALUATION_CONFIG = {
   // For apartments, we use tighter area filtering (building-level data is more consistent)
   APARTMENT_AREA_TOLERANCE: 2, // ±2㎡ for apartments
 };
+
+/**
+ * Tiered Hierarchy Valuation Configuration
+ *
+ * Quality tiers are stratified by unit price percentiles to account for
+ * unobserved heterogeneity (building quality, location premium, etc.)
+ *
+ * Using percentile-based stratification ensures tiers adapt to any district's
+ * price level automatically.
+ *
+ * Each tier has its own depreciation rate reflecting different
+ * maintenance and quality retention characteristics.
+ */
+const TIERED_CONFIG = {
+  // Percentile thresholds for tier classification
+  // Budget: < 25th, Standard: 25-50th, Mid: 50-75th, Premium: > 75th
+  PERCENTILES: {
+    budget:   { max: 25 },   // < 25th percentile
+    standard: { max: 50 },   // 25th ~ 50th percentile
+    mid:      { max: 75 },   // 50th ~ 75th percentile
+    premium:  { max: 100 },  // > 75th percentile
+  } as Record<QualityTier, { max: number }>,
+
+  // Tier labels
+  LABELS: {
+    budget:   '하위 25% (Budget)',
+    standard: '25-50% (Standard)',
+    mid:      '50-75% (Mid)',
+    premium:  '상위 25% (Premium)',
+  } as Record<QualityTier, string>,
+
+  // Annual depreciation rates by tier (derived from market analysis)
+  DEPRECIATION: {
+    budget: 0.02,    // 2%/yr - lower quality buildings depreciate faster
+    standard: 0.015, // 1.5%/yr
+    mid: 0.01,       // 1%/yr
+    premium: 0.005,  // 0.5%/yr - premium buildings hold value better
+  } as Record<QualityTier, number>,
+
+  // Recency half-life for tiered calculation (days)
+  RECENCY_HALFLIFE_DAYS: 90,
+
+  // Tier selection guidance for users
+  GUIDANCE: {
+    premium: [
+      '브랜드 건설사 (대림, 현대, 삼성 등)',
+      '역세권 (도보 5분 이내)',
+      '최근 리모델링 완료',
+      '대로변 / 공원 조망',
+      '주차 충분 (세대당 1대 이상)',
+    ],
+    mid: [
+      '중견 건설사',
+      '역세권 (도보 10분 이내)',
+      '관리 양호',
+      '기본 편의시설 구비',
+    ],
+    standard: [
+      '일반 건설사',
+      '대중교통 접근 양호',
+      '기본 시설 유지 상태',
+    ],
+    budget: [
+      '노후 건물 (20년+)',
+      '대중교통 접근 불편',
+      '주차 부족',
+      '리모델링 필요',
+    ],
+  } as TierGuidance,
+};
+
+/**
+ * Calculate percentile value from sorted array
+ * @param sortedValues - Array of values sorted in ascending order
+ * @param percentile - Percentile to calculate (0-100)
+ */
+function calculatePercentile(sortedValues: number[], percentile: number): number {
+  if (sortedValues.length === 0) return 0;
+  if (sortedValues.length === 1) return sortedValues[0];
+
+  const index = (percentile / 100) * (sortedValues.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  const fraction = index - lower;
+
+  if (lower === upper) return sortedValues[lower];
+  return sortedValues[lower] * (1 - fraction) + sortedValues[upper] * fraction;
+}
+
 
 export class PropertyValuationEngine {
   private molitAPI: MolitAPI;
@@ -123,6 +212,21 @@ export class PropertyValuationEngine {
       buildingType
     );
 
+    // Step 2b: For multifamily, also calculate tiered hierarchy estimates
+    let tierEstimates: TierEstimate[] | undefined;
+    let tierGuidance: TierGuidance | undefined;
+    let tierPercentiles: PercentileThresholds | undefined;
+    if (buildingType === 'multifamily') {
+      const tieredResult = this.calculateTieredHierarchyValue(
+        recentTransactions,
+        property.exclusiveArea,
+        property.buildingYear
+      );
+      tierEstimates = tieredResult.estimates;
+      tierPercentiles = tieredResult.thresholds;
+      tierGuidance = TIERED_CONFIG.GUIDANCE;
+    }
+
     // Step 3: Apply floor premium/discount
     const totalFloors = this.getTotalFloorsFromTransactions(recentTransactions);
     const floorAdjustedValue = this.applyFloorAdjustment(
@@ -163,7 +267,11 @@ export class PropertyValuationEngine {
         // Future: Add KB, 호갱노노, etc.
       ],
       allTransactions: recentTransactions, // Include all SALE transactions for price analysis
-      allJeonseTransactions: jeonseTransactions // Include all JEONSE transactions for jeonse price analysis
+      allJeonseTransactions: jeonseTransactions, // Include all JEONSE transactions for jeonse price analysis
+      // Tiered hierarchy for multifamily
+      tierEstimates,
+      tierGuidance,
+      tierPercentiles,
     };
   }
 
@@ -268,6 +376,148 @@ export class PropertyValuationEngine {
     console.log(`   Effective Sample Size: ${effectiveSampleSize.toFixed(1)}`);
 
     return baseValue;
+  }
+
+  /**
+   * Classify a transaction into a quality tier based on percentile thresholds
+   * @param unitPrice - Price per ㎡ in won
+   * @param thresholds - Percentile thresholds (p25, p50, p75)
+   * @returns QualityTier
+   */
+  private classifyQualityTier(unitPrice: number, thresholds: PercentileThresholds): QualityTier {
+    if (unitPrice < thresholds.p25) return 'budget';
+    if (unitPrice < thresholds.p50) return 'standard';
+    if (unitPrice < thresholds.p75) return 'mid';
+    return 'premium';
+  }
+
+  /**
+   * Calculate percentile thresholds from transactions
+   * @param transactions - All transactions to analyze
+   * @returns Percentile thresholds (p25, p50, p75) in won/㎡
+   */
+  private calculatePercentileThresholds(transactions: MolitTransaction[]): PercentileThresholds {
+    const unitPrices = transactions
+      .map(t => t.transactionAmount / t.exclusiveArea)
+      .sort((a, b) => a - b);
+
+    return {
+      p25: calculatePercentile(unitPrices, 25),
+      p50: calculatePercentile(unitPrices, 50),
+      p75: calculatePercentile(unitPrices, 75),
+    };
+  }
+
+  /**
+   * Calculate tiered hierarchy valuation for 연립다세대
+   *
+   * This method stratifies transactions by quality tier using percentile-based
+   * classification (adapts to any district's price level) and calculates
+   * separate estimates for each tier, allowing users to select the
+   * appropriate tier based on property characteristics.
+   *
+   * @param transactions - Filtered transactions from MOLIT API
+   * @param targetArea - Target property's exclusive area (㎡)
+   * @param targetBuildingYear - Target property's building year
+   * @returns Array of TierEstimate for each quality tier with sufficient data
+   */
+  private calculateTieredHierarchyValue(
+    transactions: MolitTransaction[],
+    targetArea: number,
+    targetBuildingYear: number | undefined
+  ): { estimates: TierEstimate[]; thresholds: PercentileThresholds } {
+    if (transactions.length === 0) return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 } };
+
+    const now = new Date();
+    const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium'];
+
+    // Calculate percentile thresholds from all transactions
+    const thresholds = this.calculatePercentileThresholds(transactions);
+
+    // Classify each transaction by quality tier using percentiles
+    const transactionsByTier: Record<QualityTier, Array<MolitTransaction & { unitPrice: number; daysAgo: number }>> = {
+      budget: [],
+      standard: [],
+      mid: [],
+      premium: [],
+    };
+
+    transactions.forEach(t => {
+      const unitPrice = t.transactionAmount / t.exclusiveArea;
+      const tier = this.classifyQualityTier(unitPrice, thresholds);
+      const transactionDate = new Date(t.year, t.month - 1, t.day);
+      const daysAgo = (now.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24);
+      transactionsByTier[tier].push({ ...t, unitPrice, daysAgo });
+    });
+
+    console.log('\n📊 Tiered Hierarchy Valuation (Percentile-Based):');
+    console.log(`   Target Area: ${targetArea}㎡, Target Year: ${targetBuildingYear || 'unknown'}`);
+    console.log(`   Percentile Thresholds: P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡`);
+    console.log(`   Tier distribution: budget=${transactionsByTier.budget.length}, standard=${transactionsByTier.standard.length}, mid=${transactionsByTier.mid.length}, premium=${transactionsByTier.premium.length}`);
+
+    const tierEstimates: TierEstimate[] = [];
+
+    for (const tier of tiers) {
+      const tierTxns = transactionsByTier[tier];
+      if (tierTxns.length === 0) continue;
+
+      const depreciation = TIERED_CONFIG.DEPRECIATION[tier];
+
+      // Calculate recency-weighted unit price with age adjustment
+      let totalWeightedUnitPrice = 0;
+      let totalWeight = 0;
+
+      tierTxns.forEach(t => {
+        // Recency weight
+        const recencyWeight = Math.exp(-t.daysAgo / TIERED_CONFIG.RECENCY_HALFLIFE_DAYS);
+
+        // Age adjustment: adjust comparable's unit price to target building year
+        let ageAdjustment = 1.0;
+        if (targetBuildingYear && t.buildingYear) {
+          const yearDiff = targetBuildingYear - t.buildingYear;
+          // If target is newer (positive yearDiff), increase value
+          // If target is older (negative yearDiff), decrease value
+          ageAdjustment = 1 + (yearDiff * depreciation);
+        }
+
+        const adjustedUnitPrice = t.unitPrice * ageAdjustment;
+        totalWeightedUnitPrice += adjustedUnitPrice * recencyWeight;
+        totalWeight += recencyWeight;
+      });
+
+      const weightedUnitPrice = totalWeightedUnitPrice / totalWeight;
+      const estimatedValue = weightedUnitPrice * targetArea;
+
+      // Calculate effective sample size
+      const weights = tierTxns.map(t => Math.exp(-t.daysAgo / TIERED_CONFIG.RECENCY_HALFLIFE_DAYS));
+      const sumW = weights.reduce((a, b) => a + b, 0);
+      const sumW2 = weights.reduce((a, b) => a + b * b, 0);
+      const effectiveSampleSize = (sumW * sumW) / sumW2;
+
+      // Get recent comparables (top 3 by recency)
+      const recentComparables = [...tierTxns]
+        .sort((a, b) => a.daysAgo - b.daysAgo)
+        .slice(0, 3)
+        .map(({ unitPrice, daysAgo, ...t }) => t as MolitTransaction);
+
+      tierEstimates.push({
+        tier,
+        label: TIERED_CONFIG.LABELS[tier],
+        value: Math.round(estimatedValue),
+        unitPrice: Math.round(weightedUnitPrice),
+        transactionCount: tierTxns.length,
+        effectiveSampleSize: Math.round(effectiveSampleSize * 10) / 10,
+        recentComparables,
+        depreciationRate: depreciation,
+      });
+
+      console.log(`\n   ${TIERED_CONFIG.LABELS[tier]}:`);
+      console.log(`   - Transactions: ${tierTxns.length}, Effective N: ${effectiveSampleSize.toFixed(1)}`);
+      console.log(`   - Unit Price: ${(weightedUnitPrice / 10000).toFixed(0)}만원/㎡`);
+      console.log(`   - Estimated Value: ${(estimatedValue / 100000000).toFixed(2)}억원`);
+    }
+
+    return { estimates: tierEstimates, thresholds };
   }
 
   /**
