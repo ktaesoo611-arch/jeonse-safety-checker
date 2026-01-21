@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { analytics } from '@/lib/analytics';
+
+type UploadMode = 'manual' | 'auto';
 
 export default function UploadPage() {
   const router = useRouter();
@@ -19,10 +21,39 @@ export default function UploadPage() {
   const isWolse = type === 'wolse';
   const accentColor = isWolse ? 'orange' : 'amber';
 
+  // Upload mode: manual (PDF upload) or auto (API lookup)
+  const [uploadMode, setUploadMode] = useState<UploadMode>('manual');
+
+  // Manual upload state
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Auto lookup state
+  const [autoAddress, setAutoAddress] = useState('');
+  const [isAutoLookup, setIsAutoLookup] = useState(false);
+  const [autoLookupError, setAutoLookupError] = useState<string | null>(null);
+
+  // Load address from session storage
+  useEffect(() => {
+    try {
+      const storedData = sessionStorage.getItem(`analysis-${analysisId}`);
+      if (storedData) {
+        const parsed = JSON.parse(storedData);
+        // Build full address with unit info if available
+        const fullAddress = [
+          parsed.city,
+          parsed.district,
+          parsed.dong,
+          parsed.building
+        ].filter(Boolean).join(' ');
+        setAutoAddress(fullAddress);
+      }
+    } catch (e) {
+      console.warn('Could not load address from sessionStorage:', e);
+    }
+  }, [analysisId]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -52,6 +83,79 @@ export default function UploadPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+    }
+  };
+
+  // Auto-lookup handler
+  const handleAutoLookup = async () => {
+    if (!autoAddress.trim()) {
+      setAutoLookupError('주소를 입력해주세요');
+      return;
+    }
+
+    try {
+      setIsAutoLookup(true);
+      setAutoLookupError(null);
+      setUploadProgress(10);
+
+      // Step 1: Fetch 등기부등본 from Apick and store it
+      const lookupResponse = await fetch('/api/registry/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: autoAddress,
+          type: '집합건물',
+          analysisId,
+        }),
+      });
+
+      setUploadProgress(40);
+
+      const lookupData = await lookupResponse.json();
+
+      if (!lookupData.success) {
+        throw new Error(lookupData.error || '등기부등본 조회에 실패했습니다');
+      }
+
+      console.log(`Auto-lookup successful, documentId: ${lookupData.documentId}, cost: ${lookupData.cost}`);
+
+      // Track auto-lookup
+      analytics.documentUploaded(analysisId, 'deunggibu-auto');
+
+      setUploadProgress(60);
+
+      // Step 2: Get buildingType from sessionStorage
+      let buildingType = 'apartment';
+      try {
+        const storedData = sessionStorage.getItem(`analysis-${analysisId}`);
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          buildingType = parsed.buildingType || 'apartment';
+        }
+      } catch (e) {
+        console.warn('Could not read buildingType from sessionStorage:', e);
+      }
+
+      // Step 3: Trigger document parsing (same as manual upload)
+      fetch('/api/documents/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentId: lookupData.documentId,
+          buildingType,
+        }),
+      }).catch(err => console.error('Parse request error:', err));
+
+      setUploadProgress(100);
+
+      // Redirect to processing page
+      router.push(`/analyze/${type}/${analysisId}/processing`);
+
+    } catch (error: any) {
+      console.error('Auto lookup error:', error);
+      setAutoLookupError(error.message || '등기부등본 조회 중 오류가 발생했습니다');
+      setIsAutoLookup(false);
+      setUploadProgress(0);
     }
   };
 
@@ -173,7 +277,120 @@ export default function UploadPage() {
           </p>
         </div>
 
-        {/* Upload Card */}
+        {/* Mode Selector */}
+        <div className={`bg-white rounded-2xl p-2 mb-6 shadow-lg shadow-${accentColor}-900/5 border border-${accentColor}-100 flex gap-2`}>
+          <button
+            onClick={() => setUploadMode('auto')}
+            className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+              uploadMode === 'auto'
+                ? `bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white shadow-md`
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            자동 조회 (₩900)
+          </button>
+          <button
+            onClick={() => setUploadMode('manual')}
+            className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+              uploadMode === 'manual'
+                ? `bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white shadow-md`
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            직접 업로드 (무료)
+          </button>
+        </div>
+
+        {/* Auto Lookup Card */}
+        {uploadMode === 'auto' && (
+          <div className={`bg-white rounded-3xl p-8 mb-8 shadow-xl shadow-${accentColor}-900/5 border border-${accentColor}-100`}>
+            <div className="text-center mb-6">
+              <div className={`w-16 h-16 mx-auto bg-gradient-to-br from-${accentColor}-100 to-orange-100 rounded-2xl flex items-center justify-center mb-4`}>
+                <svg className={`w-8 h-8 text-${accentColor}-600`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-[#1A202C] mb-2">자동 등기부등본 조회</h3>
+              <p className="text-[#4A5568]">주소를 입력하면 자동으로 등기부등본을 조회합니다</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-[#2D3748] mb-2">
+                  부동산 주소 (동/호수 포함)
+                </label>
+                <input
+                  type="text"
+                  value={autoAddress}
+                  onChange={(e) => setAutoAddress(e.target.value)}
+                  placeholder="예: 서울시 강남구 역삼동 래미안역삼 101동 1001호"
+                  className={`w-full px-4 py-3 border-2 border-${accentColor}-200 rounded-xl focus:border-${accentColor}-500 focus:ring-2 focus:ring-${accentColor}-200 outline-none transition-all`}
+                  disabled={isAutoLookup}
+                />
+                <p className="text-sm text-[#718096] mt-2">
+                  정확한 동/호수를 입력해야 올바른 등기부등본이 조회됩니다
+                </p>
+              </div>
+
+              {autoLookupError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+                  <p className="font-medium">조회 실패</p>
+                  <p className="text-sm">{autoLookupError}</p>
+                </div>
+              )}
+
+              {isAutoLookup && (
+                <div className="mb-4">
+                  <div className={`h-2 bg-${accentColor}-100 rounded-full overflow-hidden`}>
+                    <div
+                      className={`h-full bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} transition-all duration-300`}
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-[#4A5568] mt-2 text-center">
+                    {uploadProgress < 30 ? '등기부등본 요청 중...' : uploadProgress < 70 ? '문서 분석 중...' : '완료!'} {uploadProgress}%
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={handleAutoLookup}
+                disabled={isAutoLookup || !autoAddress.trim()}
+                className={`w-full px-8 py-4 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white font-semibold text-lg rounded-2xl hover:shadow-xl transition-all hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center justify-center gap-3`}
+              >
+                {isAutoLookup ? (
+                  <>
+                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    조회 중...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    등기부등본 자동 조회 (₩900)
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-sm text-[#718096]">
+                인터넷등기소에서 자동으로 등기부등본을 조회하고 분석합니다
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Upload Card */}
+        {uploadMode === 'manual' && (
         <div className={`bg-white rounded-3xl p-8 mb-8 shadow-xl shadow-${accentColor}-900/5 border border-${accentColor}-100`}>
           {/* Upload Area */}
           <div
@@ -284,8 +501,10 @@ export default function UploadPage() {
             </div>
           )}
         </div>
+        )}
 
-        {/* How to Get Document */}
+        {/* How to Get Document - Only show for manual mode */}
+        {uploadMode === 'manual' && (
         <div className={`bg-gradient-to-br ${isWolse ? 'from-orange-900 to-amber-950' : 'from-amber-900 to-orange-950'} rounded-3xl p-8 text-white shadow-xl`}>
           <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
             <span className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -338,6 +557,7 @@ export default function UploadPage() {
             </svg>
           </a>
         </div>
+        )}
       </div>
     </div>
   );
