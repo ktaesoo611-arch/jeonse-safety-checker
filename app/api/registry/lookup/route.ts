@@ -60,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
     if (!apiKey) {
       console.error('[RegistryLookup] APICK_API_KEY not configured');
       return NextResponse.json(
-        { success: false, error: '등기부등본 조회 서비스가 설정되지 않았습니다' },
+        { success: false, error: 'Registry lookup service is not configured' },
         { status: 500 }
       );
     }
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       console.error('[RegistryLookup] Failed to fetch registry:', registryResult.error);
       return NextResponse.json({
         success: false,
-        error: registryResult.error || '등기부등본 조회에 실패했습니다',
+        error: registryResult.error || 'Failed to fetch property registry',
       });
     }
 
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       return NextResponse.json({
         success: false,
         cost: registryResult.cost,
-        error: '문서 저장에 실패했습니다',
+        error: 'Failed to save document',
       });
     }
 
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       return NextResponse.json({
         success: false,
         cost: registryResult.cost,
-        error: '문서 등록에 실패했습니다',
+        error: 'Failed to register document',
       });
     }
 
