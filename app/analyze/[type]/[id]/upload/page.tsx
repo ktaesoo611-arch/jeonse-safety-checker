@@ -89,7 +89,7 @@ export default function UploadPage() {
   // Auto-lookup handler
   const handleAutoLookup = async () => {
     if (!autoAddress.trim()) {
-      setAutoLookupError('주소를 입력해주세요');
+      setAutoLookupError('Please enter an address');
       return;
     }
 
@@ -114,7 +114,7 @@ export default function UploadPage() {
       const lookupData = await lookupResponse.json();
 
       if (!lookupData.success) {
-        throw new Error(lookupData.error || '등기부등본 조회에 실패했습니다');
+        throw new Error(lookupData.error || 'Failed to fetch registry');
       }
 
       console.log(`Auto-lookup successful, documentId: ${lookupData.documentId}, cost: ${lookupData.cost}`);
@@ -153,7 +153,7 @@ export default function UploadPage() {
 
     } catch (error: any) {
       console.error('Auto lookup error:', error);
-      setAutoLookupError(error.message || '등기부등본 조회 중 오류가 발생했습니다');
+      setAutoLookupError(error.message || 'An error occurred while fetching the registry');
       setIsAutoLookup(false);
       setUploadProgress(0);
     }
@@ -290,7 +290,7 @@ export default function UploadPage() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            자동 조회 (₩900)
+            Auto Fetch (₩900)
           </button>
           <button
             onClick={() => setUploadMode('manual')}
@@ -303,7 +303,7 @@ export default function UploadPage() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            직접 업로드 (무료)
+            Manual Upload (Free)
           </button>
         </div>
 
@@ -316,31 +316,31 @@ export default function UploadPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-[#1A202C] mb-2">자동 등기부등본 조회</h3>
-              <p className="text-[#4A5568]">주소를 입력하면 자동으로 등기부등본을 조회합니다</p>
+              <h3 className="text-xl font-bold text-[#1A202C] mb-2">Auto Registry Lookup</h3>
+              <p className="text-[#4A5568]">Enter the address to automatically fetch the property registry</p>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-[#2D3748] mb-2">
-                  부동산 주소 (동/호수 포함)
+                  Property Address (including building & unit number)
                 </label>
                 <input
                   type="text"
                   value={autoAddress}
                   onChange={(e) => setAutoAddress(e.target.value)}
-                  placeholder="예: 서울시 강남구 역삼동 래미안역삼 101동 1001호"
+                  placeholder="e.g., 서울시 강남구 역삼동 래미안역삼 101동 1001호"
                   className={`w-full px-4 py-3 border-2 border-${accentColor}-200 rounded-xl focus:border-${accentColor}-500 focus:ring-2 focus:ring-${accentColor}-200 outline-none transition-all`}
                   disabled={isAutoLookup}
                 />
                 <p className="text-sm text-[#718096] mt-2">
-                  정확한 동/호수를 입력해야 올바른 등기부등본이 조회됩니다
+                  Enter exact building and unit number to fetch the correct registry
                 </p>
               </div>
 
               {autoLookupError && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
-                  <p className="font-medium">조회 실패</p>
+                  <p className="font-medium">Lookup Failed</p>
                   <p className="text-sm">{autoLookupError}</p>
                 </div>
               )}
@@ -354,7 +354,7 @@ export default function UploadPage() {
                     />
                   </div>
                   <p className="text-sm text-[#4A5568] mt-2 text-center">
-                    {uploadProgress < 30 ? '등기부등본 요청 중...' : uploadProgress < 70 ? '문서 분석 중...' : '완료!'} {uploadProgress}%
+                    {uploadProgress < 30 ? 'Fetching registry...' : uploadProgress < 70 ? 'Analyzing document...' : 'Complete!'} {uploadProgress}%
                   </p>
                 </div>
               )}
@@ -370,20 +370,20 @@ export default function UploadPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    조회 중...
+                    Fetching...
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
-                    등기부등본 자동 조회 (₩900)
+                    Auto Fetch Registry (₩900)
                   </>
                 )}
               </button>
 
               <p className="text-center text-sm text-[#718096]">
-                인터넷등기소에서 자동으로 등기부등본을 조회하고 분석합니다
+                Automatically fetches and analyzes the registry from iros.go.kr
               </p>
             </div>
           </div>
