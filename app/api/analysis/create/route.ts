@@ -16,6 +16,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server';
+import { parseKoreanAddress } from '@/lib/utils/address-parser';
+import { buildingRegistryAPI } from '@/lib/apis/building-registry';
 
 import { BuildingType } from '@/lib/types';
 
@@ -81,14 +83,64 @@ export async function POST(request: NextRequest) {
     const exclusiveArea = body.exclusiveArea || null;
     const monthlyRent = body.monthlyRent || null;
 
-    console.log(`Creating analysis: type=${analysisType}, buildingType=${buildingType}, building="${building || '(none)'}"`);
-
     // Validate required fields (city, district, dong are NOT NULL in database)
     if (!city || !district || !dong) {
       return NextResponse.json(
         {
           error: 'Invalid address format. City, district, and dong are required.',
           details: `Missing: ${!city ? 'city ' : ''}${!district ? 'district ' : ''}${!dong ? 'dong' : ''}`
+        },
+        { status: 400 }
+      );
+    }
+
+    // Step: Detect building type and check if supported
+    // Only 아파트 (apartment) and 연립/다세대 (multifamily) are currently supported
+    let detectedBuildingType: BuildingType = buildingType;
+
+    // If user didn't specify building type, try to detect it
+    if (!body.buildingType) {
+      try {
+        const addressComponents = parseKoreanAddress(body.address);
+        if (addressComponents) {
+          console.log('🏠 Detecting building type for:', body.address);
+          const rawBuildingType = await buildingRegistryAPI.detectBuildingType(
+            addressComponents.sigunguCd,
+            addressComponents.bjdongCd,
+            addressComponents.bun,
+            addressComponents.ji
+          );
+          detectedBuildingType = rawBuildingType;
+          console.log(`   ✅ Detected building type: ${detectedBuildingType}`);
+        } else {
+          console.log('⚠️ Could not parse address for building type detection');
+        }
+      } catch (error) {
+        console.error('⚠️ Building type detection failed:', error);
+        // Continue with default 'apartment' - will be validated below
+      }
+    }
+
+    console.log(`Creating analysis: type=${analysisType}, buildingType=${detectedBuildingType}, building="${building || '(none)'}"`);
+
+    // Check if building type is supported
+    const supportedTypes: BuildingType[] = ['apartment', 'multifamily'];
+    if (!supportedTypes.includes(detectedBuildingType)) {
+      const buildingTypeLabels: Record<string, string> = {
+        'officetel': '오피스텔',
+        'unknown': '알 수 없는 건물 유형',
+      };
+      const buildingTypeLabel = buildingTypeLabels[detectedBuildingType] || detectedBuildingType;
+
+      console.log(`❌ Unsupported building type: ${buildingTypeLabel} (${detectedBuildingType})`);
+      return NextResponse.json(
+        {
+          error: 'Unsupported building type',
+          errorCode: 'UNSUPPORTED_BUILDING_TYPE',
+          buildingType: detectedBuildingType,
+          buildingTypeLabel,
+          message: `${buildingTypeLabel}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트 또는 연립/다세대 주택만 분석 가능합니다.`,
+          messageEn: `${buildingTypeLabel} properties are not yet supported. Currently, only apartments (아파트) and multi-family housing (연립/다세대) can be analyzed.`
         },
         { status: 400 }
       );
@@ -208,7 +260,7 @@ export async function POST(request: NextRequest) {
       {
         analysisId: analysisId,
         propertyId: propertyId,
-        buildingType: buildingType, // Include for downstream use
+        buildingType: detectedBuildingType, // Include detected type for downstream use
         status: analysisStatus,
         createdAt: analysisCreatedAt,
         message: 'Analysis created successfully',
