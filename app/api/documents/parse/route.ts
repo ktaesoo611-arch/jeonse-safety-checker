@@ -26,7 +26,7 @@ import { PropertyValuationEngine } from '@/lib/analyzers/property-valuation';
 import { PropertyDetails, ValuationResult, BuildingType } from '@/lib/types';
 import { analysisService } from '@/lib/services/analysis-service';
 import { buildingRegistryAPI } from '@/lib/apis/building-registry';
-import { parseKoreanAddress } from '@/lib/utils/address-parser';
+import { parseKoreanAddress, extractLegalDongFromJibunAddress, isRoadNameAddress } from '@/lib/utils/address-parser';
 import { parseDeunggibuExcel, extractTextFromExcel } from '@/lib/analyzers/excel-deunggibu-parser';
 
 // Module-level supabase client (service role for bypassing RLS)
@@ -51,11 +51,13 @@ async function fetchPropertyValuation(
   buildingName: string | undefined,
   area: number,
   floor?: number,
-  buildingType: BuildingType = 'apartment' // Default for backwards compatibility
+  buildingType: BuildingType = 'apartment', // Default for backwards compatibility
+  jibunAddress?: string // Optional lot-based address (지번주소) for accurate dong extraction
 ): Promise<ValuationResult | null> {
   try {
     console.log('🏠 Fetching property valuation using PropertyValuationEngine...');
     console.log('   Address:', address);
+    console.log('   JibunAddress:', jibunAddress || '(not provided)');
     console.log('   Building:', buildingName);
     console.log('   Building Type:', buildingType);
     console.log('   Area:', area);
@@ -86,6 +88,27 @@ async function fetchPropertyValuation(
       const guName = gyeonggiMatch![3]; // e.g., 분당구 (optional)
       district = guName ? `${cityName} ${guName}` : cityName; // e.g., 성남시 분당구 or 하남시
       dong = gyeonggiMatch![4] || gyeonggiMatch![3] || ''; // dong if captured, or gu as fallback
+    }
+
+    // For multifamily properties, we MUST have the correct legal dong (법정동)
+    // If the main address is a road name address (도로명주소), extract dong from jibunAddress
+    if (buildingType === 'multifamily') {
+      const addressIsRoadName = isRoadNameAddress(address);
+
+      if (addressIsRoadName && jibunAddress) {
+        // Extract legal dong from jibunAddress
+        const legalDong = extractLegalDongFromJibunAddress(jibunAddress);
+        if (legalDong) {
+          console.log(`   📍 Road name address detected. Extracted legal dong from jibunAddress: "${legalDong}"`);
+          dong = legalDong;
+        } else {
+          console.warn(`   ⚠️ Could not extract dong from jibunAddress: "${jibunAddress}"`);
+        }
+      } else if (addressIsRoadName && !jibunAddress) {
+        console.warn(`   ⚠️ Road name address without jibunAddress - dong filtering may not work correctly`);
+        console.warn(`      Address "${address}" appears to be a road name address.`);
+        console.warn(`      For accurate 연립/다세대 valuation, please provide jibunAddress.`);
+      }
     }
 
     console.log('   Parsed location:', { city, district, dong });
@@ -370,12 +393,18 @@ async function performRealAnalysis(
       }
     }
 
+    // For multifamily, use the CODEF/registry address as jibunAddress for accurate dong extraction
+    // The user's address (addressForValuation) might be a road name address (도로명주소)
+    // while the registry address (deunggibuData.address) is the legal lot address (지번주소)
+    const jibunAddressForValuation = deunggibuData.fullAddress || deunggibuData.address;
+
     const molitValuation = await fetchPropertyValuation(
       addressForValuation,
       buildingNameForValuation,
       deunggibuData.area,
       undefined, // floor
-      detectedBuildingType
+      detectedBuildingType,
+      jibunAddressForValuation // Pass jibunAddress for accurate dong extraction in multifamily
     );
 
     // If MOLIT data is available, use it; otherwise fall back to estimation

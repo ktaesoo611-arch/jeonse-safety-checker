@@ -448,10 +448,23 @@ export class MolitAPI {
 
         // Filter by dong and optionally by area
         const filtered = monthData.filter(t => {
-          // Match by dong (neighborhood)
+          // Safety check: if dong is empty, we can't filter properly
+          // Log a warning and skip dong filtering (return all transactions for area filtering)
+          if (!dong || dong.trim() === '') {
+            console.warn(`   ⚠️ Empty dong - cannot filter by neighborhood. Returning all transactions.`);
+            // Still apply area filter if specified
+            if (area !== undefined && areaTolerance !== undefined) {
+              return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+            }
+            return true;
+          }
+
+          // Match by dong (neighborhood) - exact or partial match
+          // Note: We check dong.includes(t.legalDong) ONLY if legalDong is non-empty
+          // to prevent empty string from matching everything
           const dongMatches = t.legalDong === dong ||
-            t.legalDong.includes(dong) ||
-            dong.includes(t.legalDong);
+            (t.legalDong && t.legalDong.includes(dong)) ||
+            (t.legalDong && dong.includes(t.legalDong));
 
           if (!dongMatches) return false;
 
@@ -517,9 +530,20 @@ export class MolitAPI {
         const monthData = await this.getMultifamilyTransactions(lawdCd, yearMonth);
 
         const filtered = monthData.filter(t => {
+          // Safety check: if dong is empty, we can't filter properly
+          if (!dong || dong.trim() === '') {
+            console.warn(`   ⚠️ Empty dong - cannot filter by neighborhood. Returning all transactions.`);
+            if (area !== undefined && areaTolerance !== undefined) {
+              return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+            }
+            return true;
+          }
+
+          // Match by dong - exact or partial match
+          // Check legalDong is non-empty before using includes()
           const dongMatches = t.legalDong === dong ||
-            t.legalDong.includes(dong) ||
-            dong.includes(t.legalDong);
+            (t.legalDong && t.legalDong.includes(dong)) ||
+            (t.legalDong && dong.includes(t.legalDong));
 
           if (!dongMatches) return false;
 

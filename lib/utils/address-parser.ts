@@ -631,3 +631,69 @@ export function parseKoreanAddress(address: string): AddressComponents | null {
 export function formatAddressComponents(components: AddressComponents): string {
   return `sigunguCd: ${components.sigunguCd}, bjdongCd: ${components.bjdongCd}, platGbCd: ${components.platGbCd}, bun: ${components.bun}, ji: ${components.ji}`;
 }
+
+/**
+ * Extract 법정동 (legal dong) name from a 지번주소 (lot-based address)
+ *
+ * Examples:
+ * - "서울특별시 중구 신당동 123-45" → "신당동"
+ * - "서울 중구 광희동2가 789" → "광희동2가"
+ * - "경기도 성남시 분당구 정자동 12-3" → "정자동"
+ *
+ * @param jibunAddress - Lot-based address (지번주소)
+ * @returns The legal dong name, or null if not found
+ */
+export function extractLegalDongFromJibunAddress(jibunAddress: string): string | null {
+  if (!jibunAddress) return null;
+
+  // Pattern to match Korean dong names:
+  // - Regular dong: 신당동, 정자동, 미사동
+  // - Numbered dong: 광희동2가, 신문로1가, 필동3가
+  // - Also handles: 동1가, 동2가 format
+  const dongMatch = jibunAddress.match(/([가-힣]+동\d*가?|[가-힣]+\d+가)/);
+
+  if (dongMatch) {
+    return dongMatch[1];
+  }
+
+  return null;
+}
+
+/**
+ * Check if an address is a road name address (도로명주소) vs lot address (지번주소)
+ *
+ * Road name addresses contain patterns like "XX로", "XX길", "XX대로"
+ * Lot addresses contain patterns like "XX동 123-45"
+ *
+ * @param address - Address string to check
+ * @returns true if road name address, false if lot address
+ */
+export function isRoadNameAddress(address: string): boolean {
+  // Road name patterns: XX로, XX길, XX대로
+  const roadPattern = /[가-힣]+[로길](\d+[가-힣]*)?(\s+\d+(-\d+)?)?/;
+  // Lot address pattern: XX동 followed by number
+  const lotPattern = /[가-힣]+동\d*가?\s+\d+/;
+
+  const hasRoadPattern = roadPattern.test(address);
+  const hasLotPattern = lotPattern.test(address);
+
+  // If has road pattern and no lot pattern, it's a road address
+  // If has lot pattern, it's a lot address
+  if (hasLotPattern) return false;
+  if (hasRoadPattern) return true;
+
+  // Default: assume road address if ambiguous
+  return true;
+}
+
+/**
+ * Get all valid dong names for a district
+ *
+ * @param district - District name (e.g., "중구", "강남구")
+ * @returns Array of valid dong names for the district
+ */
+export function getValidDongsForDistrict(district: string): string[] {
+  const dongCodes = SEOUL_DONG_CODES[district];
+  if (!dongCodes) return [];
+  return Object.keys(dongCodes);
+}
