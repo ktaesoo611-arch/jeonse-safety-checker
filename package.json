@@ -17,6 +17,7 @@
     "test:risk": "tsx scripts/test-risk-analyzer.ts",
     "test:thresholds": "tsx scripts/verify-thresholds.ts",
     "test:api": "tsx scripts/test-api-endpoints.ts",
+    "test:codef": "tsx scripts/test-codef.ts",
     "test:all": "npm run test:supabase && npm run test:molit && npm run test:parser"
   },
   "keywords": [],
@@ -39,17 +40,20 @@
     "axios": "^1.13.2",
     "cheerio": "^1.1.2",
     "date-fns": "^4.1.0",
+    "easycodef-node": "^1.0.4",
     "fast-xml-parser": "^5.3.1",
     "next": "^16.0.7",
     "pdf-parse": "^2.4.5",
     "pdf2json": "^4.0.0",
     "postcss": "^8.5.6",
     "react": "^19.2.1",
+    "react-daum-postcode": "^3.2.0",
     "react-dom": "^19.2.1",
     "recharts": "^3.6.0",
     "resend": "^6.6.0",
     "tailwindcss": "^4.1.17",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
