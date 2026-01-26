@@ -185,11 +185,12 @@ export default function SimplifiedAnalysisPage() {
         credentials: 'include',
         body: JSON.stringify({
           address: fullAddressWithUnit, // Full address including building name, 동, 호
+          jibunAddress: jibunAddressWithUnit, // Lot-based address for building type detection
           city: addressData.sido,
           district: addressData.sigungu,
           dong: addressData.bname,
           building: addressData.buildingName || undefined,
-          buildingType: 'apartment', // Will be auto-detected from 등기부등본
+          // buildingType omitted - auto-detected by backend from Building Registry API
           proposedJeonse: depositNum,
           analysisType: rentalType,
           monthlyRent: isWolse ? parseInt(parseNumber(monthlyRent)) : undefined,
@@ -199,7 +200,8 @@ export default function SimplifiedAnalysisPage() {
       const createData = await createResponse.json();
 
       if (!createResponse.ok || !createData.analysisId) {
-        throw new Error(createData.error || 'Failed to create analysis');
+        // Use detailed message if available (e.g., for unsupported building types)
+        throw new Error(createData.message || createData.error || 'Failed to create analysis');
       }
 
       const analysisId = createData.analysisId;

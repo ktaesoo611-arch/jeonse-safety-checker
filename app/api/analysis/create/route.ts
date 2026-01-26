@@ -23,6 +23,7 @@ import { BuildingType } from '@/lib/types';
 
 interface CreateAnalysisRequest {
   address: string;
+  jibunAddress?: string; // Lot-based address for building type detection (e.g., "서울 중구 황학동 970")
   city?: string;
   district?: string;
   dong?: string;
@@ -101,9 +102,13 @@ export async function POST(request: NextRequest) {
     // If user didn't specify building type, try to detect it
     if (!body.buildingType) {
       try {
-        const addressComponents = parseKoreanAddress(body.address);
+        // Use jibunAddress (lot-based) for parsing as it contains dong name (e.g., "황학동")
+        // Road name addresses (도로명주소) don't contain dong which is needed for building registry lookup
+        const addressForParsing = body.jibunAddress || body.address;
+        const addressComponents = parseKoreanAddress(addressForParsing);
+        console.log('🏠 Parsed address components:', addressComponents, 'from:', addressForParsing);
         if (addressComponents) {
-          console.log('🏠 Detecting building type for:', body.address);
+          console.log('🏠 Detecting building type for:', addressForParsing);
           const rawBuildingType = await buildingRegistryAPI.detectBuildingType(
             addressComponents.sigunguCd,
             addressComponents.bjdongCd,
@@ -139,8 +144,7 @@ export async function POST(request: NextRequest) {
           errorCode: 'UNSUPPORTED_BUILDING_TYPE',
           buildingType: detectedBuildingType,
           buildingTypeLabel,
-          message: `${buildingTypeLabel}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트 또는 연립/다세대 주택만 분석 가능합니다.`,
-          messageEn: `${buildingTypeLabel} properties are not yet supported. Currently, only apartments (아파트) and multi-family housing (연립/다세대) can be analyzed.`
+          message: `${buildingTypeLabel} properties are not yet supported. Currently, only apartments (아파트) and multi-family housing (연립/다세대) can be analyzed.`,
         },
         { status: 400 }
       );

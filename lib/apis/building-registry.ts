@@ -460,6 +460,15 @@ export class BuildingRegistryAPI {
       // Convert MOLIT dong code to Building Registry dong code
       const registryDongCode = convertToRegistryDongCode(sigunguCd, bjdongCd);
 
+      // Debug: log API request parameters
+      const apiParams = {
+        sigunguCd: sigunguCd,
+        bjdongCd: registryDongCode,
+        bun: bun.padStart(4, '0'),
+        ji: (ji || '0').padStart(4, '0'),
+      };
+      console.log(`[BuildingRegistry] API Request params:`, apiParams);
+
       // Use getBrTitleInfo for 표제부 (title section) which has building type
       const response = await axios.get(
         `${this.baseUrl}/getBrTitleInfo`,
@@ -479,7 +488,20 @@ export class BuildingRegistryAPI {
       );
 
       const result = response.data;
-      const items = result.response?.body?.items?.item;
+
+      // Debug: log raw response structure
+      console.log(`[BuildingRegistry] Raw response for ${sigunguCd}-${registryDongCode}-${bun}-${ji}:`, {
+        hasResponse: !!result.response,
+        hasBody: !!result.response?.body,
+        hasItems: !!result.response?.body?.items,
+        itemsType: typeof result.response?.body?.items,
+        itemsValue: result.response?.body?.items,
+        totalCount: result.response?.body?.totalCount,
+      });
+
+      // Handle API response quirks: items can be empty string, null, or object/array
+      const itemsWrapper = result.response?.body?.items;
+      const items = itemsWrapper && typeof itemsWrapper === 'object' ? itemsWrapper.item : null;
 
       if (!items || (Array.isArray(items) && items.length === 0)) {
         console.log(`[BuildingRegistry] No building found for ${sigunguCd}-${bjdongCd}-${bun}-${ji}`);
@@ -522,9 +544,12 @@ export class BuildingRegistryAPI {
       }
 
       const mainPurpsCdNm = primaryBuildingType || selectedItem.mainPurpsCdNm?.trim() || '';
+      const etcPurps = selectedItem.etcPurps?.trim() || ''; // 기타용도 - may contain specific type like "오피스텔(주거용)"
       // Use max floor count across all buildings for classification
       const groundFloors = maxFloorCount || (selectedItem.grndFlrCnt ? parseInt(selectedItem.grndFlrCnt) : 0);
-      const buildingType = this.mapBuildingType(mainPurpsCdNm, groundFloors, totalFloorAreaSum);
+      const buildingType = this.mapBuildingType(mainPurpsCdNm, groundFloors, totalFloorAreaSum, etcPurps);
+
+      console.log(`[BuildingRegistry] Mapping: mainPurpsCdNm="${mainPurpsCdNm}", etcPurps="${etcPurps}", floors=${groundFloors}`);
 
       console.log(`[BuildingRegistry] Found ${itemArray.length} building(s): ${mainPurpsCdNm}, maxFloors=${maxFloorCount}, totalArea=${totalFloorAreaSum.toFixed(0)}㎡ → ${buildingType}`);
 
@@ -572,7 +597,15 @@ export class BuildingRegistryAPI {
    * - 연립주택: 4 stories or less, total floor area > 660㎡
    * - 다세대주택: 4 stories or less, total floor area ≤ 660㎡
    */
-  private mapBuildingType(koreanName: string, floorCount: number = 0, totalFloorArea: number = 0): BuildingType {
+  private mapBuildingType(koreanName: string, floorCount: number = 0, totalFloorArea: number = 0, etcPurps: string = ''): BuildingType {
+    // Check etcPurps (기타용도) first - it often contains the specific type like "오피스텔(주거용)"
+    if (etcPurps) {
+      const lowerEtcPurps = etcPurps.toLowerCase();
+      if (lowerEtcPurps.includes('오피스텔')) {
+        return 'officetel';
+      }
+    }
+
     // Direct lookup for explicit types
     if (koreanName === '아파트') return 'apartment';
     if (koreanName === '연립주택' || koreanName === '다세대주택' || koreanName === '다가구주택') {
