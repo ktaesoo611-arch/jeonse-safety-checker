@@ -1,18 +1,28 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { SEOUL_DISTRICTS, GYEONGGI_DISTRICTS, SUPPORTED_CITIES, getDistrictsByCity, Apartment } from '@/lib/data/address-data';
+import { useDaumPostcodePopup } from 'react-daum-postcode';
 import { useHaptic } from '@/lib/hooks/useHaptic';
 import { analytics } from '@/lib/analytics';
-import { BuildingType } from '@/lib/types';
 
 type RentalType = 'jeonse' | 'wolse';
 
-export default function PropertyInfoPage() {
+interface AddressData {
+  fullAddress: string;
+  jibunAddress: string;
+  sido: string;
+  sigungu: string;
+  bname: string;           // 동/읍/면/리 name (e.g., "광명동")
+  buildingName: string;
+  zonecode: string;
+  lotNumber?: string;      // 지번 (e.g., "123-45")
+  roadName?: string;       // 도로명 (e.g., "새터로")
+  roadBuildingNumber?: string; // 도로명 건물번호 (e.g., "44-7")
+}
+
+export default function SimplifiedAnalysisPage() {
   const router = useRouter();
   const params = useParams();
   const haptic = useHaptic();
@@ -28,154 +38,74 @@ export default function PropertyInfoPage() {
   const isWolse = rentalType === 'wolse';
   const accentColor = isWolse ? 'orange' : 'amber';
 
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const [freeUnlocksRemaining, setFreeUnlocksRemaining] = useState<number | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
 
-  const [formData, setFormData] = useState({
-    city: '서울특별시',
-    district: '',
-    dong: '',
-    building: '',
-    jibunBun: '', // 본번 (main lot number)
-    jibunJi: '',  // 부번 (sub lot number)
-    exclusiveArea: '',
-    deposit: '',
-    monthlyRent: ''
-  });
-  const [buildingType, setBuildingType] = useState<BuildingType>('apartment');
-  const [buildingTypeDetected, setBuildingTypeDetected] = useState(false);
-  const [detectingBuildingType, setDetectingBuildingType] = useState(false);
-  const [detectedBuildingName, setDetectedBuildingName] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [apartmentSearch, setApartmentSearch] = useState('');
-  const [filteredApartments, setFilteredApartments] = useState<Apartment[]>([]);
+  // Form state
+  const [addressData, setAddressData] = useState<AddressData | null>(null);
+  const [unitNumber, setUnitNumber] = useState(''); // 동/호수 input
+  const [deposit, setDeposit] = useState('');
+  const [monthlyRent, setMonthlyRent] = useState('');
+
+  // Kakao Postcode popup
+  const openPostcode = useDaumPostcodePopup();
 
   useEffect(() => {
     setMounted(true);
-
-    // Fetch beta counter
-    fetch('/api/beta/counter')
-      .then(res => res.json())
-      .then(data => {
-        if (typeof data.remaining === 'number') {
-          setFreeUnlocksRemaining(data.remaining);
-        }
-      })
-      .catch(() => setFreeUnlocksRemaining(47));
   }, []);
 
-  // Get available districts for selected city
-  const availableDistricts = useMemo(() => {
-    return getDistrictsByCity(formData.city);
-  }, [formData.city]);
+  const handleAddressSearch = () => {
+    openPostcode({
+      onComplete: (data) => {
+        // Extract address components
+        let fullAddress = data.roadAddress || data.jibunAddress;
 
-  // Get available dongs for selected district
-  const availableDongs = useMemo(() => {
-    if (!formData.district) return [];
-    const selectedDistrict = availableDistricts.find(d => d.name === formData.district);
-    return selectedDistrict?.dongs || [];
-  }, [formData.district, availableDistricts]);
-
-  // Get selected dong's bjdongCd
-  const selectedDongCode = useMemo(() => {
-    if (!formData.dong) return null;
-    const dong = availableDongs.find(d => d.name === formData.dong);
-    return dong?.code || null;
-  }, [formData.dong, availableDongs]);
-
-  // Get selected district's sigunguCd
-  const selectedDistrictCode = useMemo(() => {
-    if (!formData.district) return null;
-    const district = availableDistricts.find(d => d.name === formData.district);
-    return district?.code || null;
-  }, [formData.district, availableDistricts]);
-
-  // Auto-detect building type when jibun is entered
-  const detectBuildingType = async () => {
-    if (!selectedDistrictCode || !selectedDongCode || !formData.jibunBun) {
-      return;
-    }
-
-    setDetectingBuildingType(true);
-    setBuildingTypeDetected(false);
-    setDetectedBuildingName(null);
-
-    try {
-      const response = await fetch('/api/building-registry/detect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sigunguCd: selectedDistrictCode,
-          bjdongCd: selectedDongCode,
-          bun: formData.jibunBun,
-          ji: formData.jibunJi || '0'
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.buildingType) {
-        setBuildingType(data.buildingType);
-        setBuildingTypeDetected(true);
-        setDetectedBuildingName(data.buildingName || null);
-        haptic.success();
-      }
-    } catch (error) {
-      console.error('Failed to detect building type:', error);
-    } finally {
-      setDetectingBuildingType(false);
-    }
-  };
-
-  // Trigger detection when jibun changes
-  useEffect(() => {
-    if (formData.jibunBun && formData.jibunBun.length >= 1 && selectedDistrictCode && selectedDongCode) {
-      const timer = setTimeout(() => {
-        detectBuildingType();
-      }, 500); // Debounce 500ms
-      return () => clearTimeout(timer);
-    }
-  }, [formData.jibunBun, formData.jibunJi, selectedDistrictCode, selectedDongCode]);
-
-  // Fetch apartments from API
-  useEffect(() => {
-    const fetchApartments = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (apartmentSearch) params.append('q', apartmentSearch);
-        if (formData.dong) params.append('dong', formData.dong);
-        if (formData.district) params.append('district', formData.district);
-        params.append('limit', '20');
-
-        const response = await fetch(`/api/apartments?${params.toString()}`);
-        const data = await response.json();
-
-        if (data.success) {
-          setFilteredApartments(data.apartments);
+        // Add building name if exists
+        if (data.buildingName) {
+          fullAddress += ` (${data.buildingName})`;
         }
-      } catch (error) {
-        console.error('Failed to fetch apartments:', error);
-        setFilteredApartments([]);
-      }
-    };
 
-    fetchApartments();
-  }, [apartmentSearch, formData.dong, formData.district]);
+        // Extract lot number (지번) from jibunAddress
+        // Format: "경기 광명시 광명동 123-45" -> "123-45"
+        let lotNumber = '';
+        const jibunMatch = data.jibunAddress?.match(/(\d+(?:-\d+)?)\s*$/);
+        if (jibunMatch) {
+          lotNumber = jibunMatch[1];
+        }
 
-  const handleCityChange = (city: string) => {
-    setFormData({ ...formData, city, district: '', dong: '', building: '' });
-    setApartmentSearch('');
-  };
+        // Extract road name and building number from roadAddress
+        // Format: "경기 광명시 새터로 44-7" -> roadName: "새터로", buildingNumber: "44-7"
+        let roadName = '';
+        let roadBuildingNumber = '';
+        if (data.roadAddress) {
+          // data.roadname contains just the road name
+          roadName = data.roadname || '';
+          // Extract building number from road address
+          const roadMatch = data.roadAddress.match(/(\d+(?:-\d+)?)\s*$/);
+          if (roadMatch) {
+            roadBuildingNumber = roadMatch[1];
+          }
+        }
 
-  const handleDistrictChange = (district: string) => {
-    setFormData({ ...formData, district, dong: '' });
-  };
+        setAddressData({
+          fullAddress,
+          jibunAddress: data.jibunAddress,
+          sido: data.sido,
+          sigungu: data.sigungu,
+          bname: data.bname,
+          buildingName: data.buildingName || '',
+          zonecode: data.zonecode,
+          lotNumber,
+          roadName,
+          roadBuildingNumber,
+        });
 
-  const handleApartmentSelect = (apartmentName: string) => {
-    setFormData({ ...formData, building: apartmentName });
-    setApartmentSearch('');
+        haptic.light();
+      },
+    });
   };
 
   const formatNumber = (value: string) => {
@@ -210,91 +140,159 @@ export default function PropertyInfoPage() {
     haptic.medium();
 
     // Validation
-    const newErrors: Record<string, string> = {};
-    if (!formData.district) newErrors.district = 'Please select a district';
-    if (!formData.dong) newErrors.dong = 'Please select a neighborhood';
-    // Building name is required for apartments, optional for multifamily
-    if (buildingType === 'apartment' && !formData.building) {
-      newErrors.building = 'Please enter building name';
-    }
-    if (!formData.deposit) newErrors.deposit = 'Please enter deposit amount';
-
-    if (isWolse) {
-      if (!formData.monthlyRent) newErrors.monthlyRent = 'Please enter monthly rent';
-    }
-    if (!formData.exclusiveArea) newErrors.exclusiveArea = 'Please enter exclusive area';
-
-    const exclusiveArea = parseFloat(formData.exclusiveArea);
-    const deposit = parseInt(parseNumber(formData.deposit));
-    const monthlyRent = parseInt(parseNumber(formData.monthlyRent));
-
-    if (formData.exclusiveArea && (isNaN(exclusiveArea) || exclusiveArea <= 0)) {
-      newErrors.exclusiveArea = 'Please enter a valid area';
-    }
-    if (formData.deposit && (isNaN(deposit) || deposit <= 0)) {
-      newErrors.deposit = 'Please enter a valid deposit amount';
-    }
-    if (isWolse && formData.monthlyRent && (isNaN(monthlyRent) || monthlyRent <= 0)) {
-      newErrors.monthlyRent = 'Please enter a valid rent amount';
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (!addressData) {
+      setError('Please search and select an address');
       haptic.error();
       return;
     }
 
+    const depositNum = parseInt(parseNumber(deposit));
+    if (!depositNum || depositNum <= 0) {
+      setError('Please enter a valid deposit amount');
+      haptic.error();
+      return;
+    }
+
+    if (isWolse) {
+      const monthlyRentNum = parseInt(parseNumber(monthlyRent));
+      if (!monthlyRentNum || monthlyRentNum <= 0) {
+        setError('Please enter a valid monthly rent');
+        haptic.error();
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
+    setProgress(5);
+    setProgressMessage('Creating analysis...');
 
     try {
-      const address = `${formData.city} ${formData.district} ${formData.dong}`;
+      // Build full address with unit number (for display)
+      const fullAddressWithUnit = unitNumber
+        ? `${addressData.fullAddress} ${unitNumber}`
+        : addressData.fullAddress;
 
-      const response = await fetch('/api/analysis/create', {
+      // Build jibun address with unit number (for CODEF lookup - works better with lot numbers)
+      const jibunAddressWithUnit = unitNumber
+        ? `${addressData.jibunAddress} ${unitNumber}`
+        : addressData.jibunAddress;
+
+      // Step 1: Create analysis
+      const createResponse = await fetch('/api/analysis/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Explicitly include cookies
+        credentials: 'include',
         body: JSON.stringify({
-          address,
-          city: formData.city,
-          district: formData.district,
-          dong: formData.dong,
-          building: formData.building || undefined, // Optional for multifamily
-          buildingType, // 'apartment' or 'multifamily'
-          proposedJeonse: deposit,
+          address: fullAddressWithUnit, // Full address including building name, 동, 호
+          city: addressData.sido,
+          district: addressData.sigungu,
+          dong: addressData.bname,
+          building: addressData.buildingName || undefined,
+          buildingType: 'apartment', // Will be auto-detected from 등기부등본
+          proposedJeonse: depositNum,
           analysisType: rentalType,
-          exclusiveArea: exclusiveArea || undefined,
-          monthlyRent: isWolse ? monthlyRent : undefined
-        })
+          monthlyRent: isWolse ? parseInt(parseNumber(monthlyRent)) : undefined,
+        }),
       });
 
-      const data = await response.json();
+      const createData = await createResponse.json();
 
-      if (response.ok && data.analysisId) {
-        // Store form data in session storage for later use
-        sessionStorage.setItem(`analysis-${data.analysisId}`, JSON.stringify({
-          type: rentalType,
-          city: formData.city,
-          district: formData.district,
-          dong: formData.dong,
-          building: formData.building || null,
-          buildingType,
-          exclusiveArea: exclusiveArea || null,
-          deposit,
-          monthlyRent: isWolse ? monthlyRent : null
-        }));
-
-        analytics.analysisStarted(rentalType, data.analysisId);
-        haptic.success();
-        router.push(`/analyze/${rentalType}/${data.analysisId}/upload`);
-      } else {
-        throw new Error(data.error || 'Failed to create analysis');
+      if (!createResponse.ok || !createData.analysisId) {
+        throw new Error(createData.error || 'Failed to create analysis');
       }
+
+      const analysisId = createData.analysisId;
+      console.log(`Analysis created: ${analysisId}`);
+
+      // Parse dong/ho from unit number (e.g., "101동 1001호" -> dong: "101", ho: "1001")
+      let dongNum = '';
+      let hoNum = '';
+      if (unitNumber) {
+        const dongMatch = unitNumber.match(/(\d+)\s*동/);
+        const hoMatch = unitNumber.match(/(\d+)\s*호/);
+        if (dongMatch) dongNum = dongMatch[1];
+        if (hoMatch) hoNum = hoMatch[1];
+      }
+
+      // Store form data in session storage (including structured address for CODEF)
+      sessionStorage.setItem(`analysis-${analysisId}`, JSON.stringify({
+        type: rentalType,
+        city: addressData.sido,
+        district: addressData.sigungu,
+        dongName: addressData.bname,  // 읍면동 name (e.g., "광명동")
+        building: addressData.buildingName || null,
+        buildingType: 'apartment',
+        deposit: depositNum,
+        monthlyRent: isWolse ? parseInt(parseNumber(monthlyRent)) : null,
+        fullAddress: fullAddressWithUnit,
+        jibunAddress: jibunAddressWithUnit,
+        // Structured address for CODEF inquiryType='2'
+        lotNumber: addressData.lotNumber || null,
+        roadName: addressData.roadName || null,
+        roadBuildingNumber: addressData.roadBuildingNumber || null,
+        dong: dongNum || null,  // 동 number (e.g., "101")
+        ho: hoNum || null,      // 호 number (e.g., "1001")
+      }));
+
+      setProgress(50);
+      setProgressMessage('Starting analysis...');
+
+      analytics.analysisStarted(rentalType, analysisId);
+
+      // Step 2: Trigger registry lookup + parse in background (non-blocking)
+      // Use structured params for CODEF inquiryType='2' (소재지번으로 찾기)
+      fetch('/api/registry/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Structured address params for CODEF
+          addr_sido: addressData.sido,
+          addr_sigungu: addressData.sigungu,
+          addr_dong: addressData.bname,
+          addr_lotNumber: addressData.lotNumber || undefined,
+          buildingName: addressData.buildingName || undefined,
+          dong: dongNum || undefined,
+          ho: hoNum || undefined,
+          // Fallback combined address
+          address: jibunAddressWithUnit,
+          type: '집합건물',
+          analysisId,
+        }),
+      })
+        .then(res => res.json())
+        .then(lookupData => {
+          if (lookupData.success && lookupData.documentId) {
+            console.log(`Registry fetched, documentId: ${lookupData.documentId}`);
+            analytics.documentUploaded(analysisId, 'deunggibu-auto');
+            // Trigger parsing
+            return fetch('/api/documents/parse', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                documentId: lookupData.documentId,
+                buildingType: 'apartment',
+              }),
+            });
+          } else {
+            console.warn('Registry lookup failed:', lookupData.error);
+          }
+        })
+        .catch(err => console.error('Background registry/parse error:', err));
+
+      haptic.success();
+      setProgress(100);
+      setProgressMessage('Redirecting...');
+
+      // Redirect to processing page
+      router.push(`/analyze/${rentalType}/${analysisId}/processing`);
+
     } catch (err) {
+      console.error('Analysis error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
       haptic.error();
-    } finally {
       setLoading(false);
+      setProgress(0);
     }
   };
 
@@ -321,7 +319,7 @@ export default function PropertyInfoPage() {
         </div>
       </header>
 
-      <div className={`relative z-10 container mx-auto px-6 py-12 max-w-3xl transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+      <div className={`relative z-10 container mx-auto px-6 py-12 max-w-2xl transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         {/* Breadcrumb */}
         <div className="mb-8">
           <Link href="/check" className={`text-${accentColor}-600 hover:text-${accentColor}-700 font-medium inline-flex items-center gap-2 group`}>
@@ -333,301 +331,160 @@ export default function PropertyInfoPage() {
         </div>
 
         {/* Page Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <div className={`inline-flex items-center gap-2 px-4 py-2 bg-${accentColor}-50 text-${accentColor}-700 rounded-full text-sm font-semibold mb-6 border border-${accentColor}-200`}>
             <span>{isWolse ? 'Wolse' : 'Jeonse'} Check</span>
-            <span className={`text-${accentColor}-400`}>|</span>
-            <span>Step 1 of 4</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A202C] mb-4 tracking-tight">
-            Property Information
+            Quick Analysis
           </h1>
-          <p className="text-xl text-[#4A5568] max-w-2xl mx-auto">
-            {isWolse
-              ? 'Enter your property details and rental terms for a complete analysis'
-              : 'Enter your property details for deposit safety analysis'}
+          <p className="text-xl text-[#4A5568] max-w-xl mx-auto">
+            Enter your property address and rental quote to get a safety analysis
           </p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700">
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700">
             <p className="font-medium">Error</p>
             <p className="text-sm">{error}</p>
           </div>
         )}
 
         {/* Form Card */}
-        <div className={`bg-white rounded-3xl p-8 mb-8 shadow-xl shadow-${accentColor}-900/5 border border-${accentColor}-100`}>
+        <div className={`bg-white rounded-3xl p-8 shadow-xl shadow-${accentColor}-900/5 border border-${accentColor}-100`}>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Location Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-[#1A202C] flex items-center gap-2">
-                <span className={`w-8 h-8 bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm`}>1</span>
-                Property Location
-              </h3>
 
-              <Select
-                label="City / Province"
-                value={formData.city}
-                onChange={handleCityChange}
-                options={SUPPORTED_CITIES.map(c => ({ value: c.name, label: `${c.name} (${c.nameEn})` }))}
-                helperText="Seoul and Gyeonggi Province supported"
-              />
-
-              <Select
-                label="District (구/시) *"
-                value={formData.district}
-                onChange={handleDistrictChange}
-                options={availableDistricts.map(d => ({ value: d.name, label: `${d.name} (${d.nameEn})` }))}
-                placeholder="Select a district"
-                error={errors.district}
-              />
-
-              <Select
-                label="Neighborhood (동) *"
-                value={formData.dong}
-                onChange={(value) => setFormData({ ...formData, dong: value })}
-                options={availableDongs.map(dong => ({ value: dong.name, label: `${dong.name} (${dong.nameEn})` }))}
-                placeholder="Select district first"
-                error={errors.dong}
-                disabled={!formData.district}
-              />
-
-              {/* Jibun Address for Auto-Detection */}
-              <div className="pt-2">
-                <label className="block text-sm font-semibold text-[#2D3748] mb-2">
-                  Jibun Address (지번) - Optional
-                </label>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <Input
-                      label=""
-                      placeholder="본번 (e.g., 123)"
-                      value={formData.jibunBun}
-                      onChange={(e) => setFormData({ ...formData, jibunBun: e.target.value.replace(/[^0-9]/g, '') })}
-                      disabled={!formData.dong}
-                    />
+            {/* Address Search */}
+            <div>
+              <label className="block text-sm font-semibold text-[#2D3748] mb-2">
+                Property Address *
+              </label>
+              <div
+                onClick={!loading ? handleAddressSearch : undefined}
+                className={`
+                  w-full px-4 py-4 border-2 rounded-xl cursor-pointer transition-all
+                  ${addressData
+                    ? `border-${accentColor}-500 bg-${accentColor}-50/50`
+                    : `border-${accentColor}-200 hover:border-${accentColor}-400 bg-white`
+                  }
+                  ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+              >
+                {addressData ? (
+                  <div>
+                    <div className="font-semibold text-[#1A202C]">{addressData.fullAddress}</div>
+                    <div className="text-sm text-[#718096] mt-1">{addressData.zonecode}</div>
                   </div>
-                  <span className="flex items-center text-gray-400 font-bold">-</span>
-                  <div className="flex-1">
-                    <Input
-                      label=""
-                      placeholder="부번 (e.g., 45)"
-                      value={formData.jibunJi}
-                      onChange={(e) => setFormData({ ...formData, jibunJi: e.target.value.replace(/[^0-9]/g, '') })}
-                      disabled={!formData.dong}
-                    />
-                  </div>
-                </div>
-                <p className="text-sm text-[#718096] mt-2">
-                  Enter jibun to auto-detect building type (from 건축물대장)
-                </p>
-
-                {/* Detection Status */}
-                {detectingBuildingType && (
-                  <div className={`mt-3 p-3 bg-${accentColor}-50 rounded-xl border border-${accentColor}-200 flex items-center gap-2`}>
-                    <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm text-[#4A5568]">Detecting building type...</span>
-                  </div>
-                )}
-
-                {buildingTypeDetected && !detectingBuildingType && (
-                  <div className={`mt-3 p-3 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2`}>
-                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                ) : (
+                  <div className="flex items-center gap-3 text-[#718096]">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
-                    <span className="text-sm text-green-700">
-                      Detected: <span className="font-semibold">{buildingType === 'apartment' ? '아파트' : '연립/다세대'}</span>
-                      {detectedBuildingName && <span className="text-green-600"> ({detectedBuildingName})</span>}
-                    </span>
+                    <span>Click to search address</span>
                   </div>
                 )}
               </div>
+              <p className="text-sm text-[#718096] mt-2">
+                Search by building name, road name, or jibun address
+              </p>
+            </div>
 
-              {/* Manual Building Type Override */}
-              <div className="pt-2">
+            {/* Unit Number (Optional) */}
+            {addressData && (
+              <div>
                 <label className="block text-sm font-semibold text-[#2D3748] mb-2">
-                  Building Type {buildingTypeDetected ? '(Auto-detected)' : '*'}
+                  Unit Number (동/호)
                 </label>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => { setBuildingType('apartment'); setBuildingTypeDetected(false); }}
-                    className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
-                      buildingType === 'apartment'
-                        ? `border-${accentColor}-500 bg-${accentColor}-50 text-${accentColor}-700`
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="font-semibold">아파트</div>
-                    <div className="text-xs mt-1 opacity-75">Apartment (5+ floors)</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setBuildingType('multifamily'); setBuildingTypeDetected(false); }}
-                    className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
-                      buildingType === 'multifamily'
-                        ? `border-${accentColor}-500 bg-${accentColor}-50 text-${accentColor}-700`
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="font-semibold">연립/다세대</div>
-                    <div className="text-xs mt-1 opacity-75">Villa / Low-rise Apt</div>
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  value={unitNumber}
+                  onChange={(e) => setUnitNumber(e.target.value)}
+                  placeholder="e.g., 101동 1001호"
+                  className={`w-full px-4 py-3 border-2 border-${accentColor}-200 rounded-xl focus:border-${accentColor}-500 focus:ring-2 focus:ring-${accentColor}-200 outline-none transition-all text-[#1A202C] placeholder:text-[#A0AEC0]`}
+                  disabled={loading}
+                />
                 <p className="text-sm text-[#718096] mt-2">
-                  {buildingType === 'multifamily'
-                    ? 'Building name is optional for 연립/다세대'
-                    : buildingTypeDetected ? 'You can override the detected type if needed' : 'Select building type based on your property'}
+                  Enter your building and unit number for accurate registry lookup
                 </p>
               </div>
-            </div>
+            )}
 
-            {/* Building Section */}
-            <div className={`space-y-4 pt-4 border-t border-${accentColor}-100`}>
-              <h3 className="text-lg font-semibold text-[#1A202C] flex items-center gap-2">
-                <span className={`w-8 h-8 bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm`}>2</span>
-                Building Details
-              </h3>
-
-              <div className="relative">
-                <Input
-                  label={buildingType === 'apartment' ? "Building / Apartment Name *" : "Building Name (Optional)"}
-                  placeholder={buildingType === 'apartment'
-                    ? "Type to search: e.g., 래미안역삼, Raemian"
-                    : "Optional: e.g., XX빌라, YY연립"
-                  }
-                  value={formData.building || apartmentSearch}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (formData.building) {
-                      setFormData({ ...formData, building: '' });
-                    }
-                    setApartmentSearch(value);
-                  }}
-                  error={errors.building}
-                  helperText={buildingType === 'apartment'
-                    ? "Search by Korean or English name"
-                    : "For 연립/다세대, we use neighborhood-level data for analysis"
-                  }
-                />
-
-                {apartmentSearch && !formData.building && (
-                  <div className={`absolute z-10 w-full mt-2 bg-white border-2 border-${accentColor}-200 rounded-2xl shadow-xl max-h-64 overflow-y-auto`}>
-                    {filteredApartments.length > 0 ? (
-                      <>
-                        {filteredApartments.map((apt, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => handleApartmentSelect(apt.name)}
-                            className={`w-full px-4 py-3 text-left hover:bg-${accentColor}-50 transition-colors border-b border-${accentColor}-100 last:border-0`}
-                          >
-                            <div className="font-semibold text-[#1A202C]">{apt.name}</div>
-                            <div className="text-sm text-[#718096]">{apt.nameEn}</div>
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => handleApartmentSelect(apartmentSearch)}
-                          className={`w-full px-4 py-3 text-left hover:bg-${accentColor}-50 transition-colors border-t-2 border-${accentColor}-200 bg-${accentColor}-50/50`}
-                        >
-                          <div className={`font-semibold text-${accentColor}-600`}>Use custom: "{apartmentSearch}"</div>
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleApartmentSelect(apartmentSearch)}
-                        className={`w-full px-4 py-4 text-left hover:bg-${accentColor}-50 transition-colors`}
-                      >
-                        <div className={`font-semibold text-${accentColor}-600`}>Use "{apartmentSearch}"</div>
-                        <div className="text-sm text-[#718096]">No matches found</div>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-            </div>
-
-            {/* Rental Terms Section */}
-            <div className={`space-y-4 pt-4 border-t border-${accentColor}-100`}>
-              <h3 className="text-lg font-semibold text-[#1A202C] flex items-center gap-2">
-                <span className={`w-8 h-8 bg-gradient-to-br ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm`}>3</span>
-                {isWolse ? 'Your Rental Quote' : 'Deposit Amount'}
-              </h3>
-
-              <div>
-                <Input
-                  label={isWolse ? "Deposit (보증금) *" : "Deposit Amount (KRW) *"}
-                  placeholder={isWolse ? "50,000,000" : "500,000,000"}
-                  value={formatNumber(formData.deposit)}
-                  onChange={(e) => setFormData({ ...formData, deposit: parseNumber(e.target.value) })}
-                  error={errors.deposit}
-                  helperText="Enter in Korean won (₩)"
-                />
-                {formData.deposit && formatKoreanAmount(formData.deposit) && (
-                  <p className={`mt-1 text-sm text-${accentColor}-600 font-medium`}>
-                    = {formatKoreanAmount(formData.deposit)}
-                  </p>
-                )}
-              </div>
-
-              {isWolse && (
-                <div>
-                  <Input
-                    label="Monthly Rent (월세) *"
-                    placeholder="1,500,000"
-                    value={formatNumber(formData.monthlyRent)}
-                    onChange={(e) => setFormData({ ...formData, monthlyRent: parseNumber(e.target.value) })}
-                    error={errors.monthlyRent}
-                    helperText="Enter in Korean won (₩)"
-                  />
-                  {formData.monthlyRent && formatKoreanAmount(formData.monthlyRent) && (
-                    <p className={`mt-1 text-sm text-${accentColor}-600 font-medium`}>
-                      = {formatKoreanAmount(formData.monthlyRent)}/month
-                    </p>
-                  )}
-                </div>
+            {/* Deposit */}
+            <div>
+              <label className="block text-sm font-semibold text-[#2D3748] mb-2">
+                {isWolse ? 'Deposit (보증금) *' : 'Jeonse Deposit *'}
+              </label>
+              <input
+                type="text"
+                value={formatNumber(deposit)}
+                onChange={(e) => setDeposit(parseNumber(e.target.value))}
+                placeholder={isWolse ? '50,000,000' : '500,000,000'}
+                className={`w-full px-4 py-3 border-2 border-${accentColor}-200 rounded-xl focus:border-${accentColor}-500 focus:ring-2 focus:ring-${accentColor}-200 outline-none transition-all text-[#1A202C] placeholder:text-[#A0AEC0]`}
+                disabled={loading}
+              />
+              {deposit && formatKoreanAmount(deposit) && (
+                <p className={`mt-2 text-sm text-${accentColor}-600 font-medium`}>
+                  = {formatKoreanAmount(deposit)}
+                </p>
               )}
+            </div>
 
+            {/* Monthly Rent (Wolse only) */}
+            {isWolse && (
               <div>
-                <Input
-                  label="Exclusive Area (전용면적) *"
-                  placeholder="84.5"
-                  value={formData.exclusiveArea}
-                  onChange={(e) => setFormData({ ...formData, exclusiveArea: e.target.value.replace(/[^0-9.]/g, '') })}
-                  error={errors.exclusiveArea}
-                  helperText="Enter in ㎡ (e.g., 84.5). Check your contract or property listing."
+                <label className="block text-sm font-semibold text-[#2D3748] mb-2">
+                  Monthly Rent (월세) *
+                </label>
+                <input
+                  type="text"
+                  value={formatNumber(monthlyRent)}
+                  onChange={(e) => setMonthlyRent(parseNumber(e.target.value))}
+                  placeholder="1,500,000"
+                  className={`w-full px-4 py-3 border-2 border-${accentColor}-200 rounded-xl focus:border-${accentColor}-500 focus:ring-2 focus:ring-${accentColor}-200 outline-none transition-all text-[#1A202C] placeholder:text-[#A0AEC0]`}
+                  disabled={loading}
                 />
-                {formData.exclusiveArea && !isNaN(parseFloat(formData.exclusiveArea)) && (
-                  <p className={`mt-1 text-sm text-${accentColor}-600 font-medium`}>
-                    = {(parseFloat(formData.exclusiveArea) / 3.306).toFixed(1)}평
+                {monthlyRent && formatKoreanAmount(monthlyRent) && (
+                  <p className={`mt-2 text-sm text-${accentColor}-600 font-medium`}>
+                    = {formatKoreanAmount(monthlyRent)}/month
                   </p>
                 )}
               </div>
-            </div>
+            )}
+
+            {/* Progress Bar */}
+            {loading && (
+              <div className="pt-4">
+                <div className={`h-2 bg-${accentColor}-100 rounded-full overflow-hidden`}>
+                  <div
+                    className={`h-full bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} transition-all duration-500`}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <p className="text-sm text-[#4A5568] mt-2 text-center">
+                  {progressMessage} ({progress}%)
+                </p>
+              </div>
+            )}
 
             {/* Submit Button */}
-            <div className="pt-6">
+            <div className="pt-4">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !addressData}
                 className={`w-full px-8 py-4 bg-gradient-to-r ${isWolse ? 'from-orange-500 to-amber-500' : 'from-amber-500 to-orange-500'} text-white font-semibold text-lg rounded-2xl hover:shadow-xl hover:shadow-${accentColor}-200/50 transition-all hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center justify-center gap-2`}
               >
                 {loading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Creating Analysis...
+                    Analyzing...
                   </>
                 ) : (
                   <>
-                    Continue to Document Upload
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
+                    Analyze Safety
                   </>
                 )}
               </button>
@@ -635,18 +492,33 @@ export default function PropertyInfoPage() {
           </form>
         </div>
 
-        {/* Free Beta Info */}
-        {freeUnlocksRemaining !== null && freeUnlocksRemaining > 0 && (
-          <div className={`text-center p-4 bg-red-50 rounded-2xl border border-red-100`}>
-            <p className="text-[#4A5568] flex items-center justify-center gap-2">
-              <span className="text-lg">🔥</span>
-              <span><span className="font-bold text-red-600">{freeUnlocksRemaining}</span> free reports remaining</span>
-            </p>
-            <p className="text-sm text-[#718096] mt-1">
-              Includes risk analysis, market position, and action items
-            </p>
-          </div>
-        )}
+        {/* Info Box */}
+        <div className={`mt-8 p-6 bg-gradient-to-br ${isWolse ? 'from-orange-50 to-amber-50' : 'from-amber-50 to-orange-50'} rounded-2xl border border-${accentColor}-200`}>
+          <h3 className="font-semibold text-[#1A202C] mb-3 flex items-center gap-2">
+            <svg className={`w-5 h-5 text-${accentColor}-600`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            What happens next?
+          </h3>
+          <ol className="space-y-2 text-sm text-[#4A5568]">
+            <li className="flex items-start gap-2">
+              <span className={`flex-shrink-0 w-5 h-5 bg-${accentColor}-200 text-${accentColor}-800 rounded-full flex items-center justify-center text-xs font-bold`}>1</span>
+              <span>We automatically fetch the property registry (등기부등본)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className={`flex-shrink-0 w-5 h-5 bg-${accentColor}-200 text-${accentColor}-800 rounded-full flex items-center justify-center text-xs font-bold`}>2</span>
+              <span>Extract property details, mortgages, and liens</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className={`flex-shrink-0 w-5 h-5 bg-${accentColor}-200 text-${accentColor}-800 rounded-full flex items-center justify-center text-xs font-bold`}>3</span>
+              <span>Analyze market price and calculate LTV risk</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className={`flex-shrink-0 w-5 h-5 bg-${accentColor}-200 text-${accentColor}-800 rounded-full flex items-center justify-center text-xs font-bold`}>4</span>
+              <span>Generate your safety report</span>
+            </li>
+          </ol>
+        </div>
       </div>
     </div>
   );

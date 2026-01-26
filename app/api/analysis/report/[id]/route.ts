@@ -20,6 +20,112 @@ import { createServiceRoleClient } from '@/lib/supabase-server';
 import { analysisService } from '@/lib/services/analysis-service';
 import { JeonsePriceAnalyzer } from '@/lib/analyzers/jeonse-price-analyzer';
 
+/**
+ * Filter out cancelled mortgages from debtRanking
+ * Cross-references with deunggibu data to identify cancelled entries
+ */
+function filterActiveDebtRanking(debtRanking: any[], deunggibuData: any): any[] {
+  if (!debtRanking || !Array.isArray(debtRanking)) return [];
+
+  // Get active mortgage dates for comparison
+  const activeMortgageDates = new Set<string>();
+  const activeJeonseDates = new Set<string>();
+
+  // Use activeMortgages if available (only active ones)
+  if (deunggibuData?.activeMortgages) {
+    deunggibuData.activeMortgages.forEach((m: any) => {
+      if (m.registrationDate) activeMortgageDates.add(m.registrationDate);
+    });
+  } else if (deunggibuData?.mortgages) {
+    // Fallback: filter by status
+    deunggibuData.mortgages.forEach((m: any) => {
+      if (m.status !== 'cancelled' && m.registrationDate) {
+        activeMortgageDates.add(m.registrationDate);
+      }
+    });
+  }
+
+  // Same for jeonse rights
+  if (deunggibuData?.activeJeonseRights) {
+    deunggibuData.activeJeonseRights.forEach((j: any) => {
+      if (j.registrationDate) activeJeonseDates.add(j.registrationDate);
+    });
+  } else if (deunggibuData?.jeonseRights) {
+    deunggibuData.jeonseRights.forEach((j: any) => {
+      if (j.status !== 'cancelled' && j.registrationDate) {
+        activeJeonseDates.add(j.registrationDate);
+      }
+    });
+  }
+
+  // Filter debtRanking: keep "Your Deposit" and entries matching active dates
+  return debtRanking.filter(entry => {
+    // Always keep user's proposed deposit
+    if (entry.type?.includes('Your Deposit') || entry.type?.includes('PROPOSED')) {
+      return true;
+    }
+
+    // For mortgages, check if date matches an active mortgage
+    if (entry.type?.includes('Mortgage') || entry.type?.includes('근저당권')) {
+      return activeMortgageDates.has(entry.registrationDate);
+    }
+
+    // For jeonse/lease rights
+    if (entry.type?.includes('Jeonse') || entry.type?.includes('Lease') ||
+        entry.type?.includes('전세권') || entry.type?.includes('임차권')) {
+      return activeJeonseDates.has(entry.registrationDate);
+    }
+
+    // Keep other entries by default
+    return true;
+  }).map((entry, index) => ({
+    ...entry,
+    rank: index + 1 // Re-number ranks after filtering
+  }));
+}
+
+/**
+ * Filter out risks that reference cancelled debts
+ * E.g., "senior_mortgage" risk should be removed if all mortgages are cancelled
+ */
+function filterActiveRisks(risks: any[], deunggibuData: any): any[] {
+  if (!risks || !Array.isArray(risks)) return [];
+
+  // Count active mortgages and jeonse rights
+  const activeMortgages = deunggibuData?.activeMortgages ||
+                         (deunggibuData?.mortgages || []).filter((m: any) => m.status !== 'cancelled');
+  const activeJeonseRights = deunggibuData?.activeJeonseRights ||
+                            (deunggibuData?.jeonseRights || []).filter((j: any) => j.status !== 'cancelled');
+
+  return risks.filter(risk => {
+    // Remove "senior_mortgage" risk if no active mortgages
+    if (risk.type === 'senior_mortgage' && activeMortgages.length === 0) {
+      return false;
+    }
+
+    // Remove "multiple_creditors" risk if total active creditors < 3
+    if (risk.type === 'multiple_creditors') {
+      const totalActive = activeMortgages.length + activeJeonseRights.length;
+      if (totalActive < 3) {
+        return false;
+      }
+    }
+
+    // Remove "high_debt" risk if no active debt
+    if (risk.type === 'high_debt' && activeMortgages.length === 0 && activeJeonseRights.length === 0) {
+      return false;
+    }
+
+    // Remove "existing_jeonse" or "existing_lease" risks if no active ones
+    if ((risk.type === 'existing_jeonse' || risk.type === 'existing_lease' || risk.type === 'existing_jeonse_lease') &&
+        activeJeonseRights.length === 0) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 // Helper to regenerate verdict with recalculated score
 function generateVerdict(riskLevel: string, score: number): string {
   const verdicts: Record<string, string> = {
@@ -85,20 +191,37 @@ export async function GET(
         .eq('analysis_id', analysisId)
         .order('created_at', { ascending: false });
 
-      const wolseDeunggibuDoc = wolseDocuments?.find((d: any) => d.document_type === 'deunggibu');
+      // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
+      const wolseDeunggibuDoc = wolseDocuments?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef');
       const wolseParsedData = wolseDeunggibuDoc?.parsed_data || null;
 
-      // Extract buildingNumber and unit from address if not explicitly parsed
+      // Extract buildingNumber and unit from parsed data
+      // CODEF parser stores combined in 'unitNumber' (e.g., "1105동 1층 104호")
       let wolseBuildingNumber = wolseParsedData?.buildingNumber || null;
       let wolseUnit = wolseParsedData?.unit || null;
+
+      // Parse CODEF's combined unitNumber format: "1105동 1층 104호" -> dong and floor+ho
+      if (wolseParsedData?.unitNumber && (!wolseBuildingNumber || !wolseUnit)) {
+        const unitNumberStr = wolseParsedData.unitNumber;
+        const dongMatch = unitNumberStr.match(/(\d+)동/);
+        const floorHoMatch = unitNumberStr.match(/(\d+)층\s*(\d+)호/);
+        if (!wolseBuildingNumber && dongMatch) {
+          wolseBuildingNumber = `${dongMatch[1]}동`;
+        }
+        if (!wolseUnit && floorHoMatch) {
+          wolseUnit = `${floorHoMatch[1]}층 ${floorHoMatch[2]}호`;
+        }
+      }
+
+      // Fallback: extract from address if still missing
       if ((!wolseBuildingNumber || !wolseUnit) && wolseParsedData?.address) {
         const buildingMatch = wolseParsedData.address.match(/제(\d+)동/);
-        const unitMatch = wolseParsedData.address.match(/제(\d+)호/);
+        const unitMatch = wolseParsedData.address.match(/제(\d+)층\s*제(\d+)호/);
         if (!wolseBuildingNumber && buildingMatch) {
-          wolseBuildingNumber = `제${buildingMatch[1]}동`;
+          wolseBuildingNumber = `${buildingMatch[1]}동`;
         }
         if (!wolseUnit && unitMatch) {
-          wolseUnit = `제${unitMatch[1]}호`;
+          wolseUnit = `${unitMatch[1]}층 ${unitMatch[2]}호`;
         }
       }
 
@@ -172,13 +295,13 @@ export async function GET(
           },
           metrics: {
             ltv: riskAnalysis.ltv || (riskAnalysis.ltvRatio ? riskAnalysis.ltvRatio * 100 : 0),
-            ltvRange: riskAnalysis.ltvRange || null, // LTV range across tiers for display
+            ltvRange: riskAnalysis.ltvRange || null,
             totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
             availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
-            debtCount: riskAnalysis.debtRanking?.length || 0,
+            debtCount: filterActiveDebtRanking(riskAnalysis.debtRanking || [], wolseParsedData || riskAnalysis.deunggibu).length,
           },
-          risks: riskAnalysis.risks || [],
-          debtRanking: riskAnalysis.debtRanking || [],
+          risks: filterActiveRisks(riskAnalysis.risks || [], wolseParsedData || riskAnalysis.deunggibu),
+          debtRanking: filterActiveDebtRanking(riskAnalysis.debtRanking || [], wolseParsedData || riskAnalysis.deunggibu),
           smallAmountPriority: riskAnalysis.smallAmountPriority || null,
         } : {
           overallScore: 0,
@@ -265,20 +388,37 @@ export async function GET(
         .eq('analysis_id', analysisId)
         .order('created_at', { ascending: false });
 
-      const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu');
+      // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
+      const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef');
       const parsedData = deunggibuDoc?.parsed_data || null;
 
-      // Extract buildingNumber and unit from address if not explicitly parsed
+      // Extract buildingNumber and unit from parsed data
+      // CODEF parser stores combined in 'unitNumber' (e.g., "1105동 1층 104호")
       let jeonseBuildingNumber = parsedData?.buildingNumber || null;
       let jeonseUnit = parsedData?.unit || null;
+
+      // Parse CODEF's combined unitNumber format: "1105동 1층 104호" -> dong and floor+ho
+      if (parsedData?.unitNumber && (!jeonseBuildingNumber || !jeonseUnit)) {
+        const unitNumberStr = parsedData.unitNumber;
+        const dongMatch = unitNumberStr.match(/(\d+)동/);
+        const floorHoMatch = unitNumberStr.match(/(\d+)층\s*(\d+)호/);
+        if (!jeonseBuildingNumber && dongMatch) {
+          jeonseBuildingNumber = `${dongMatch[1]}동`;
+        }
+        if (!jeonseUnit && floorHoMatch) {
+          jeonseUnit = `${floorHoMatch[1]}층 ${floorHoMatch[2]}호`;
+        }
+      }
+
+      // Fallback: extract from address if still missing
       if ((!jeonseBuildingNumber || !jeonseUnit) && parsedData?.address) {
         const buildingMatch = parsedData.address.match(/제(\d+)동/);
-        const unitMatch = parsedData.address.match(/제(\d+)호/);
+        const unitMatch = parsedData.address.match(/제(\d+)층\s*제(\d+)호/);
         if (!jeonseBuildingNumber && buildingMatch) {
-          jeonseBuildingNumber = `제${buildingMatch[1]}동`;
+          jeonseBuildingNumber = `${buildingMatch[1]}동`;
         }
         if (!jeonseUnit && unitMatch) {
-          jeonseUnit = `제${unitMatch[1]}호`;
+          jeonseUnit = `${unitMatch[1]}층 ${unitMatch[2]}호`;
         }
       }
 
@@ -397,10 +537,10 @@ export async function GET(
             ltvRange: riskAnalysis.ltvRange || null, // LTV range across tiers for display
             totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
             availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
-            debtCount: riskAnalysis.debtRanking?.length || 0,
+            debtCount: filterActiveDebtRanking(riskAnalysis.debtRanking || [], parsedData || riskAnalysis.deunggibu).length,
           },
-          risks: newSchemaResult.risks || riskAnalysis.risks || [],
-          debtRanking: riskAnalysis.debtRanking || [],
+          risks: filterActiveRisks(newSchemaResult.risks || riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu),
+          debtRanking: filterActiveDebtRanking(riskAnalysis.debtRanking || [], parsedData || riskAnalysis.deunggibu),
           smallAmountPriority: riskAnalysis.smallAmountPriority || null,
         },
 
@@ -418,9 +558,9 @@ export async function GET(
           isHigh: (riskAnalysis.riskLevel || newSchemaResult.risk_level) === 'HIGH',
           isCritical: (riskAnalysis.riskLevel || newSchemaResult.risk_level) === 'CRITICAL',
           verdict: generateVerdict(riskAnalysis.riskLevel || newSchemaResult.risk_level, recalculatedJeonseScore),
-          criticalIssues: (newSchemaResult.risks || riskAnalysis.risks)?.filter((r: any) => r.severity === 'CRITICAL').length || 0,
-          highIssues: (newSchemaResult.risks || riskAnalysis.risks)?.filter((r: any) => r.severity === 'HIGH').length || 0,
-          moderateIssues: (newSchemaResult.risks || riskAnalysis.risks)?.filter((r: any) => r.severity === 'MODERATE').length || 0,
+          criticalIssues: filterActiveRisks(newSchemaResult.risks || riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu).filter((r: any) => r.severity === 'CRITICAL').length,
+          highIssues: filterActiveRisks(newSchemaResult.risks || riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu).filter((r: any) => r.severity === 'HIGH').length,
+          moderateIssues: filterActiveRisks(newSchemaResult.risks || riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu).filter((r: any) => r.severity === 'MODERATE').length,
         },
 
         legalInfo: {
@@ -543,20 +683,37 @@ export async function GET(
     console.log(`📊 Report API [${analysisId}]: Path 3 - wolse_price_data:`, wolsePriceData ? { user_deposit: wolsePriceData.user_deposit, user_monthly_rent: wolsePriceData.user_monthly_rent, expected_rent: wolsePriceData.expected_rent } : 'null', 'error:', wolseError?.message || 'none');
 
     // Find parsed 등기부등본 data
-    const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu');
+    // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
+    const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef');
     const parsedData = deunggibuDoc?.parsed_data || null;
 
-    // Extract buildingNumber and unit from address if not explicitly parsed (fallback path)
+    // Extract buildingNumber and unit from parsed data (fallback path)
+    // CODEF parser stores combined in 'unitNumber' (e.g., "1105동 1층 104호")
     let fallbackBuildingNumber = parsedData?.buildingNumber || null;
     let fallbackUnit = parsedData?.unit || null;
+
+    // Parse CODEF's combined unitNumber format: "1105동 1층 104호" -> dong and floor+ho
+    if (parsedData?.unitNumber && (!fallbackBuildingNumber || !fallbackUnit)) {
+      const unitNumberStr = parsedData.unitNumber;
+      const dongMatch = unitNumberStr.match(/(\d+)동/);
+      const floorHoMatch = unitNumberStr.match(/(\d+)층\s*(\d+)호/);
+      if (!fallbackBuildingNumber && dongMatch) {
+        fallbackBuildingNumber = `${dongMatch[1]}동`;
+      }
+      if (!fallbackUnit && floorHoMatch) {
+        fallbackUnit = `${floorHoMatch[1]}층 ${floorHoMatch[2]}호`;
+      }
+    }
+
+    // Fallback: extract from address if still missing
     if ((!fallbackBuildingNumber || !fallbackUnit) && parsedData?.address) {
       const buildingMatch = parsedData.address.match(/제(\d+)동/);
-      const unitMatch = parsedData.address.match(/제(\d+)호/);
+      const unitMatch = parsedData.address.match(/제(\d+)층\s*제(\d+)호/);
       if (!fallbackBuildingNumber && buildingMatch) {
-        fallbackBuildingNumber = `제${buildingMatch[1]}동`;
+        fallbackBuildingNumber = `${buildingMatch[1]}동`;
       }
       if (!fallbackUnit && unitMatch) {
-        fallbackUnit = `제${unitMatch[1]}호`;
+        fallbackUnit = `${unitMatch[1]}층 ${unitMatch[2]}호`;
       }
     }
 
@@ -697,14 +854,14 @@ export async function GET(
           ltvRange: riskAnalysis.ltvRange || null, // LTV range across tiers for display
           totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
           availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
-          debtCount: riskAnalysis.debtRanking?.length || 0,
+          debtCount: filterActiveDebtRanking(riskAnalysis.debtRanking || [], parsedData || riskAnalysis.deunggibu).length,
         },
 
-        // Risk Factors
-        risks: riskAnalysis.risks || [],
+        // Risk Factors (filtered to remove risks for cancelled debts)
+        risks: filterActiveRisks(riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu),
 
-        // Debt Ranking
-        debtRanking: riskAnalysis.debtRanking || [],
+        // Debt Ranking (filtered to remove cancelled mortgages)
+        debtRanking: filterActiveDebtRanking(riskAnalysis.debtRanking || [], parsedData || riskAnalysis.deunggibu),
 
         // 소액보증금 Priority
         smallAmountPriority: riskAnalysis.smallAmountPriority || null,
@@ -726,9 +883,9 @@ export async function GET(
         isHigh: riskAnalysis.riskLevel === 'HIGH',
         isCritical: riskAnalysis.riskLevel === 'CRITICAL',
         verdict: generateVerdict(riskAnalysis.riskLevel, recalculatedFallbackScore),
-        criticalIssues: riskAnalysis.risks?.filter((r: any) => r.severity === 'CRITICAL').length || 0,
-        highIssues: riskAnalysis.risks?.filter((r: any) => r.severity === 'HIGH').length || 0,
-        moderateIssues: riskAnalysis.risks?.filter((r: any) => r.severity === 'MODERATE').length || 0,
+        criticalIssues: filterActiveRisks(riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu).filter((r: any) => r.severity === 'CRITICAL').length,
+        highIssues: filterActiveRisks(riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu).filter((r: any) => r.severity === 'HIGH').length,
+        moderateIssues: filterActiveRisks(riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu).filter((r: any) => r.severity === 'MODERATE').length,
       },
 
       // Legal Compliance Info

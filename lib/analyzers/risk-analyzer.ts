@@ -308,14 +308,19 @@ export class RiskAnalyzer {
    * Score debt burden (0-100)
    */
   private scoreDebtBurden(deunggibu: DeunggibuData, propertyValue: number): number {
-    // NOTE: Calculate total debt including mortgages AND jeonse/lease rights
+    // NOTE: Calculate total debt including ACTIVE mortgages AND jeonse/lease rights only
     const totalMortgageDebt = deunggibu.totalEstimatedPrincipal;
-    const totalJeonseLeaseDebt = deunggibu.jeonseRights.reduce((sum, j) => sum + j.amount, 0);
+    // Only count active jeonse rights
+    const activeJeonseRights = (deunggibu as any).activeJeonseRights ||
+                              deunggibu.jeonseRights.filter((j: any) => j.status !== 'cancelled');
+    const totalJeonseLeaseDebt = activeJeonseRights.reduce((sum: number, j: any) => sum + j.amount, 0);
     const totalDebt = totalMortgageDebt + totalJeonseLeaseDebt;
     const debtRatio = totalDebt / propertyValue;
 
-    // Number of creditors matters - count both mortgages and jeonse rights
-    const creditorCount = deunggibu.mortgages.length + deunggibu.jeonseRights.length;
+    // Number of creditors matters - count only ACTIVE mortgages and jeonse rights
+    const activeMortgages = (deunggibu as any).activeMortgages ||
+                           deunggibu.mortgages.filter((m: any) => m.status !== 'cancelled');
+    const creditorCount = activeMortgages.length + activeJeonseRights.length;
     const creditorPenalty = Math.min(creditorCount * 5, 20); // Max 20 point penalty
 
     console.log('DEBUG scoreDebtBurden:', {
@@ -324,8 +329,8 @@ export class RiskAnalyzer {
       totalDebt,
       propertyValue,
       debtRatio: (debtRatio * 100).toFixed(2) + '%',
-      mortgagesCount: deunggibu.mortgages.length,
-      jeonseRightsCount: deunggibu.jeonseRights.length,
+      mortgagesCount: activeMortgages.length,
+      jeonseRightsCount: activeJeonseRights.length,
       creditorCount,
       creditorPenalty
     });
@@ -709,14 +714,20 @@ export class RiskAnalyzer {
       });
     }
 
-    // Priority issues
-    if (deunggibu.mortgages.length > 0 && !smallAmountPriority.isEligible) {
-      const seniorMortgage = deunggibu.mortgages[0];
+    // Priority issues - only check ACTIVE mortgages (not cancelled ones)
+    const activeMortgages = (deunggibu as any).activeMortgages ||
+                           deunggibu.mortgages.filter((m: any) => m.status !== 'cancelled');
+    if (activeMortgages.length > 0 && !smallAmountPriority.isEligible) {
+      const seniorMortgage = activeMortgages[0] as any;
+      // Handle both DeunggibuData MortgageInfo (estimatedPrincipal) and
+      // ExcelDeunggibuData MortgageInfo (maxAmount) formats
+      const mortgageAmount = seniorMortgage.estimatedPrincipal ??
+                            (seniorMortgage.maxAmount ? Math.round(seniorMortgage.maxAmount * 0.83) : 0);
       risks.push({
         type: 'senior_mortgage',
         severity: 'HIGH',
         title: 'Bank Mortgage Has Priority Over Your Deposit',
-        description: `Senior mortgage of ₩${(seniorMortgage.estimatedPrincipal / 100000000).toFixed(1)}억 exists. In foreclosure, they get paid first. You do NOT qualify for 소액보증금 priority.`,
+        description: `Senior mortgage of ₩${(mortgageAmount / 100000000).toFixed(1)}억 exists. In foreclosure, they get paid first. You do NOT qualify for 소액보증금 priority.`,
         impact: -30,
         category: 'priority'
       });
@@ -735,21 +746,23 @@ export class RiskAnalyzer {
       });
     }
 
-    // Multiple creditors
-    const creditorCount = deunggibu.mortgages.length + deunggibu.jeonseRights.length;
-    if (creditorCount >= 3) {
+    // Multiple creditors - only count ACTIVE ones
+    const activeJeonseRightsForCount = (deunggibu as any).activeJeonseRights ||
+                                       deunggibu.jeonseRights.filter((j: any) => j.status !== 'cancelled');
+    const multipleCreditorCount = activeMortgages.length + activeJeonseRightsForCount.length;
+    if (multipleCreditorCount >= 3) {
       // Build description based on what types of debts exist
       // Note: jeonseRights includes both 전세권 (jeonse) and 임차권 (lease/tenancy rights)
       const types: string[] = [];
 
-      if (deunggibu.mortgages.length > 0) {
-        types.push(`${deunggibu.mortgages.length} mortgage${deunggibu.mortgages.length > 1 ? 's' : ''}`);
+      if (activeMortgages.length > 0) {
+        types.push(`${activeMortgages.length} mortgage${activeMortgages.length > 1 ? 's' : ''}`);
       }
 
-      if (deunggibu.jeonseRights.length > 0) {
+      if (activeJeonseRightsForCount.length > 0) {
         // Check if there are different types of rights
-        const jeonseCount = deunggibu.jeonseRights.filter(r => r.type === '전세권설정').length;
-        const leaseCount = deunggibu.jeonseRights.filter(r => r.type === '임차권등기' || r.type === '임차권설정').length;
+        const jeonseCount = activeJeonseRightsForCount.filter((r: any) => r.type === '전세권설정').length;
+        const leaseCount = activeJeonseRightsForCount.filter((r: any) => r.type === '임차권등기' || r.type === '임차권설정').length;
 
         if (jeonseCount > 0 && leaseCount > 0) {
           types.push(`${jeonseCount} jeonse + ${leaseCount} lease`);
@@ -766,7 +779,7 @@ export class RiskAnalyzer {
         type: 'multiple_creditors',
         severity: 'MEDIUM',
         title: 'Multiple Existing Creditors',
-        description: `Property has ${creditorCount} creditors (${debtTypes}). Complex repayment priority in foreclosure.`,
+        description: `Property has ${multipleCreditorCount} creditors (${debtTypes}). Complex repayment priority in foreclosure.`,
         impact: -15,
         category: 'debt'
       });
@@ -967,14 +980,18 @@ export class RiskAnalyzer {
       recommended.push('Consider HUG jeonse insurance for additional protection');
     }
 
-    // High debt scenarios
-    if (deunggibu.mortgages.length > 0) {
+    // High debt scenarios - only check ACTIVE mortgages
+    const activeMortgagesForRec = (deunggibu as any).activeMortgages ||
+                                  deunggibu.mortgages.filter((m: any) => m.status !== 'cancelled');
+    const activeJeonseForRec = (deunggibu as any).activeJeonseRights ||
+                               deunggibu.jeonseRights.filter((j: any) => j.status !== 'cancelled');
+    if (activeMortgagesForRec.length > 0) {
       recommended.push('Request owner to provide mortgage payment history (최근 납입내역서)');
       recommended.push('Check if mortgages are current (no late payments)');
     }
 
-    // Multiple creditors
-    if (deunggibu.mortgages.length + deunggibu.jeonseRights.length >= 2) {
+    // Multiple creditors - only count active ones
+    if (activeMortgagesForRec.length + activeJeonseForRec.length >= 2) {
       recommended.push('Get written confirmation of exact repayment priority from 법무사');
     }
 
@@ -998,20 +1015,34 @@ export class RiskAnalyzer {
   private rankDebts(deunggibu: DeunggibuData, proposedJeonse: number): MortgageRanking[] {
     const ranking: MortgageRanking[] = [];
 
-    // Add mortgages (temporarily without rank)
+    // Add ACTIVE mortgages only (skip cancelled ones - they no longer have claim on property)
     // Use estimatedPrincipal (실제 채권액 추정치) for display - this is ~83% of 채권최고액
-    deunggibu.mortgages.forEach((mortgage) => {
+    // Fall back to maxAmount * 0.83 if estimatedPrincipal is not available (CODEF parser case)
+    deunggibu.mortgages.forEach((mortgage: any) => {
+      // Skip cancelled mortgages - they don't affect debt priority
+      if (mortgage.status === 'cancelled') {
+        return;
+      }
+
+      // Handle both DeunggibuData MortgageInfo (estimatedPrincipal) and
+      // ExcelDeunggibuData MortgageInfo (maxAmount) formats
+      const amount = mortgage.estimatedPrincipal ??
+                     (mortgage.maxAmount ? Math.round(mortgage.maxAmount * 0.83) : 0);
       ranking.push({
         rank: 0, // Will be assigned after sorting
         type: '근저당권 (Mortgage)',
-        amount: mortgage.estimatedPrincipal,
+        amount,
         registrationDate: mortgage.registrationDate,
         priority: 'subordinate' // Will be recalculated after sorting
       });
     });
 
-    // Add existing jeonse rights (전세권) and lease rights (임차권)
-    deunggibu.jeonseRights.forEach((jeonse) => {
+    // Add ACTIVE jeonse rights (전세권) and lease rights (임차권) only
+    deunggibu.jeonseRights.forEach((jeonse: any) => {
+      // Skip cancelled jeonse rights
+      if (jeonse.status === 'cancelled') {
+        return;
+      }
       // Determine the display label based on the type
       let typeLabel = '전세권 (Jeonse Right)'; // default
 

@@ -41,14 +41,15 @@ export default function UploadPage() {
       const storedData = sessionStorage.getItem(`analysis-${analysisId}`);
       if (storedData) {
         const parsed = JSON.parse(storedData);
-        // Build full address with unit info if available
-        const fullAddress = [
+        // Use jibunAddress for CODEF lookup (works better with lot numbers like "광명동 123-45")
+        // Fallback to fullAddress or reconstructing from parts
+        const address = parsed.jibunAddress || parsed.fullAddress || [
           parsed.city,
           parsed.district,
           parsed.dong,
           parsed.building
         ].filter(Boolean).join(' ');
-        setAutoAddress(fullAddress);
+        setAutoAddress(address);
       }
     } catch (e) {
       console.warn('Could not load address from sessionStorage:', e);
@@ -96,9 +97,9 @@ export default function UploadPage() {
     try {
       setIsAutoLookup(true);
       setAutoLookupError(null);
-      setUploadProgress(10);
+      setUploadProgress(20);
 
-      // Step 1: Fetch 등기부등본 from Apick and store it
+      // Step 1: Fetch 등기부등본 via CODEF (primary) or APick (fallback)
       const lookupResponse = await fetch('/api/registry/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,7 +110,7 @@ export default function UploadPage() {
         }),
       });
 
-      setUploadProgress(40);
+      setUploadProgress(60);
 
       const lookupData = await lookupResponse.json();
 
@@ -117,12 +118,12 @@ export default function UploadPage() {
         throw new Error(lookupData.error || 'Failed to fetch registry');
       }
 
-      console.log(`Auto-lookup successful, documentId: ${lookupData.documentId}, cost: ${lookupData.cost}`);
+      console.log(`Auto-lookup successful, source: ${lookupData.source}, documentId: ${lookupData.documentId}`);
 
       // Track auto-lookup
-      analytics.documentUploaded(analysisId, 'deunggibu-auto');
+      analytics.documentUploaded(analysisId, `deunggibu-auto-${lookupData.source || 'unknown'}`);
 
-      setUploadProgress(60);
+      setUploadProgress(80);
 
       // Step 2: Get buildingType from sessionStorage
       let buildingType = 'apartment';
@@ -136,7 +137,7 @@ export default function UploadPage() {
         console.warn('Could not read buildingType from sessionStorage:', e);
       }
 
-      // Step 3: Trigger document parsing (same as manual upload)
+      // Step 3: Trigger document parsing and risk analysis
       fetch('/api/documents/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -354,7 +355,7 @@ export default function UploadPage() {
                     />
                   </div>
                   <p className="text-sm text-[#4A5568] mt-2 text-center">
-                    {uploadProgress < 30 ? 'Fetching registry...' : uploadProgress < 70 ? 'Analyzing document...' : 'Complete!'} {uploadProgress}%
+                    {uploadProgress <= 20 ? 'Searching property...' : uploadProgress <= 60 ? 'Fetching registry...' : uploadProgress <= 80 ? 'Analyzing risks...' : 'Complete!'} {uploadProgress}%
                   </p>
                 </div>
               )}

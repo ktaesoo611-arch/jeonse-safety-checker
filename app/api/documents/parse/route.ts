@@ -27,6 +27,7 @@ import { PropertyDetails, ValuationResult, BuildingType } from '@/lib/types';
 import { analysisService } from '@/lib/services/analysis-service';
 import { buildingRegistryAPI } from '@/lib/apis/building-registry';
 import { parseKoreanAddress } from '@/lib/utils/address-parser';
+import { parseDeunggibuExcel, extractTextFromExcel } from '@/lib/analyzers/excel-deunggibu-parser';
 
 // Module-level supabase client (service role for bypassing RLS)
 const supabase = createServiceRoleClient();
@@ -137,57 +138,151 @@ async function fetchPropertyValuation(
 }
 
 /**
- * Perform real OCR and risk analysis
+ * Perform real OCR/Excel parsing and risk analysis
+ *
+ * @param buffer - File buffer (null for CODEF pre-parsed documents)
+ * @param analysisId - Analysis ID to update
+ * @param proposedJeonse - Proposed jeonse amount
+ * @param address - Property address
+ * @param userBuildingType - User-selected building type
+ * @param mimeType - MIME type to determine file format
+ * @param preParsedData - Pre-parsed data from CODEF (skips buffer parsing if provided)
  */
 async function performRealAnalysis(
-  buffer: Buffer,
+  buffer: Buffer | null,
   analysisId: string,
   proposedJeonse: number,
   address: string,
-  userBuildingType?: BuildingType // User-selected building type from frontend
+  userBuildingType?: BuildingType, // User-selected building type from frontend
+  mimeType?: string, // MIME type to determine file format
+  preParsedData?: any // Pre-parsed data from CODEF (skips file parsing)
 ) {
   try {
-    console.log('Starting OCR extraction...');
+    let documentText = '';
+    let excelParsedData: any = null;
 
-    // Step 1: Extract STRUCTURED document from PDF using Document AI
-    console.log('🔍 Extracting structured document data (text + tables)...');
-    const document = await ocrService.extractStructuredDocument(buffer);
+    if (preParsedData) {
+      // CODEF path: data is already parsed, no file processing needed
+      console.log('📋 Using CODEF pre-parsed data (structured JSON)');
+      excelParsedData = preParsedData;
+      documentText = JSON.stringify(preParsedData);
+      console.log(`   - Address: ${preParsedData.address}`);
+      console.log(`   - Mortgages: ${preParsedData.mortgages?.length || 0}`);
+      console.log(`   - Jeonse rights: ${preParsedData.jeonseRights?.length || 0}`);
+      console.log(`   - Liens: ${preParsedData.liens?.length || 0}`);
+      console.log(`   - Confidence: ${preParsedData.confidence}`);
+    } else if (buffer) {
+      // File-based path (APick or manual upload)
+      // Detect file format from MIME type
+      const isExcel = mimeType?.includes('spreadsheet') ||
+                      mimeType?.includes('excel') ||
+                      mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-    if (!document || !document.text || document.text.length < 50) {
-      console.warn('OCR returned minimal text, falling back to mock analysis');
+      if (isExcel) {
+        // Step 1a: Parse Excel document directly (no OCR needed)
+        console.log('📊 Parsing Excel document (from Apick API)...');
+        try {
+          excelParsedData = parseDeunggibuExcel(buffer);
+          documentText = excelParsedData.rawText;
+          console.log(`✅ Excel parsing complete: ${documentText.length} characters`);
+          console.log(`   - Address: ${excelParsedData.address}`);
+          console.log(`   - Mortgages: ${excelParsedData.mortgages.length}`);
+          console.log(`   - Jeonse rights: ${excelParsedData.jeonseRights.length}`);
+          console.log(`   - Liens: ${excelParsedData.liens.length}`);
+        } catch (excelError) {
+          console.error('Excel parsing failed, extracting raw text:', excelError);
+          documentText = extractTextFromExcel(buffer);
+        }
+      } else {
+        // Step 1b: Extract STRUCTURED document from PDF using Document AI (OCR)
+        console.log('🔍 Extracting structured document data (PDF + OCR)...');
+        const document = await ocrService.extractStructuredDocument(buffer);
+
+        if (!document || !document.text || document.text.length < 50) {
+          console.warn('OCR returned minimal text, falling back to mock analysis');
+          return generateMockRiskAnalysis(analysisId, proposedJeonse, address);
+        }
+
+        documentText = document.text;
+        console.log(`✅ Document AI extraction complete: ${documentText.length} characters`);
+      }
+    } else {
+      console.warn('No buffer or pre-parsed data provided, falling back to mock analysis');
       return generateMockRiskAnalysis(analysisId, proposedJeonse, address);
     }
 
-    console.log(`✅ Document AI extraction complete: ${document.text.length} characters`);
+    // Verify we have document text
+    if (!documentText || documentText.length < 50) {
+      console.warn('Document text too short, falling back to mock analysis');
+      return generateMockRiskAnalysis(analysisId, proposedJeonse, address);
+    }
 
-    // Step 2: TRY LLM-BASED PARSING FIRST (most accurate, handles OCR corruption)
+    // Step 2: Parse document data
+    // Priority: CODEF/Excel parsed data > LLM parsing > regex parsing
     let deunggibuData: any;
     let parsingMethod: string;
 
-    try {
-      console.log('🤖 Attempting LLM-based parsing with Claude...');
-      const llmParser = new LLMParser();
-      deunggibuData = await llmParser.parseDeunggibu(document.text || '');
+    if (excelParsedData && excelParsedData.confidence >= 0.8) {
+      // Use Excel-parsed data directly (most accurate for Excel format)
+      console.log('📊 Using Excel-parsed data directly (high confidence)');
+      deunggibuData = excelParsedData;
+      parsingMethod = 'excel';
 
-      console.log(`✅ Using LLM-based parsing (confidence: ${(deunggibuData.confidence * 100).toFixed(1)}%)`);
+      console.log(`✅ Using Excel parsing (confidence: ${(deunggibuData.confidence * 100).toFixed(1)}%)`);
       console.log(`   - Mortgages found: ${deunggibuData.mortgages.length}`);
       console.log(`   - Jeonse rights found: ${deunggibuData.jeonseRights.length}`);
       console.log(`   - Liens found: ${deunggibuData.liens.length}`);
       console.log(`   - Building year extracted: ${deunggibuData.buildingYear || 'not found'}`);
+    } else {
+      // Try LLM-based parsing (handles OCR corruption and complex formats)
+      try {
+        console.log('🤖 Attempting LLM-based parsing with Claude...');
+        const llmParser = new LLMParser();
+        deunggibuData = await llmParser.parseDeunggibu(documentText);
 
-      parsingMethod = 'llm';
-    } catch (llmError) {
-      // Fall back to regex-based text parsing if LLM fails
-      console.error('⚠️  LLM parsing failed, falling back to regex text parsing:', llmError);
-      parsingMethod = 'text';
+        console.log(`✅ Using LLM-based parsing (confidence: ${(deunggibuData.confidence * 100).toFixed(1)}%)`);
+        console.log(`   - Mortgages found: ${deunggibuData.mortgages.length}`);
+        console.log(`   - Jeonse rights found: ${deunggibuData.jeonseRights.length}`);
+        console.log(`   - Liens found: ${deunggibuData.liens.length}`);
+        console.log(`   - Building year extracted: ${deunggibuData.buildingYear || 'not found'}`);
 
-      const parser = new DeunggibuParser();
-      deunggibuData = parser.parse(document.text || '');
-      deunggibuData.parsingMethod = 'text';
-      deunggibuData.confidence = 0.7; // Lower confidence for regex parsing
+        parsingMethod = 'llm';
+
+        // Merge Excel data if available (Excel has cleaner structured data)
+        if (excelParsedData) {
+          console.log('📊 Merging Excel-parsed data with LLM results...');
+          // Prefer Excel data for numeric values (more accurate)
+          if (excelParsedData.area > 0 && !deunggibuData.area) {
+            deunggibuData.area = excelParsedData.area;
+          }
+          if (excelParsedData.buildingYear && !deunggibuData.buildingYear) {
+            deunggibuData.buildingYear = excelParsedData.buildingYear;
+          }
+          // Use Excel flags if they detected issues
+          deunggibuData.hasAuction = deunggibuData.hasAuction || excelParsedData.hasAuction;
+          deunggibuData.hasSeizure = deunggibuData.hasSeizure || excelParsedData.hasSeizure;
+          deunggibuData.hasProvisionalSeizure = deunggibuData.hasProvisionalSeizure || excelParsedData.hasProvisionalSeizure;
+          deunggibuData.hasProvisionalDisposition = deunggibuData.hasProvisionalDisposition || excelParsedData.hasProvisionalDisposition;
+        }
+      } catch (llmError) {
+        // Fall back to Excel data or regex parsing
+        if (excelParsedData) {
+          console.warn('⚠️  LLM parsing failed, using Excel-parsed data:', llmError);
+          deunggibuData = excelParsedData;
+          parsingMethod = 'excel';
+        } else {
+          console.error('⚠️  LLM parsing failed, falling back to regex text parsing:', llmError);
+          parsingMethod = 'text';
+
+          const parser = new DeunggibuParser();
+          deunggibuData = parser.parse(documentText);
+          deunggibuData.parsingMethod = 'text';
+          deunggibuData.confidence = 0.7; // Lower confidence for regex parsing
+        }
+      }
     }
 
-    const ocrText = document.text;
+    const ocrText = documentText;
 
     console.log('Parsed deunggibu data:', {
       parsingMethod: deunggibuData.parsingMethod,
@@ -845,8 +940,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if already parsed
-    if (document.parsed_data) {
+    // Check if already parsed (skip for CODEF documents that need risk analysis)
+    // CODEF documents have parsed_data from the lookup step but still need
+    // valuation + risk analysis to be performed
+    const isCodefNeedingAnalysis = document.document_type === 'deunggibu-codef';
+    if (document.parsed_data && !isCodefNeedingAnalysis) {
       return NextResponse.json(
         {
           documentId: document.id,
@@ -858,27 +956,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Download document from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('documents')
-      .download(document.file_path);
+    // For CODEF documents, check if analysis is already completed to avoid re-processing
+    if (isCodefNeedingAnalysis) {
+      const { data: existingAnalysis } = await supabase
+        .from('analysis_results')
+        .select('safety_score')
+        .eq('id', document.analysis_id)
+        .single();
 
-    if (downloadError || !fileData) {
-      console.error('Storage download error:', downloadError);
-      return NextResponse.json(
-        { error: 'Failed to download document', details: downloadError?.message },
-        { status: 500 }
-      );
+      if (existingAnalysis?.safety_score !== null && existingAnalysis?.safety_score !== undefined) {
+        return NextResponse.json(
+          {
+            documentId: document.id,
+            parsedData: document.parsed_data,
+            parsedAt: document.created_at,
+            message: 'Analysis already completed',
+          },
+          { status: 200 }
+        );
+      }
     }
 
-    // Convert Blob to Buffer
-    const arrayBuffer = await fileData.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    // Download document from storage (skip for CODEF documents with no file)
+    let buffer: Buffer | null = null;
+    const isCodefDocument = document.document_type === 'deunggibu-codef' && !document.file_path;
+
+    if (!isCodefDocument) {
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('documents')
+        .download(document.file_path);
+
+      if (downloadError || !fileData) {
+        console.error('Storage download error:', downloadError);
+        return NextResponse.json(
+          { error: 'Failed to download document', details: downloadError?.message },
+          { status: 500 }
+        );
+      }
+
+      // Convert Blob to Buffer
+      const arrayBuffer = await fileData.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    }
 
     let parsedData: any = null;
 
     // Parse based on document type
-    if (document.document_type === 'deunggibu') {
+    if (document.document_type === 'deunggibu' || document.document_type === 'deunggibu-codef') {
       // Get analysis data for context
       const { data: analysis } = await supabase
         .from('analysis_results')
@@ -896,15 +1020,21 @@ export async function POST(request: NextRequest) {
       const proposedJeonse = analysis.proposed_jeonse;
       const address = analysis.properties?.address || '';
 
-      // Perform real OCR and analysis
+      // Determine if we have CODEF pre-parsed data
+      const isCodef = document.document_type === 'deunggibu-codef' && document.parsed_data;
+      const preParsedData = isCodef ? document.parsed_data : undefined;
+
+      // Perform real parsing and analysis
       // Note: performRealAnalysis() handles all database updates internally,
       // including saving parsed_data to uploaded_documents and risk analysis to analysis_results
       const result = await performRealAnalysis(
-        buffer,
+        isCodef ? null : buffer, // No buffer needed for CODEF
         document.analysis_id,
         proposedJeonse,
         address,
-        body.buildingType // Pass user-selected building type
+        body.buildingType, // Pass user-selected building type
+        document.mime_type, // Pass MIME type to detect Excel vs PDF format
+        preParsedData // Pre-parsed CODEF data (skips file parsing)
       );
 
       // Don't overwrite the parsed_data - it was already saved inside performRealAnalysis

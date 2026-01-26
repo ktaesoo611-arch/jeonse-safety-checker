@@ -110,8 +110,12 @@ export async function GET(
       .single();
 
     if (analysisError || !analysis) {
+      console.error(`[Status API] Analysis not found: ${analysisId}`, {
+        analysisError: analysisError?.message,
+        analysisErrorCode: analysisError?.code,
+      });
       return NextResponse.json(
-        { error: 'Analysis not found' },
+        { error: 'Analysis not found', analysisId },
         { status: 404 }
       );
     }
