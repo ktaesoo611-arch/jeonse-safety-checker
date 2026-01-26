@@ -115,9 +115,9 @@ export default function RiskAnalysisSection({
   // Recalculate scores based on selected tier
   const recalculatedLtvScore = calculateLtvScore(calculatedLtv);
 
-  // Filter out LTV-related risks and regenerate them based on tier selection
-  const ltvRiskTypes = ['critical_ltv', 'high_ltv', 'elevated_ltv'];
-  const nonLtvRisks = risks.filter(r => !ltvRiskTypes.includes(r.type));
+  // Filter out property-value-dependent risks and regenerate them based on tier selection
+  const valueBasedRiskTypes = ['critical_ltv', 'high_ltv', 'elevated_ltv', 'high_deposit_ratio'];
+  const nonValueBasedRisks = risks.filter(r => !valueBasedRiskTypes.includes(r.type));
 
   // Generate dynamic LTV risk based on calculated LTV
   const dynamicLtvRisk: RiskItem | null = (() => {
@@ -147,8 +147,27 @@ export default function RiskAnalysisSection({
     return null;
   })();
 
-  // Combine non-LTV risks with the dynamic LTV risk
-  const displayRisks = dynamicLtvRisk ? [...nonLtvRisks, dynamicLtvRisk] : nonLtvRisks;
+  // Generate dynamic deposit ratio risk based on selected tier's property value
+  const dynamicDepositRatioRisk: RiskItem | null = (() => {
+    if (displayPropertyValue <= 0) return null;
+    const depositRatio = proposedDeposit / displayPropertyValue;
+    if (depositRatio > 0.70) {
+      return {
+        type: 'high_deposit_ratio',
+        severity: 'MEDIUM',
+        description: `Your deposit is ${(depositRatio * 100).toFixed(1)}% of property value. Recommended maximum is 70%.`,
+        category: 'debt' as const,
+      };
+    }
+    return null;
+  })();
+
+  // Combine non-value-based risks with dynamic risks
+  const displayRisks = [
+    ...nonValueBasedRisks,
+    ...(dynamicLtvRisk ? [dynamicLtvRisk] : []),
+    ...(dynamicDepositRatioRisk ? [dynamicDepositRatioRisk] : []),
+  ];
 
   // Recalculate overall score and risk level using the updated risks
   const recalculatedOverallScore = calculateOverallScore(
