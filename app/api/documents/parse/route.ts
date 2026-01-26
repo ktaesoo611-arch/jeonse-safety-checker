@@ -398,6 +398,11 @@ async function performRealAnalysis(
     // while the registry address (deunggibuData.address) is the legal lot address (지번주소)
     const jibunAddressForValuation = deunggibuData.fullAddress || deunggibuData.address;
 
+    console.log('📍 Address data for valuation:');
+    console.log(`   User address (addressForValuation): "${addressForValuation}"`);
+    console.log(`   Registry address (jibunAddress): "${jibunAddressForValuation}"`);
+    console.log(`   Building type: ${detectedBuildingType}`);
+
     const molitValuation = await fetchPropertyValuation(
       addressForValuation,
       buildingNameForValuation,
