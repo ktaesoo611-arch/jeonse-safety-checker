@@ -11,9 +11,10 @@
  *
  * Response:
  * - success: boolean
- * - buildingType: 'apartment' | 'multifamily' | 'unknown'
+ * - buildingType: 'apartment' | 'multifamily' | 'officetel' | 'unknown'
  * - buildingName: string | null
  * - floorCount: number | null
+ * - supported: boolean (true if building type is supported for analysis)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -65,11 +66,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const supportedTypes = ['apartment', 'multifamily'];
+    const isSupported = supportedTypes.includes(result.data.buildingType);
+
     return NextResponse.json({
       success: true,
       buildingType: result.data.buildingType,
-      buildingName: result.data.buildingTypeName, // Korean name like "아파트", "연립주택"
-      floorCount: result.data.groundFloorCount || null
+      buildingName: result.data.buildingTypeName, // Korean name like "아파트", "연립주택", "오피스텔"
+      floorCount: result.data.groundFloorCount || null,
+      supported: isSupported,
+      ...(isSupported ? {} : {
+        message: `${result.data.buildingTypeName || result.data.buildingType}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트 또는 연립/다세대 주택만 분석 가능합니다.`
+      })
     });
   } catch (error) {
     console.error('[BuildingRegistry] Detection error:', error);

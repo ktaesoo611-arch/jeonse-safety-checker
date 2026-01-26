@@ -382,15 +382,37 @@ async function performRealAnalysis(
             addressComponents.bun,
             addressComponents.ji
           );
-          // Handle 'unknown' by defaulting to 'apartment'
-          detectedBuildingType = rawBuildingType === 'unknown' ? 'apartment' : rawBuildingType;
-          console.log(`   ✅ Detected building type: ${detectedBuildingType}${rawBuildingType === 'unknown' ? ' (defaulted from unknown)' : ''}`);
+          detectedBuildingType = rawBuildingType;
+          console.log(`   ✅ Detected building type: ${detectedBuildingType}`);
         } else {
           console.log('⚠️ Could not parse address for building type detection, defaulting to apartment');
         }
       } catch (error) {
         console.error('⚠️ Building type detection failed, defaulting to apartment:', error);
       }
+    }
+
+    // Check for unsupported building types - only 아파트 and 연립/다세대 are supported
+    const supportedTypes = ['apartment', 'multifamily'];
+    if (!supportedTypes.includes(detectedBuildingType)) {
+      const buildingTypeLabels: Record<string, string> = {
+        'officetel': '오피스텔',
+        'unknown': '알 수 없는 건물 유형',
+      };
+      const buildingTypeLabel = buildingTypeLabels[detectedBuildingType] || detectedBuildingType;
+
+      console.log(`❌ Unsupported building type: ${buildingTypeLabel} (${detectedBuildingType})`);
+      return NextResponse.json(
+        {
+          error: 'Unsupported building type',
+          errorCode: 'UNSUPPORTED_BUILDING_TYPE',
+          buildingType: detectedBuildingType,
+          buildingTypeLabel,
+          message: `${buildingTypeLabel}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트 또는 연립/다세대 주택만 분석 가능합니다.`,
+          messageEn: `${buildingTypeLabel} properties are not yet supported. Currently, only apartments (아파트) and multi-family housing (연립/다세대) can be analyzed.`
+        },
+        { status: 400 }
+      );
     }
 
     // For multifamily, use the CODEF/registry address as jibunAddress for accurate dong extraction

@@ -1,5 +1,9 @@
 // Building Types
-export type BuildingType = 'apartment' | 'multifamily';
+// - apartment: 아파트
+// - multifamily: 연립/다세대
+// - officetel: 오피스텔 (not yet supported for analysis)
+// - unknown: Unrecognized building type
+export type BuildingType = 'apartment' | 'multifamily' | 'officetel' | 'unknown';
 
 // Property Types
 export interface PropertyDetails {

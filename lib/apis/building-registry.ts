@@ -9,7 +9,7 @@ import axios from 'axios';
  * API Documentation: https://www.data.go.kr/data/15134735/openapi.do
  */
 
-export type BuildingType = 'apartment' | 'multifamily' | 'unknown';
+export type BuildingType = 'apartment' | 'multifamily' | 'officetel' | 'unknown';
 
 export interface BuildingInfo {
   buildingType: BuildingType;
@@ -419,6 +419,10 @@ const BUILDING_TYPE_MAP: Record<string, BuildingType> = {
 
   // Other categories that should be treated as multifamily for our purposes
   '단독주택': 'multifamily', // Single-family but treat as multifamily for analysis
+
+  // 오피스텔 (Officetel) - Not yet supported for analysis
+  '오피스텔': 'officetel',
+  '업무시설': 'officetel', // Business facilities (often includes officetel)
 };
 
 export class BuildingRegistryAPI {
@@ -616,6 +620,11 @@ export class BuildingRegistryAPI {
       lowerName.includes('빌라')
     ) {
       return 'multifamily';
+    }
+
+    // 오피스텔 detection
+    if (lowerName.includes('오피스텔') || lowerName.includes('officetel')) {
+      return 'officetel';
     }
 
     // For unknown types, use floor count as heuristic
