@@ -206,7 +206,7 @@ export default function ReportHero({
             </div>
           )}
 
-          {displayEstimatedValue && (
+          {displayEstimatedValue && displayEstimatedValue >= 50000000 && (
             <div className="text-center px-4 sm:px-8 py-5 bg-slate-50 rounded-2xl border-2 border-slate-200 hover:bg-slate-100 hover:shadow-md hover:border-slate-300 transition-all duration-200">
               <p className="text-sm sm:text-base text-slate-600 font-medium mb-2">Est. Value</p>
               <p className="text-xl sm:text-2xl font-bold text-slate-900">{formatAmount(displayEstimatedValue)}</p>

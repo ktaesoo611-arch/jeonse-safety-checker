@@ -186,7 +186,7 @@ export default function ReportPage() {
     riskLevel: (riskAnalysis?.riskLevel || summary?.riskLevel || 'UNKNOWN') as 'SAFE' | 'MODERATE' | 'HIGH' | 'CRITICAL' | 'UNKNOWN',
     safetyScore: riskAnalysis?.overallScore || summary?.safetyScore || 0,
     deposit: property?.proposedJeonse || wolseAnalysis?.userDeposit || 0,
-    monthlyRent: isWolse ? wolseAnalysis?.userMonthlyRent : undefined,
+    monthlyRent: isWolse ? (wolseAnalysis?.userMonthlyRent || reportData?.monthlyRent || undefined) : undefined,
     estimatedValue: property?.estimatedValue || valuation?.valueMid || null,
     verdict: dynamicVerdict,
     reportDate: new Date(reportData?.completedAt || reportData?.generatedAt || Date.now()).toLocaleDateString('en-US', {

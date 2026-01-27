@@ -119,7 +119,7 @@ export function parseCodefRegistryData(data: CodefRegistryData): ExcelDeunggibuD
 
   // Calculate totals
   result.totalMortgageAmount = result.activeMortgages.reduce((sum, m) => sum + m.maxAmount, 0);
-  result.totalEstimatedPrincipal = Math.round(result.totalMortgageAmount * 0.77);
+  result.totalEstimatedPrincipal = Math.round(result.totalMortgageAmount * 0.83);
   result.totalJeonseAmount = result.activeJeonseRights.reduce((sum, j) => sum + j.amount, 0);
 
   // Set flags from active liens

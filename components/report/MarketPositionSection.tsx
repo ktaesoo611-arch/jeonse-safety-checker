@@ -132,6 +132,28 @@ export default function MarketPositionSection({
 
   // Wolse Market Position
   if (reportType === 'wolse' && wolseData) {
+    // Check if we have meaningful data (at least monthly rent or expected rent)
+    const hasWolseData = wolseData.userMonthlyRent > 0 || wolseData.expectedRent > 0;
+
+    if (!hasWolseData) {
+      return (
+        <div className="mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
+            <span className="text-3xl">📊</span>
+            Market Position
+          </h2>
+          <div className="bg-gray-50 rounded-2xl p-8 text-center border border-gray-200">
+            <p className="text-gray-500 text-lg">
+              Market analysis data is not yet available for this property.
+            </p>
+            <p className="text-gray-400 text-sm mt-2">
+              This may happen when transaction data is limited in this area.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     const style = getAssessmentStyle(wolseData.assessment);
 
     return (

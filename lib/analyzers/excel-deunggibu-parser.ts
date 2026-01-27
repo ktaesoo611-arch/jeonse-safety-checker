@@ -84,7 +84,7 @@ export interface ExcelDeunggibuData {
 
   // Calculated totals (active only)
   totalMortgageAmount: number;
-  totalEstimatedPrincipal: number;  // 채권최고액 * 0.77 (typical ratio)
+  totalEstimatedPrincipal: number;  // 채권최고액 * 0.83 (typical ratio: principal ≈ 83% of 채권최고액)
   totalJeonseAmount: number;
 
   // Parsing metadata
@@ -177,7 +177,7 @@ export function parseDeunggibuExcel(buffer: Buffer): ExcelDeunggibuData {
 
   // Calculate totals
   result.totalMortgageAmount = result.activeMortgages.reduce((sum, m) => sum + m.maxAmount, 0);
-  result.totalEstimatedPrincipal = Math.round(result.totalMortgageAmount * 0.77);
+  result.totalEstimatedPrincipal = Math.round(result.totalMortgageAmount * 0.83);
   result.totalJeonseAmount = result.activeJeonseRights.reduce((sum, j) => sum + j.amount, 0);
 
   // Set flags

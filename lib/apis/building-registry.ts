@@ -627,9 +627,18 @@ export class BuildingRegistryAPI {
 
     // For 공동주택 (generic apartment housing), use multiple heuristics
     // Korean law: 아파트 = 5+ stories, 연립/다세대 = 4 stories or less
-    // IMPORTANT: Check etcPurps for specific housing types FIRST when mainPurpsCdNm is generic
+    // IMPORTANT: Check etcPurps for 오피스텔 FIRST - this takes priority over floor-based classification
+    // because 오피스텔 are typically high-rise but require different analysis (different market)
     if (koreanName === '공동주택') {
-      // Check etcPurps for specific housing types - prioritize residential types over officetel
+      // Check etcPurps for 오피스텔 FIRST - this is a critical distinction
+      // 오피스텔 are often registered as 공동주택 with 오피스텔 in etcPurps
+      // They require separate analysis because they have different market characteristics
+      if (etcPurps && etcPurps.includes('오피스텔')) {
+        console.log(`[BuildingRegistry] Detected 오피스텔 in etcPurps: "${etcPurps}"`);
+        return 'officetel';
+      }
+
+      // Check etcPurps for specific housing types
       if (etcPurps) {
         // If etcPurps explicitly mentions 다세대주택 or 연립주택, use that
         if (etcPurps.includes('다세대주택') || etcPurps.includes('연립주택') || etcPurps.includes('다가구주택')) {
