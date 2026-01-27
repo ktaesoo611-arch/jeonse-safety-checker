@@ -29,6 +29,48 @@ export const maxDuration = 60;
 
 const supabase = createServiceRoleClient();
 
+/**
+ * Translate CODEF error messages from Korean to English
+ */
+function translateCodefError(error: string): string {
+  // Common CODEF error patterns and their English translations
+  const translations: Record<string, string> = {
+    '검색결과가 없습니다': 'No search results found',
+    '검색어에 잘못된 철자가 없는지': 'Please check for typos',
+    '정확한 주소인지 다시 한번 확인해 주세요': 'Please verify the address is correct',
+    '서버 오류가 발생했습니다': 'A server error occurred',
+    '인증에 실패했습니다': 'Authentication failed',
+    '요청 시간이 초과되었습니다': 'Request timed out',
+  };
+
+  let translatedError = error;
+
+  // Check if error contains CF- code pattern (e.g., CF-13006)
+  const codeMatch = error.match(/^(CF-\d+):\s*/);
+  const errorCode = codeMatch ? codeMatch[1] : null;
+  const messageWithoutCode = codeMatch ? error.slice(codeMatch[0].length) : error;
+
+  // Try to translate known Korean phrases
+  for (const [korean, english] of Object.entries(translations)) {
+    if (messageWithoutCode.includes(korean)) {
+      translatedError = messageWithoutCode.replace(korean, english);
+    }
+  }
+
+  // If the error still contains Korean characters, provide a generic English message
+  const hasKorean = /[가-힣]/.test(translatedError);
+  if (hasKorean) {
+    // Common error codes and their meanings
+    if (errorCode === 'CF-13006') {
+      return 'No property found. Please verify the address and unit number are correct.';
+    }
+    // Generic fallback for other Korean errors
+    return 'Property lookup failed. Please check the address and try again.';
+  }
+
+  return translatedError;
+}
+
 interface RegistryLookupRequest {
   address?: string;          // Combined address (fallback)
   // Structured address params for CODEF inquiryType='2'
@@ -105,14 +147,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       console.log(`[RegistryLookup] CODEF failed, marking analysis as failed`);
       console.log(`[RegistryLookup] Error: ${codefResult.error}`);
 
+      // Translate error message to English for user display
+      const translatedError = translateCodefError(codefResult.error);
+
       // Update analysis status to failed with error message
       const { error: updateError } = await supabase
         .from('analysis_results')
         .update({
           status: 'failed',
           deunggibu_data: {
-            error: codefResult.error,
+            error: translatedError,
             errorCode: 'REGISTRY_LOOKUP_FAILED',
+            originalError: codefResult.error, // Keep original for debugging
             failedAt: new Date().toISOString()
           }
         })
@@ -128,7 +174,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
   } catch (error: any) {
     console.error('[RegistryLookup] Unexpected error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || '서버 오류가 발생했습니다' },
+      { success: false, error: error.message || 'A server error occurred' },
       { status: 500 }
     );
   }
