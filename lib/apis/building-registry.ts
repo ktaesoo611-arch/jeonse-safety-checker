@@ -625,19 +625,23 @@ export class BuildingRegistryAPI {
       return 'multifamily';
     }
 
-    // Check etcPurps (기타용도) only if mainPurpsCdNm doesn't give us a clear answer
-    // etcPurps may contain specific types like "오피스텔(주거용)"
-    if (etcPurps) {
-      const lowerEtcPurps = etcPurps.toLowerCase();
-      if (lowerEtcPurps.includes('오피스텔')) {
-        return 'officetel';
-      }
-    }
-
     // For 공동주택 (generic apartment housing), use multiple heuristics
     // Korean law: 아파트 = 5+ stories, 연립/다세대 = 4 stories or less
+    // IMPORTANT: Check etcPurps for specific housing types FIRST when mainPurpsCdNm is generic
     if (koreanName === '공동주택') {
-      // If we have floor count data, use it
+      // Check etcPurps for specific housing types - prioritize residential types over officetel
+      if (etcPurps) {
+        // If etcPurps explicitly mentions 다세대주택 or 연립주택, use that
+        if (etcPurps.includes('다세대주택') || etcPurps.includes('연립주택') || etcPurps.includes('다가구주택')) {
+          // But also check floor count - 5+ floors is apartment even if etcPurps says 다세대
+          if (floorCount >= 5) {
+            return 'apartment';
+          }
+          return 'multifamily';
+        }
+      }
+
+      // If we have floor count data, use it (Korean building classification standard)
       if (floorCount >= 5) {
         return 'apartment';
       }
@@ -654,6 +658,16 @@ export class BuildingRegistryAPI {
       // If no reliable data, default to apartment for 공동주택
       // (Modern developments registered as 공동주택 are more commonly apartments)
       return 'apartment';
+    }
+
+    // Check etcPurps (기타용도) only if mainPurpsCdNm doesn't give us a clear answer
+    // and it's NOT 공동주택 (already handled above)
+    // etcPurps may contain specific types like "오피스텔(주거용)"
+    if (etcPurps) {
+      const lowerEtcPurps = etcPurps.toLowerCase();
+      if (lowerEtcPurps.includes('오피스텔')) {
+        return 'officetel';
+      }
     }
 
     // Check mapping table
