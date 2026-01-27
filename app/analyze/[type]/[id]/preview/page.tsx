@@ -142,6 +142,7 @@ export default function PreviewPage() {
       wolseAnalysisRunRef.current = true; // Mark as running to prevent duplicate calls
 
       // Run wolse preview analysis
+      // buildingType is detected during analysis creation and stored in sessionStorage
       const previewResponse = await fetch('/api/wolse/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -152,7 +153,8 @@ export default function PreviewPage() {
           apartmentName: formData.building,
           exclusiveArea: exclusiveArea,
           deposit: formData.deposit,
-          monthlyRent: formData.monthlyRent
+          monthlyRent: formData.monthlyRent,
+          buildingType: formData.buildingType || 'apartment'
         })
       });
 

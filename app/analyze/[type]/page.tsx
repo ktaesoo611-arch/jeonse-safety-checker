@@ -218,13 +218,15 @@ export default function SimplifiedAnalysisPage() {
       }
 
       // Store form data in session storage (including structured address for CODEF)
+      // Use detected buildingType from create API response (defaults to 'apartment')
+      const detectedBuildingType = createData.buildingType || 'apartment';
       sessionStorage.setItem(`analysis-${analysisId}`, JSON.stringify({
         type: rentalType,
         city: addressData.sido,
         district: addressData.sigungu,
         dongName: addressData.bname,  // 읍면동 name (e.g., "광명동")
         building: addressData.buildingName || null,
-        buildingType: 'apartment',
+        buildingType: detectedBuildingType,
         deposit: depositNum,
         monthlyRent: isWolse ? parseInt(parseNumber(monthlyRent)) : null,
         fullAddress: fullAddressWithUnit,
@@ -273,7 +275,7 @@ export default function SimplifiedAnalysisPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 documentId: lookupData.documentId,
-                buildingType: 'apartment',
+                buildingType: detectedBuildingType,
               }),
             });
           } else {
