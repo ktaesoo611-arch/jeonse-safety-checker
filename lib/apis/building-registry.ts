@@ -514,13 +514,16 @@ export class BuildingRegistryAPI {
       // Normalize to array
       const itemArray = Array.isArray(items) ? items : [items];
 
-      // For apartment complexes, API may return multiple buildings (동)
+      // For complexes, API may return multiple buildings (동)
       // We need to analyze all buildings to determine the correct type
-      // Look for the building with the highest floor count for better classification
+      // Priority: 아파트 > 연립주택/다세대주택 > 공동주택 > others
       let maxFloorCount = 0;
       let totalFloorAreaSum = 0;
       let primaryBuildingType = '';
       let selectedItem = itemArray[0];
+
+      // Track all building types found for better classification
+      const foundTypes = new Set<string>();
 
       for (const item of itemArray) {
         const floors = item.grndFlrCnt ? parseInt(item.grndFlrCnt) : 0;
@@ -528,6 +531,7 @@ export class BuildingRegistryAPI {
         const typeName = item.mainPurpsCdNm?.trim() || '';
 
         totalFloorAreaSum += area;
+        if (typeName) foundTypes.add(typeName);
 
         // Track the building with highest floor count
         if (floors > maxFloorCount) {
@@ -535,13 +539,24 @@ export class BuildingRegistryAPI {
           selectedItem = item;
         }
 
-        // Explicit building types take priority
+        // Explicit building types take priority (highest to lowest)
+        // 1. 아파트 - highest priority
+        // 2. 연립주택/다세대주택 - explicit multifamily types
+        // 3. Other types
         if (typeName === '아파트') {
           primaryBuildingType = '아파트';
+        } else if (typeName === '연립주택' || typeName === '다세대주택' || typeName === '다가구주택') {
+          // Only set if we haven't found 아파트
+          if (primaryBuildingType !== '아파트') {
+            primaryBuildingType = typeName;
+          }
         } else if (!primaryBuildingType && typeName) {
           primaryBuildingType = typeName;
         }
       }
+
+      // Log all found types for debugging
+      console.log(`[BuildingRegistry] Found building types on lot: [${Array.from(foundTypes).join(', ')}]`);
 
       const mainPurpsCdNm = primaryBuildingType || selectedItem.mainPurpsCdNm?.trim() || '';
       const etcPurps = selectedItem.etcPurps?.trim() || ''; // 기타용도 - may contain specific type like "오피스텔(주거용)"
@@ -596,20 +611,27 @@ export class BuildingRegistryAPI {
    * - 아파트: 5+ stories, typically high-rise
    * - 연립주택: 4 stories or less, total floor area > 660㎡
    * - 다세대주택: 4 stories or less, total floor area ≤ 660㎡
+   *
+   * IMPORTANT: mainPurpsCdNm (주용도) takes priority over etcPurps (기타용도)
+   * because a lot can have multiple building types and we want to classify
+   * based on the primary use, not secondary uses.
    */
   private mapBuildingType(koreanName: string, floorCount: number = 0, totalFloorArea: number = 0, etcPurps: string = ''): BuildingType {
-    // Check etcPurps (기타용도) first - it often contains the specific type like "오피스텔(주거용)"
+    // Direct lookup for explicit types - mainPurpsCdNm takes priority
+    // This ensures that if a lot has both 연립다세대 and 오피스텔,
+    // and mainPurpsCdNm says 연립주택/다세대주택, we classify as multifamily
+    if (koreanName === '아파트') return 'apartment';
+    if (koreanName === '연립주택' || koreanName === '다세대주택' || koreanName === '다가구주택') {
+      return 'multifamily';
+    }
+
+    // Check etcPurps (기타용도) only if mainPurpsCdNm doesn't give us a clear answer
+    // etcPurps may contain specific types like "오피스텔(주거용)"
     if (etcPurps) {
       const lowerEtcPurps = etcPurps.toLowerCase();
       if (lowerEtcPurps.includes('오피스텔')) {
         return 'officetel';
       }
-    }
-
-    // Direct lookup for explicit types
-    if (koreanName === '아파트') return 'apartment';
-    if (koreanName === '연립주택' || koreanName === '다세대주택' || koreanName === '다가구주택') {
-      return 'multifamily';
     }
 
     // For 공동주택 (generic apartment housing), use multiple heuristics
