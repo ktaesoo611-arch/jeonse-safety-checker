@@ -93,6 +93,13 @@ export async function GET(
       } else if (newSchemaResult.status === 'completed') {
         const hasResults = newSchemaResult.safety_score !== null || newSchemaResult.deunggibu_data !== null;
         progress = hasResults ? 100 : 85;
+      } else if (newSchemaResult.status === 'failed') {
+        progress = 0;
+        // Include error message if available
+        if (newSchemaResult.deunggibu_data?.error) {
+          response.errorMessage = newSchemaResult.deunggibu_data.error;
+          response.errorCode = newSchemaResult.deunggibu_data.errorCode;
+        }
       }
 
       response.progress = Math.round(progress);
@@ -188,6 +195,11 @@ export async function GET(
       }
     } else if (analysis.status === 'failed') {
       progress = 0;
+      // Include error message if available
+      if (analysis.deunggibu_data?.error) {
+        response.errorMessage = analysis.deunggibu_data.error;
+        response.errorCode = analysis.deunggibu_data.errorCode;
+      }
     }
 
     response.progress = Math.round(progress);
