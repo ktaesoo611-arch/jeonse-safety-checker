@@ -253,7 +253,7 @@ export const SEOUL_DISTRICTS: District[] = [
     dongs: [
       { name: '공덕동', nameEn: 'Gongdeok-dong', code: '10100' },
       { name: '구수동', nameEn: 'Gusu-dong', code: '10100' },
-      { name: '노고산동', nameEn: 'Nogosan-dong', code: '11500' },
+      { name: '노고산동', nameEn: 'Nogosan-dong', code: '10200' },
       { name: '대흥동', nameEn: 'Daeheung-dong', code: '11000' },
       { name: '도화동', nameEn: 'Dohwa-dong', code: '10200' },
       { name: '동교동', nameEn: 'Donggyo-dong', code: '12100' },
