@@ -96,6 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       .eq('id', body.analysisId);
 
     // Try CODEF first (fast, structured JSON)
+    let codefError: string | undefined;
     try {
       const codefResult = await fetchViaCodef({
         address: body.address,
@@ -110,9 +111,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       if (codefResult.success) {
         return NextResponse.json(codefResult);
       }
-      console.warn('[RegistryLookup] CODEF failed, falling back to APick:', codefResult.error);
-    } catch (codefError: any) {
-      console.warn('[RegistryLookup] CODEF error, falling back to APick:', codefError.message);
+      codefError = codefResult.error;
+      console.warn('[RegistryLookup] CODEF failed, falling back to APick:', codefError);
+    } catch (err: any) {
+      codefError = err.message;
+      console.warn('[RegistryLookup] CODEF error, falling back to APick:', codefError);
     }
 
     // Fallback to APick (only works with combined address)
@@ -120,7 +123,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       body.address || `${body.addr_sido} ${body.addr_sigungu} ${body.addr_dong} ${body.addr_lotNumber || ''}`.trim(),
       propertyType,
       body.format || DEFAULT_DOWNLOAD_FORMAT,
-      body.analysisId
+      body.analysisId,
+      codefError  // Pass CODEF error for better error reporting
     );
 
     return NextResponse.json(apickResult);
@@ -155,7 +159,25 @@ async function fetchViaCodef(
   type: '토지' | '집합건물' | '건물',
   analysisId: string
 ): Promise<RegistryLookupResponse> {
-  console.log('[RegistryLookup] Attempting CODEF lookup...');
+  // Check if CODEF credentials are configured
+  const hasCodefCredentials = !!(
+    process.env.CODEF_CLIENT_ID &&
+    process.env.CODEF_CLIENT_SECRET &&
+    process.env.CODEF_PUBLIC_KEY
+  );
+  const hasIrosCredentials = !!(
+    process.env.CODEF_IROS_ID &&
+    process.env.CODEF_IROS_PASSWORD
+  );
+
+  console.log(`[RegistryLookup] Attempting CODEF lookup... (credentials: ${hasCodefCredentials ? 'YES' : 'NO'}, IROS: ${hasIrosCredentials ? 'YES' : 'NO'})`);
+
+  if (!hasCodefCredentials) {
+    return {
+      success: false,
+      error: 'CODEF credentials not configured (missing CODEF_CLIENT_ID, CODEF_CLIENT_SECRET, or CODEF_PUBLIC_KEY)',
+    };
+  }
 
   const codefAPI = new CodefAPI();
 
@@ -288,16 +310,21 @@ async function fetchViaApick(
   address: string,
   type: '토지' | '집합건물' | '건물',
   format: 'pdf' | 'excel',
-  analysisId: string
+  analysisId: string,
+  codefError?: string  // Error from CODEF attempt (for better error reporting)
 ): Promise<RegistryLookupResponse> {
   console.log('[RegistryLookup] Using APick fallback...');
 
   const apiKey = process.env.APICK_API_KEY;
   if (!apiKey) {
     console.error('[RegistryLookup] APICK_API_KEY not configured');
+    // Provide more helpful error message showing what actually failed
+    const errorDetails = codefError
+      ? `CODEF failed: ${codefError}. APick fallback unavailable (APICK_API_KEY not configured).`
+      : 'Registry lookup service is not configured (no CODEF or APick credentials)';
     return {
       success: false,
-      error: 'Registry lookup service is not configured (no CODEF or APick credentials)',
+      error: errorDetails,
     };
   }
 
