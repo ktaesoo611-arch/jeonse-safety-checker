@@ -625,11 +625,10 @@ export class BuildingRegistryAPI {
       return 'multifamily';
     }
 
-    // For 공동주택 (generic apartment housing), use multiple heuristics
+    // For 공동주택 or 단독주택 (generic housing types), use etcPurps and heuristics
     // Korean law: 아파트 = 5+ stories, 연립/다세대 = 4 stories or less
-    // IMPORTANT: Check etcPurps for 오피스텔 FIRST - this takes priority over floor-based classification
-    // because 오피스텔 are typically high-rise but require different analysis (different market)
-    if (koreanName === '공동주택') {
+    // IMPORTANT: Check etcPurps for specific types FIRST - this takes priority over floor-based classification
+    if (koreanName === '공동주택' || koreanName === '단독주택') {
       // Check etcPurps for 오피스텔 FIRST - this is a critical distinction
       // 오피스텔 are often registered as 공동주택 with 오피스텔 in etcPurps
       // They require separate analysis because they have different market characteristics
@@ -638,11 +637,16 @@ export class BuildingRegistryAPI {
         return 'officetel';
       }
 
-      // Check etcPurps for specific housing types
+      // Check etcPurps for specific housing types (다세대/연립/다가구)
+      // 단독주택 with 다가구주택 in etcPurps should be treated as multifamily
       if (etcPurps) {
-        // If etcPurps explicitly mentions 다세대주택 or 연립주택, use that
         if (etcPurps.includes('다세대주택') || etcPurps.includes('연립주택') || etcPurps.includes('다가구주택')) {
-          // But also check floor count - 5+ floors is apartment even if etcPurps says 다세대
+          console.log(`[BuildingRegistry] Detected multifamily type in etcPurps: "${etcPurps}"`);
+          // For 단독주택 with 다가구주택, always return multifamily (regardless of floor count)
+          if (koreanName === '단독주택') {
+            return 'multifamily';
+          }
+          // For 공동주택, check floor count - 5+ floors is apartment even if etcPurps says 다세대
           if (floorCount >= 5) {
             return 'apartment';
           }
@@ -650,7 +654,12 @@ export class BuildingRegistryAPI {
         }
       }
 
-      // If we have floor count data, use it (Korean building classification standard)
+      // 단독주택 without specific etcPurps → treat as multifamily
+      if (koreanName === '단독주택') {
+        return 'multifamily';
+      }
+
+      // 공동주택: use floor count for classification
       if (floorCount >= 5) {
         return 'apartment';
       }
@@ -660,12 +669,10 @@ export class BuildingRegistryAPI {
       }
       // Floor count is 0 (missing data) - use total floor area as heuristic
       // Large floor area (>5000㎡) indicates apartment complex
-      // (Typical 연립/다세대 buildings are much smaller)
       if (totalFloorArea > 5000) {
         return 'apartment';
       }
       // If no reliable data, default to apartment for 공동주택
-      // (Modern developments registered as 공동주택 are more commonly apartments)
       return 'apartment';
     }
 
