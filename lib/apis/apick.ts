@@ -108,8 +108,8 @@ export class ApickAPI {
       const data = response.data;
       console.log(`[Apick] Request response:`, JSON.stringify(data, null, 2));
 
-      // Check for error message in various response formats
-      const errorMessage = data.data?.error || data.result?.error;
+      // Check for error message in response
+      const errorMessage = data.data?.error;
       if (errorMessage) {
         console.error(`[Apick] API error: ${errorMessage}`);
         return { success: false, error: errorMessage };
