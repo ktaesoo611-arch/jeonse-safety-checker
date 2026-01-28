@@ -89,7 +89,9 @@ export async function POST(request: NextRequest) {
       exclusiveArea,
       deposit,
       monthlyRent,
-      buildingType = 'apartment' as BuildingType
+      buildingType = 'apartment' as BuildingType,
+      selectedTier,
+      targetBuildingYear
     } = inputData;
 
     // Update status to processing
@@ -125,7 +127,9 @@ export async function POST(request: NextRequest) {
       apartmentName,
       exclusiveArea,
       { deposit, monthlyRent },
-      buildingType
+      buildingType,
+      selectedTier,
+      targetBuildingYear
     );
 
     // Set property ID in result

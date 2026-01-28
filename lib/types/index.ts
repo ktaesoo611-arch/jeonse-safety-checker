@@ -319,6 +319,7 @@ export interface WolseTransaction {
   month: number;
   day: number;
   contractType?: string; // 신규, 갱신
+  buildingYear?: number; // 건축년도 (for 연립/다세대 filtering)
 }
 
 export interface WolseMarketRate {
@@ -360,6 +361,18 @@ export interface WolseNegotiationOption {
   recommended?: boolean;
 }
 
+// Tiered Expected Rent for 연립/다세대
+export interface TieredExpectedRent {
+  tier: QualityTier;
+  label: string;
+  expectedRent: number;           // Expected rent at user's deposit for this tier
+  impliedJeonse: number;          // Tier's implied jeonse value
+  unitJeonse: number;             // ₩/㎡ for this tier
+  transactionCount: number;
+  effectiveSampleSize: number;
+  depreciationRate: number;
+}
+
 export interface WolseAnalysisResult {
   id: string;
   propertyId: string;
@@ -374,6 +387,10 @@ export interface WolseAnalysisResult {
   expectedRent: number;           // Expected rent at user's deposit based on market jeonse
   rentDifference: number;         // actualRent - expectedRent (positive = overpaying)
   rentDifferencePercent: number;  // Percentage difference
+
+  // Tiered expected rent (for 연립/다세대 - aligned with user's tier selection)
+  tieredExpectedRent?: TieredExpectedRent[];  // 4 tiers: budget, standard, mid, premium
+  selectedTierExpectedRent?: number;          // Expected rent for user's selected tier
 
   // Jeonse-centric analysis
   impliedJeonseToday?: number;    // Today's market jeonse from regression

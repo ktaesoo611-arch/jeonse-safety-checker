@@ -4,7 +4,9 @@ import {
   WolseAnalysisResult,
   WolseNegotiationOption,
   WolseTransaction,
-  BuildingType
+  BuildingType,
+  QualityTier,
+  TieredExpectedRent
 } from '../types';
 
 /**
@@ -14,6 +16,38 @@ import {
  */
 const CURRENT_BOK_RATE = 2.5;
 const CURRENT_CONVERSION_RATE = Math.min(10, CURRENT_BOK_RATE + 2) / 100; // 4.5% as decimal
+
+/**
+ * Multifamily Wolse Filtering Configuration
+ * Similar to Est. Value, filter by floor and building age for better comparables
+ */
+const MULTIFAMILY_WOLSE_CONFIG = {
+  // Minimum transactions after filtering
+  MIN_TRANSACTIONS: 5,
+
+  // Building age tolerance (years)
+  AGE_TOLERANCE_PRIMARY: 10,   // ±10 years
+  AGE_TOLERANCE_FALLBACK: 15,  // ±15 years
+
+  // Recency half-life (days)
+  RECENCY_HALFLIFE_DAYS: 90,
+
+  // Tier labels
+  LABELS: {
+    budget: '하위 25% (Budget)',
+    standard: '25-50% (Standard)',
+    mid: '50-75% (Mid)',
+    premium: '상위 25% (Premium)',
+  } as Record<QualityTier, string>,
+
+  // Annual depreciation rates by tier (applied to jeonse values)
+  DEPRECIATION: {
+    budget: 0.02,    // 2%/yr
+    standard: 0.015, // 1.5%/yr
+    mid: 0.01,       // 1%/yr
+    premium: 0.005,  // 0.5%/yr
+  } as Record<QualityTier, number>,
+};
 
 /**
  * Result of user rent comparison against market expectation
@@ -150,6 +184,14 @@ export class WolsePriceAnalyzer {
 
   /**
    * Analyze a user's wolse quote
+   *
+   * For 연립/다세대 (multifamily):
+   * - Calculates tiered expected rent (budget/standard/mid/premium)
+   * - Uses selectedTier to align with user's Est. Value tier selection
+   * - Falls back to 'standard' tier if not specified
+   *
+   * @param selectedTier - User's selected quality tier from Est. Value (for multifamily)
+   * @param targetBuildingYear - Target property's building year (for age filtering)
    */
   async analyzeQuote(
     city: string,
@@ -158,11 +200,17 @@ export class WolsePriceAnalyzer {
     apartmentName: string,
     exclusiveArea: number,
     quote: WolseQuote,
-    buildingType: BuildingType = 'apartment' // Default for backwards compatibility
+    buildingType: BuildingType = 'apartment',
+    selectedTier?: QualityTier,
+    targetBuildingYear?: number
   ): Promise<WolseAnalysisResult> {
     console.log('\n🔍 Starting Wolse Price Analysis');
     console.log(`   Building Type: ${buildingType}`);
     console.log(`   Quote: ${(quote.deposit / 10000).toLocaleString()}만원 보증금 / ${(quote.monthlyRent / 10000).toLocaleString()}만원 월세`);
+    if (buildingType === 'multifamily') {
+      console.log(`   Selected Tier: ${selectedTier || 'standard (default)'}`);
+      console.log(`   Target Building Year: ${targetBuildingYear || 'unknown'}`);
+    }
 
     // Step 1: Get market rate data (routes to correct API based on building type)
     const marketData = await this.rateCalculator.calculateMarketRate(
@@ -174,6 +222,27 @@ export class WolsePriceAnalyzer {
       12, // monthsBack
       buildingType
     );
+
+    // Step 1.5: For multifamily, calculate tiered expected rent
+    let tieredExpectedRent: TieredExpectedRent[] | undefined;
+    let selectedTierExpectedRent: number | undefined;
+
+    if (buildingType === 'multifamily') {
+      tieredExpectedRent = this.calculateTieredExpectedRent(
+        marketData.transactions,
+        quote.deposit,
+        exclusiveArea,
+        targetBuildingYear
+      );
+
+      // Find the selected tier's expected rent (default to 'standard')
+      const tierToUse = selectedTier || 'standard';
+      const selectedTierData = tieredExpectedRent.find(t => t.tier === tierToUse);
+      if (selectedTierData) {
+        selectedTierExpectedRent = selectedTierData.expectedRent;
+        console.log(`\n   📌 Using ${tierToUse} tier expected rent: ${(selectedTierExpectedRent / 10000).toFixed(1)}만원`);
+      }
+    }
 
     // Step 2: Compare user's rent to market expectation (Option B: Raw Regression + MK Adjustment)
     const rentComparison = this.compareUserRentToMarket(
@@ -245,15 +314,35 @@ export class WolsePriceAnalyzer {
     // Generate UUID
     const id = crypto.randomUUID();
 
+    // For multifamily with tiered data, use selected tier's expected rent for primary comparison
+    // Otherwise use the regression-based expected rent
+    const finalExpectedRent = selectedTierExpectedRent ?? rentComparison.expectedRent;
+    const finalRentDifference = quote.monthlyRent - finalExpectedRent;
+    const finalRentDifferencePercent = finalExpectedRent > 0 ? (finalRentDifference / finalExpectedRent) * 100 : 0;
+
+    // Regenerate assessment if using tiered expected rent
+    let finalAssessment = assessment;
+    if (selectedTierExpectedRent !== undefined) {
+      finalAssessment = this.generateAssessmentFromRentComparison(
+        finalExpectedRent,
+        quote.monthlyRent,
+        finalRentDifference,
+        finalRentDifferencePercent
+      );
+    }
+
     const result: WolseAnalysisResult = {
       id,
       propertyId: '', // To be set when saved to DB
       userDeposit: quote.deposit,
       userMonthlyRent: quote.monthlyRent,
       userImpliedRate,
-      expectedRent: rentComparison.expectedRent,
-      rentDifference: rentComparison.rentDifference,
-      rentDifferencePercent: rentComparison.rentDifferencePercent,
+      expectedRent: finalExpectedRent,
+      rentDifference: Math.round(finalRentDifference),
+      rentDifferencePercent: finalRentDifferencePercent,
+      // Tiered expected rent (for 연립/다세대)
+      tieredExpectedRent,
+      selectedTierExpectedRent,
       // Jeonse-centric data
       impliedJeonseToday: rentComparison.impliedJeonseToday,
       userImpliedJeonse: rentComparison.userImpliedJeonse,
@@ -270,8 +359,8 @@ export class WolsePriceAnalyzer {
       contractCount: marketData.contractCount,
       cleanTransactionCount: rentComparison.cleanTransactionCount,
       outliersRemoved: rentComparison.outliersRemoved,
-      assessment: assessment.level,
-      assessmentDetails: assessment.details,
+      assessment: finalAssessment.level,
+      assessmentDetails: finalAssessment.details,
       savingsPotential,
       trend: {
         direction: jeonseTrend.direction,
@@ -287,11 +376,17 @@ export class WolsePriceAnalyzer {
     console.log('\n✅ Analysis Complete:');
     console.log(`   Today's Jeonse: ${(rentComparison.impliedJeonseToday / 100000000).toFixed(2)}억`);
     console.log(`   User's Jeonse: ${(rentComparison.userImpliedJeonse / 100000000).toFixed(2)}억`);
-    console.log(`   Expected Rent: ${(rentComparison.expectedRent / 10000).toFixed(1)}만원`);
+    console.log(`   Expected Rent: ${(finalExpectedRent / 10000).toFixed(1)}만원${selectedTierExpectedRent !== undefined ? ' (tiered)' : ''}`);
     console.log(`   User's Rent: ${(quote.monthlyRent / 10000).toFixed(1)}만원`);
-    console.log(`   Difference: ${rentComparison.rentDifference >= 0 ? '+' : ''}${(rentComparison.rentDifference / 10000).toFixed(1)}만원 (${rentComparison.rentDifferencePercent >= 0 ? '+' : ''}${rentComparison.rentDifferencePercent.toFixed(1)}%)`);
+    console.log(`   Difference: ${finalRentDifference >= 0 ? '+' : ''}${(finalRentDifference / 10000).toFixed(1)}만원 (${finalRentDifferencePercent >= 0 ? '+' : ''}${finalRentDifferencePercent.toFixed(1)}%)`);
     console.log(`   Trend: ${jeonseTrend.direction} (${jeonseTrend.percentage.toFixed(1)}% annually)`);
-    console.log(`   Assessment: ${assessment.level}`);
+    console.log(`   Assessment: ${finalAssessment.level}`);
+    if (tieredExpectedRent && tieredExpectedRent.length > 0) {
+      console.log(`\n   📊 Tiered Expected Rents:`);
+      tieredExpectedRent.forEach(t => {
+        console.log(`      ${t.label}: ${(t.expectedRent / 10000).toFixed(1)}만원`);
+      });
+    }
 
     return result;
   }
@@ -568,6 +663,60 @@ export class WolsePriceAnalyzer {
   }
 
   /**
+   * Generate assessment from raw rent comparison values
+   * Used when overriding with tiered expected rent
+   */
+  private generateAssessmentFromRentComparison(
+    expectedRent: number,
+    actualRent: number,
+    rentDifference: number,
+    rentDifferencePercent: number
+  ): { level: 'GOOD_DEAL' | 'FAIR' | 'OVERPRICED' | 'SEVERELY_OVERPRICED'; details: string } {
+    const formatWon = (amount: number) => {
+      if (Math.abs(amount) >= 10000) {
+        return `${(amount / 10000).toLocaleString()}만원`;
+      }
+      return `${amount.toLocaleString()}원`;
+    };
+
+    const MIN_OVERPRICED_AMOUNT = 100000;
+    const MIN_SEVERELY_OVERPRICED_AMOUNT = 200000;
+    const MIN_GOOD_DEAL_SAVINGS = 150000;
+
+    if (rentDifferencePercent <= -10 || rentDifference <= -MIN_GOOD_DEAL_SAVINGS) {
+      return {
+        level: 'GOOD_DEAL',
+        details: `You're paying ${formatWon(Math.abs(rentDifference))}/month less than the market expectation of ${formatWon(expectedRent)}. However, prices below market often have reasons - verify the property condition, check the landlord's financial status via 등기부등본, and review contract terms carefully before signing.`
+      };
+    }
+
+    if (rentDifferencePercent > 15 && rentDifference > MIN_SEVERELY_OVERPRICED_AMOUNT) {
+      return {
+        level: 'SEVERELY_OVERPRICED',
+        details: `You're paying ${formatWon(rentDifference)}/month more than expected (${formatWon(expectedRent)}). At ${rentDifferencePercent.toFixed(0)}% above market, strong negotiation is recommended.`
+      };
+    }
+
+    if (rentDifferencePercent > 5 && rentDifference > MIN_OVERPRICED_AMOUNT) {
+      return {
+        level: 'OVERPRICED',
+        details: `You're paying ${formatWon(rentDifference)}/month more than the market expectation of ${formatWon(expectedRent)}. This is ${rentDifferencePercent.toFixed(0)}% above market. Room for negotiation.`
+      };
+    }
+
+    if (rentDifference <= 0) {
+      return {
+        level: 'FAIR',
+        details: `Your rent of ${formatWon(actualRent)} is at or below the market expectation of ${formatWon(expectedRent)}. Focus on negotiating contract terms (lease length, repairs, deposit payment schedule) rather than price.`
+      };
+    }
+    return {
+      level: 'FAIR',
+      details: `Your rent of ${formatWon(actualRent)} is close to the market expectation of ${formatWon(expectedRent)} (+${formatWon(rentDifference)}). Minor room for negotiation exists.`
+    };
+  }
+
+  /**
    * Calculate potential savings based on rent comparison (NEW METHODOLOGY)
    */
   private calculateSavingsPotentialFromComparison(
@@ -734,5 +883,270 @@ export class WolsePriceAnalyzer {
 
     // Sort by yearly savings (highest first)
     return options.sort((a, b) => b.yearlySavings - a.yearlySavings);
+  }
+
+  // ============ Tiered Expected Rent for 연립/다세대 ============
+
+  /**
+   * Calculate tiered expected rent for multifamily properties
+   *
+   * Flow:
+   * 1. Filter transactions (floor > 0, building age ±10 years)
+   * 2. Calculate implied jeonse for each transaction
+   * 3. Classify into 4 tiers by unit implied jeonse percentiles
+   * 4. For each tier: recency-weighted jeonse + age adjustment
+   * 5. Calculate expected rent for each tier
+   *
+   * @returns Array of TieredExpectedRent aligned with user's tier selection
+   */
+  private calculateTieredExpectedRent(
+    transactions: WolseTransaction[],
+    userDeposit: number,
+    targetArea: number,
+    targetBuildingYear: number | undefined
+  ): TieredExpectedRent[] {
+    if (transactions.length === 0) return [];
+
+    const now = new Date();
+    const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium'];
+
+    // Step 1: Filter transactions
+    const { filtered, filterLog } = this.applyWolseFilters(transactions, targetBuildingYear);
+
+    console.log('\n📊 Tiered Expected Rent (Multifamily):');
+    console.log(`   Target Area: ${targetArea}㎡, Target Year: ${targetBuildingYear || 'unknown'}`);
+    console.log(`   Filtering:`);
+    console.log(`     - Original: ${filterLog.originalCount} transactions`);
+    console.log(`     - After renewal filter: ${filterLog.afterRenewalFilter} (removed ${filterLog.renewalRemovedCount})`);
+    console.log(`     - After floor filter (floor > 0): ${filterLog.afterFloorFilter} (removed ${filterLog.floorRemovedCount})`);
+    if (filterLog.ageTolerance !== null) {
+      console.log(`     - After age filter (±${filterLog.ageTolerance} years): ${filterLog.afterAgeFilter} (removed ${filterLog.ageRemovedCount})`);
+    }
+
+    if (filtered.length < 3) {
+      console.log('   ⚠️ Insufficient transactions for tiered calculation');
+      return [];
+    }
+
+    // Step 2: Calculate implied jeonse for each transaction
+    interface EnrichedTransaction extends WolseTransaction {
+      impliedJeonse: number;
+      unitJeonse: number;
+      daysAgo: number;
+    }
+
+    const enriched: EnrichedTransaction[] = filtered.map(t => {
+      const impliedJeonse = getImpliedJeonse(t.deposit, t.monthlyRent);
+      const unitJeonse = impliedJeonse / t.exclusiveArea;
+      const txDate = new Date(t.year, t.month - 1, t.day);
+      const daysAgo = (now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24);
+      return { ...t, impliedJeonse, unitJeonse, daysAgo };
+    });
+
+    // Step 3: Calculate percentile thresholds from unit implied jeonse
+    const thresholds = this.calculateJeonsePercentileThresholds(enriched);
+
+    console.log(`\n   Percentile Thresholds (unit jeonse):`);
+    console.log(`     P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡`);
+
+    // Classify each transaction by tier
+    const transactionsByTier: Record<QualityTier, EnrichedTransaction[]> = {
+      budget: [],
+      standard: [],
+      mid: [],
+      premium: [],
+    };
+
+    enriched.forEach(t => {
+      const tier = this.classifyJeonseTier(t.unitJeonse, thresholds);
+      transactionsByTier[tier].push(t);
+    });
+
+    console.log(`   Tier distribution: budget=${transactionsByTier.budget.length}, standard=${transactionsByTier.standard.length}, mid=${transactionsByTier.mid.length}, premium=${transactionsByTier.premium.length}`);
+
+    // Step 4 & 5: Calculate tier values and expected rent
+    const tieredExpectedRent: TieredExpectedRent[] = [];
+
+    for (const tier of tiers) {
+      const tierTxns = transactionsByTier[tier];
+      if (tierTxns.length === 0) continue;
+
+      const depreciation = MULTIFAMILY_WOLSE_CONFIG.DEPRECIATION[tier];
+
+      // Calculate recency-weighted unit jeonse with age adjustment
+      let totalWeightedUnitJeonse = 0;
+      let totalWeight = 0;
+
+      tierTxns.forEach(t => {
+        // Recency weight (90-day half-life)
+        const recencyWeight = Math.exp(-t.daysAgo / MULTIFAMILY_WOLSE_CONFIG.RECENCY_HALFLIFE_DAYS);
+
+        // Age adjustment: adjust comparable's jeonse to target building year
+        let ageAdjustment = 1.0;
+        if (targetBuildingYear && t.buildingYear) {
+          const yearDiff = targetBuildingYear - t.buildingYear;
+          // If target is newer, increase jeonse value
+          // If target is older, decrease jeonse value
+          ageAdjustment = 1 + (yearDiff * depreciation);
+        }
+
+        const adjustedUnitJeonse = t.unitJeonse * ageAdjustment;
+        totalWeightedUnitJeonse += adjustedUnitJeonse * recencyWeight;
+        totalWeight += recencyWeight;
+      });
+
+      const weightedUnitJeonse = totalWeightedUnitJeonse / totalWeight;
+      const tierJeonse = weightedUnitJeonse * targetArea;
+
+      // Calculate expected rent: (jeonse - deposit) × rate / 12
+      const expectedRent = Math.max(0, (tierJeonse - userDeposit) * CURRENT_CONVERSION_RATE / 12);
+
+      // Calculate effective sample size
+      const weights = tierTxns.map(t => Math.exp(-t.daysAgo / MULTIFAMILY_WOLSE_CONFIG.RECENCY_HALFLIFE_DAYS));
+      const sumW = weights.reduce((a, b) => a + b, 0);
+      const sumW2 = weights.reduce((a, b) => a + b * b, 0);
+      const effectiveSampleSize = (sumW * sumW) / sumW2;
+
+      tieredExpectedRent.push({
+        tier,
+        label: MULTIFAMILY_WOLSE_CONFIG.LABELS[tier],
+        expectedRent: Math.round(expectedRent),
+        impliedJeonse: Math.round(tierJeonse),
+        unitJeonse: Math.round(weightedUnitJeonse),
+        transactionCount: tierTxns.length,
+        effectiveSampleSize: Math.round(effectiveSampleSize * 10) / 10,
+        depreciationRate: depreciation,
+      });
+
+      console.log(`\n   ${MULTIFAMILY_WOLSE_CONFIG.LABELS[tier]}:`);
+      console.log(`     - Transactions: ${tierTxns.length}, Effective N: ${effectiveSampleSize.toFixed(1)}`);
+      console.log(`     - Unit Jeonse: ${(weightedUnitJeonse / 10000).toFixed(0)}만원/㎡`);
+      console.log(`     - Tier Jeonse: ${(tierJeonse / 100000000).toFixed(2)}억원`);
+      console.log(`     - Expected Rent: ${(expectedRent / 10000).toFixed(1)}만원`);
+    }
+
+    return tieredExpectedRent;
+  }
+
+  /**
+   * Apply filters for multifamily wolse transactions
+   * 1. Remove renewals (갱신)
+   * 2. Remove floor ≤ 0 (basement/semi-basement)
+   * 3. Filter by building age (±10 years, fallback to ±15)
+   */
+  private applyWolseFilters(
+    transactions: WolseTransaction[],
+    targetBuildingYear: number | undefined
+  ): {
+    filtered: WolseTransaction[];
+    filterLog: {
+      originalCount: number;
+      afterRenewalFilter: number;
+      renewalRemovedCount: number;
+      afterFloorFilter: number;
+      floorRemovedCount: number;
+      afterAgeFilter: number;
+      ageRemovedCount: number;
+      ageTolerance: number | null;
+      usedFallback: boolean;
+    };
+  } {
+    const originalCount = transactions.length;
+
+    // Step 1: Remove renewals
+    const afterRenewal = transactions.filter(t => t.contractType !== '갱신');
+    const renewalRemovedCount = originalCount - afterRenewal.length;
+
+    // Step 2: Floor filter (floor > 0)
+    const afterFloor = afterRenewal.filter(t => t.floor > 0);
+    const floorRemovedCount = afterRenewal.length - afterFloor.length;
+
+    // Step 3: Age filter (if target building year available)
+    let filtered = afterFloor;
+    let ageRemovedCount = 0;
+    let ageTolerance: number | null = null;
+    let usedFallback = false;
+
+    if (targetBuildingYear && afterFloor.some(t => t.buildingYear)) {
+      // Try primary tolerance (±10 years)
+      const primaryFiltered = afterFloor.filter(t => {
+        if (!t.buildingYear) return true; // Keep transactions without buildingYear
+        return Math.abs(t.buildingYear - targetBuildingYear) <= MULTIFAMILY_WOLSE_CONFIG.AGE_TOLERANCE_PRIMARY;
+      });
+
+      if (primaryFiltered.length >= MULTIFAMILY_WOLSE_CONFIG.MIN_TRANSACTIONS) {
+        filtered = primaryFiltered;
+        ageTolerance = MULTIFAMILY_WOLSE_CONFIG.AGE_TOLERANCE_PRIMARY;
+      } else {
+        // Try fallback tolerance (±15 years)
+        const fallbackFiltered = afterFloor.filter(t => {
+          if (!t.buildingYear) return true;
+          return Math.abs(t.buildingYear - targetBuildingYear) <= MULTIFAMILY_WOLSE_CONFIG.AGE_TOLERANCE_FALLBACK;
+        });
+
+        if (fallbackFiltered.length >= MULTIFAMILY_WOLSE_CONFIG.MIN_TRANSACTIONS) {
+          filtered = fallbackFiltered;
+          ageTolerance = MULTIFAMILY_WOLSE_CONFIG.AGE_TOLERANCE_FALLBACK;
+          usedFallback = true;
+        }
+        // Otherwise, keep afterFloor (no age filter)
+      }
+
+      ageRemovedCount = afterFloor.length - filtered.length;
+    }
+
+    return {
+      filtered,
+      filterLog: {
+        originalCount,
+        afterRenewalFilter: afterRenewal.length,
+        renewalRemovedCount,
+        afterFloorFilter: afterFloor.length,
+        floorRemovedCount,
+        afterAgeFilter: filtered.length,
+        ageRemovedCount,
+        ageTolerance,
+        usedFallback,
+      },
+    };
+  }
+
+  /**
+   * Calculate percentile thresholds for unit implied jeonse
+   */
+  private calculateJeonsePercentileThresholds(
+    transactions: Array<{ unitJeonse: number }>
+  ): { p25: number; p50: number; p75: number } {
+    if (transactions.length === 0) return { p25: 0, p50: 0, p75: 0 };
+
+    const sorted = [...transactions].sort((a, b) => a.unitJeonse - b.unitJeonse);
+    const n = sorted.length;
+
+    const getPercentile = (p: number): number => {
+      const idx = (p / 100) * (n - 1);
+      const lower = Math.floor(idx);
+      const upper = Math.ceil(idx);
+      const weight = idx - lower;
+      return sorted[lower].unitJeonse * (1 - weight) + sorted[upper].unitJeonse * weight;
+    };
+
+    return {
+      p25: getPercentile(25),
+      p50: getPercentile(50),
+      p75: getPercentile(75),
+    };
+  }
+
+  /**
+   * Classify transaction into quality tier based on unit jeonse
+   */
+  private classifyJeonseTier(
+    unitJeonse: number,
+    thresholds: { p25: number; p50: number; p75: number }
+  ): QualityTier {
+    if (unitJeonse < thresholds.p25) return 'budget';
+    if (unitJeonse < thresholds.p50) return 'standard';
+    if (unitJeonse < thresholds.p75) return 'mid';
+    return 'premium';
   }
 }

@@ -10,6 +10,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { WolsePriceAnalyzer } from '@/lib/analyzers/wolse-price-analyzer';
 import { wolseCacheService } from '@/lib/services/wolse-cache';
 import { analysisService } from '@/lib/services/analysis-service';
+import type { BuildingType } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,7 +87,10 @@ export async function POST(request: NextRequest) {
       apartmentName,
       exclusiveArea,
       deposit,
-      monthlyRent
+      monthlyRent,
+      buildingType = 'apartment',
+      selectedTier,
+      targetBuildingYear
     } = inputData;
 
     // Update payment status to approved
@@ -125,7 +129,10 @@ export async function POST(request: NextRequest) {
       dong,
       apartmentName,
       exclusiveArea,
-      { deposit, monthlyRent }
+      { deposit, monthlyRent },
+      buildingType as BuildingType,
+      selectedTier,
+      targetBuildingYear
     );
 
     // Set property ID in result

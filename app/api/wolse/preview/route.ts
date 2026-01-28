@@ -38,7 +38,9 @@ export async function POST(request: NextRequest) {
       apartmentName = '', // Optional for multifamily
       exclusiveArea,
       deposit,
-      monthlyRent
+      monthlyRent,
+      selectedTier,
+      targetBuildingYear
     } = body;
 
     // Validate numeric fields
@@ -91,7 +93,9 @@ export async function POST(request: NextRequest) {
       apartmentName,
       exclusiveArea,
       { deposit, monthlyRent },
-      buildingType
+      buildingType,
+      selectedTier,
+      targetBuildingYear
     );
 
     // Cache the market rate data for future use (this is just caching, not saving analysis)

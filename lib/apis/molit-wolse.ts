@@ -248,7 +248,8 @@ export class MolitWolseAPI {
         year: parseInt(item.dealYear),
         month: parseInt(item.dealMonth),
         day: parseInt(item.dealDay),
-        contractType: item.contractType?.trim() || undefined
+        contractType: item.contractType?.trim() || undefined,
+        buildingYear: item.buildYear ? parseInt(item.buildYear) : undefined
       }));
     } catch (error) {
       console.error('MOLIT Multifamily Wolse API Error:', error);

@@ -56,7 +56,9 @@ export async function POST(request: NextRequest) {
       apartmentName = '', // Optional for multifamily
       exclusiveArea,
       deposit,
-      monthlyRent
+      monthlyRent,
+      selectedTier,        // Optional: user's selected quality tier from Est. Value
+      targetBuildingYear   // Optional: target property's building year
     } = body;
 
     // Validate numeric fields
@@ -148,7 +150,9 @@ export async function POST(request: NextRequest) {
       apartmentName,
       exclusiveArea,
       { deposit, monthlyRent },
-      buildingType
+      buildingType,
+      selectedTier,        // Pass user's selected tier for multifamily
+      targetBuildingYear   // Pass building year for age filtering
     );
 
     // Set property ID in result
