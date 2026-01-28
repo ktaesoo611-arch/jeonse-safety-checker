@@ -134,9 +134,21 @@ export default function PreviewPage() {
         return;
       }
 
+      // Determine building type with fallback logic:
+      // 1. Use explicitly stored buildingType if available
+      // 2. If no building name AND no buildingType, likely multifamily (연립/다세대 often have no building name)
+      // 3. Default to 'apartment' for backwards compatibility
+      let buildingType = formData.buildingType;
+      if (!buildingType) {
+        // Infer from building name: null/empty building name often means multifamily
+        buildingType = !formData.building ? 'multifamily' : 'apartment';
+        console.log(`[Wolse Analysis] Inferred buildingType: ${buildingType} (building name: ${formData.building || '(none)'})`);
+      }
+
       console.log('[Wolse Analysis] Running wolse price analysis with:', {
         ...formData,
-        exclusiveArea
+        exclusiveArea,
+        buildingType
       });
 
       wolseAnalysisRunRef.current = true; // Mark as running to prevent duplicate calls
@@ -150,11 +162,11 @@ export default function PreviewPage() {
           city: formData.city,
           district: formData.district,
           dong: formData.dongName,  // Use dongName (읍면동 name like "신촌동"), not dong (building dong number)
-          apartmentName: formData.building,
+          apartmentName: formData.building || '',  // Pass empty string instead of null for multifamily
           exclusiveArea: exclusiveArea,
           deposit: formData.deposit,
           monthlyRent: formData.monthlyRent,
-          buildingType: formData.buildingType || 'apartment'
+          buildingType: buildingType
         })
       });
 
