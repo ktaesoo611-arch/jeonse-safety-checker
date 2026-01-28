@@ -149,7 +149,7 @@ export default function PreviewPage() {
         body: JSON.stringify({
           city: formData.city,
           district: formData.district,
-          dong: formData.dong,
+          dong: formData.dongName,  // Use dongName (읍면동 name like "신촌동"), not dong (building dong number)
           apartmentName: formData.building,
           exclusiveArea: exclusiveArea,
           deposit: formData.deposit,
