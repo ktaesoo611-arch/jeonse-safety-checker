@@ -133,40 +133,55 @@ export class AnalysisService {
         .eq('id', analysisId);
     }
 
-    const { error } = await supabaseAdmin
+    // Build base data object
+    const baseData: Record<string, any> = {
+      analysis_id: analysisId,
+      user_deposit: data.userDeposit,
+      user_monthly_rent: data.userMonthlyRent,
+      user_implied_rate: data.userImpliedRate,
+      // New rent comparison fields
+      expected_rent: data.expectedRent,
+      rent_difference: data.rentDifference,
+      rent_difference_percent: data.rentDifferencePercent,
+      clean_transaction_count: data.cleanTransactionCount,
+      outliers_removed: data.outliersRemoved,
+      // Market analysis
+      market_rate: data.marketRate,
+      market_rate_low: data.marketRateLow,
+      market_rate_high: data.marketRateHigh,
+      legal_rate: data.legalRate,
+      confidence_level: data.confidenceLevel,
+      contract_count: data.contractCount,
+      assessment: data.assessment,
+      assessment_details: data.assessmentDetails,
+      savings_vs_market: data.savingsVsMarket,
+      savings_vs_legal: data.savingsVsLegal,
+      trend_direction: data.trendDirection,
+      trend_percentage: data.trendPercentage,
+      trend_advice: data.trendAdvice,
+      negotiation_options: data.negotiationOptions,
+      recent_transactions: data.recentTransactions,
+    };
+
+    // Try to save with tiered fields first (new schema)
+    let { error } = await supabaseAdmin
       .from('wolse_price_data')
       .upsert({
-        analysis_id: analysisId,
-        user_deposit: data.userDeposit,
-        user_monthly_rent: data.userMonthlyRent,
-        user_implied_rate: data.userImpliedRate,
-        // New rent comparison fields
-        expected_rent: data.expectedRent,
-        rent_difference: data.rentDifference,
-        rent_difference_percent: data.rentDifferencePercent,
-        clean_transaction_count: data.cleanTransactionCount,
-        outliers_removed: data.outliersRemoved,
-        // Market analysis
-        market_rate: data.marketRate,
-        market_rate_low: data.marketRateLow,
-        market_rate_high: data.marketRateHigh,
-        legal_rate: data.legalRate,
-        confidence_level: data.confidenceLevel,
-        contract_count: data.contractCount,
-        assessment: data.assessment,
-        assessment_details: data.assessmentDetails,
-        savings_vs_market: data.savingsVsMarket,
-        savings_vs_legal: data.savingsVsLegal,
-        trend_direction: data.trendDirection,
-        trend_percentage: data.trendPercentage,
-        trend_advice: data.trendAdvice,
-        negotiation_options: data.negotiationOptions,
-        recent_transactions: data.recentTransactions,
-        // Tiered expected rent for multifamily
+        ...baseData,
+        // Tiered expected rent for multifamily (may not exist in older schemas)
         tiered_expected_rent: data.tieredExpectedRent,
         selected_tier_expected_rent: data.selectedTierExpectedRent,
         filtered_transactions: data.filteredTransactions
       });
+
+    // If failed due to unknown column, retry without tiered fields
+    if (error && error.message?.includes('column')) {
+      console.warn('Tiered columns may not exist, retrying without them:', error.message);
+      const retryResult = await supabaseAdmin
+        .from('wolse_price_data')
+        .upsert(baseData);
+      error = retryResult.error;
+    }
 
     if (error) {
       console.error('Save wolse price data error:', error);
