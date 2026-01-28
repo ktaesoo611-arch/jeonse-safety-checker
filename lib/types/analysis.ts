@@ -83,6 +83,7 @@ export interface WolsePriceData {
   // Tiered expected rent for multifamily
   tieredExpectedRent?: any | null;
   selectedTierExpectedRent?: number | null;
+  filteredTransactions?: any | null;  // Filtered transactions for scatter plot (multifamily only)
 }
 
 export interface WolsePriceAnalysis extends AnalysisBase {
@@ -203,7 +204,8 @@ export function dbRowToWolsePriceData(row: any): WolsePriceData {
     recentTransactions: row.recent_transactions,
     // Tiered expected rent for multifamily
     tieredExpectedRent: row.tiered_expected_rent,
-    selectedTierExpectedRent: row.selected_tier_expected_rent
+    selectedTierExpectedRent: row.selected_tier_expected_rent,
+    filteredTransactions: row.filtered_transactions
   };
 }
 

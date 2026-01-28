@@ -216,9 +216,10 @@ export async function POST(request: NextRequest) {
         recentTransactions: result.recentTransactions,
         // Tiered expected rent for multifamily
         tieredExpectedRent: result.tieredExpectedRent,
-        selectedTierExpectedRent: result.selectedTierExpectedRent
+        selectedTierExpectedRent: result.selectedTierExpectedRent,
+        filteredTransactions: result.filteredTransactions
       }, result.expiresAt);
-      console.log(`✅ Wolse price data saved with ${result.recentTransactions?.length || 0} transactions`);
+      console.log(`✅ Wolse price data saved with ${result.recentTransactions?.length || 0} transactions (${result.filteredTransactions?.length || 0} filtered)`);
 
       // Update status to completed
       await analysisService.updateStatus(analysisId, 'completed', new Date().toISOString());
@@ -317,6 +318,7 @@ export async function GET(request: NextRequest) {
         // Tiered expected rent for multifamily
         tieredExpectedRent: newResult.tiered_expected_rent,
         selectedTierExpectedRent: newResult.selected_tier_expected_rent,
+        filteredTransactions: newResult.filtered_transactions,
         createdAt: newResult.created_at,
         expiresAt: newResult.expires_at
       };

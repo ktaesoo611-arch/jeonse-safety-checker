@@ -942,6 +942,7 @@ export async function GET(
         // Tiered expected rent for multifamily
         tieredExpectedRent: wolsePriceData.tiered_expected_rent || null,
         selectedTierExpectedRent: wolsePriceData.selected_tier_expected_rent || null,
+        filteredTransactions: wolsePriceData.filtered_transactions || null,
       } : null,
 
       // Documents

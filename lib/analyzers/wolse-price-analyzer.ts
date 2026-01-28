@@ -226,14 +226,17 @@ export class WolsePriceAnalyzer {
     // Step 1.5: For multifamily, calculate tiered expected rent
     let tieredExpectedRent: TieredExpectedRent[] | undefined;
     let selectedTierExpectedRent: number | undefined;
+    let filteredTransactions: WolseTransaction[] | undefined;
 
     if (buildingType === 'multifamily') {
-      tieredExpectedRent = this.calculateTieredExpectedRent(
+      const tieredResult = this.calculateTieredExpectedRent(
         marketData.transactions,
         quote.deposit,
         exclusiveArea,
         targetBuildingYear
       );
+      tieredExpectedRent = tieredResult.tieredExpectedRent;
+      filteredTransactions = tieredResult.filteredTransactions;
 
       // Find the selected tier's expected rent (default to 'standard')
       const tierToUse = selectedTier || 'standard';
@@ -343,6 +346,7 @@ export class WolsePriceAnalyzer {
       // Tiered expected rent (for 연립/다세대)
       tieredExpectedRent,
       selectedTierExpectedRent,
+      filteredTransactions,  // Filtered transactions for scatter plot (multifamily only)
       // Jeonse-centric data
       impliedJeonseToday: rentComparison.impliedJeonseToday,
       userImpliedJeonse: rentComparison.userImpliedJeonse,
@@ -897,15 +901,15 @@ export class WolsePriceAnalyzer {
    * 4. For each tier: recency-weighted jeonse + age adjustment
    * 5. Calculate expected rent for each tier
    *
-   * @returns Array of TieredExpectedRent aligned with user's tier selection
+   * @returns Object with tieredExpectedRent and filteredTransactions for scatter plot
    */
   private calculateTieredExpectedRent(
     transactions: WolseTransaction[],
     userDeposit: number,
     targetArea: number,
     targetBuildingYear: number | undefined
-  ): TieredExpectedRent[] {
-    if (transactions.length === 0) return [];
+  ): { tieredExpectedRent: TieredExpectedRent[]; filteredTransactions: WolseTransaction[] } {
+    if (transactions.length === 0) return { tieredExpectedRent: [], filteredTransactions: [] };
 
     const now = new Date();
     const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium'];
@@ -925,7 +929,7 @@ export class WolsePriceAnalyzer {
 
     if (filtered.length < 3) {
       console.log('   ⚠️ Insufficient transactions for tiered calculation');
-      return [];
+      return { tieredExpectedRent: [], filteredTransactions: filtered };
     }
 
     // Step 2: Calculate implied jeonse for each transaction
@@ -1025,7 +1029,7 @@ export class WolsePriceAnalyzer {
       console.log(`     - Expected Rent: ${(expectedRent / 10000).toFixed(1)}만원`);
     }
 
-    return tieredExpectedRent;
+    return { tieredExpectedRent, filteredTransactions: filtered };
   }
 
   /**

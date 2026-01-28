@@ -59,6 +59,8 @@ interface WolseMarketData {
     floor: number;
     deposit: number;
     monthlyRent: number;
+    buildingYear?: number;
+    contractType?: string;
   }>;
   // Jeonse-centric data
   impliedJeonseToday?: number;
@@ -66,6 +68,18 @@ interface WolseMarketData {
   // Tiered expected rent for multifamily
   tieredExpectedRent?: TieredExpectedRent[];
   selectedTierExpectedRent?: number;
+  // Filtered transactions for scatter plot (multifamily only - floor/age filtered)
+  filteredTransactions?: Array<{
+    year: number;
+    month: number;
+    day: number;
+    exclusiveArea: number;
+    floor: number;
+    deposit: number;
+    monthlyRent: number;
+    buildingYear?: number;
+    contractType?: string;
+  }>;
 }
 
 interface JeonseMarketData {
@@ -301,8 +315,14 @@ export default function MarketPositionSection({
         {wolseData.recentTransactions && wolseData.recentTransactions.length > 0 && (() => {
           const now = new Date();
 
+          // For multifamily with tiered data, use filtered transactions (floor/age filtered)
+          // This aligns the scatter plot with the tiered expected rent calculation
+          const transactionsForChart = isUsingTieredData && wolseData.filteredTransactions && wolseData.filteredTransactions.length > 0
+            ? wolseData.filteredTransactions
+            : wolseData.recentTransactions;
+
           // Calculate rent at user's deposit for each transaction
-          const scatterData = wolseData.recentTransactions.map(tx => {
+          const scatterData = transactionsForChart.map(tx => {
             const txDate = new Date(tx.year, tx.month - 1, tx.day);
             const daysAgo = Math.floor((now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24));
             const impliedJeonse = tx.deposit + tx.monthlyRent * 12 / CONVERSION_RATE;
@@ -361,11 +381,19 @@ export default function MarketPositionSection({
             return `${d.getMonth() + 1}월`;
           };
 
+          // Check if we're using filtered data
+          const usingFilteredData = isUsingTieredData && wolseData.filteredTransactions && wolseData.filteredTransactions.length > 0;
+
           return (
             <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
               <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-2">Rent at Your Deposit Level</h3>
               <p className="text-sm sm:text-base text-gray-500 mb-4">
                 Market rent normalized to {formatAmount(wolseData.userDeposit)} deposit over the past 12 months
+                {usingFilteredData && (
+                  <span className="text-xs text-amber-600 ml-2">
+                    ({scatterData.length} comparable transactions, filtered by floor &amp; age)
+                  </span>
+                )}
               </p>
 
               {/* Scatter Plot with Regression Line */}
@@ -470,7 +498,7 @@ export default function MarketPositionSection({
               <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-4 text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-blue-500 opacity-60" />
-                  <span className="text-gray-600">Market transactions</span>
+                  <span className="text-gray-600">{usingFilteredData ? 'Comparable transactions' : 'Market transactions'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0.5 bg-blue-500" />
@@ -478,7 +506,7 @@ export default function MarketPositionSection({
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0.5 bg-emerald-500" />
-                  <span className="text-gray-600">Expected rent</span>
+                  <span className="text-gray-600">Expected rent{usingFilteredData ? ` (${selectedTier})` : ''}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0.5 border-t-2 border-dashed" style={{ borderColor: displayRentDifference <= 0 ? '#10b981' : displayRentDifferencePercent <= 10 ? '#f59e0b' : '#ef4444' }} />

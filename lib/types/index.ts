@@ -391,6 +391,7 @@ export interface WolseAnalysisResult {
   // Tiered expected rent (for 연립/다세대 - aligned with user's tier selection)
   tieredExpectedRent?: TieredExpectedRent[];  // 4 tiers: budget, standard, mid, premium
   selectedTierExpectedRent?: number;          // Expected rent for user's selected tier
+  filteredTransactions?: WolseTransaction[];  // Transactions after floor/age filtering (for scatter plot)
 
   // Jeonse-centric analysis
   impliedJeonseToday?: number;    // Today's market jeonse from regression

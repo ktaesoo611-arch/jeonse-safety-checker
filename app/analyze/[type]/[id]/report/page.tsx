@@ -268,6 +268,7 @@ export default function ReportPage() {
       // Tiered expected rent for multifamily
       tieredExpectedRent: wolseAnalysis?.tieredExpectedRent,
       selectedTierExpectedRent: wolseAnalysis?.selectedTierExpectedRent,
+      filteredTransactions: wolseAnalysis?.filteredTransactions,
     } : undefined,
   };
 

@@ -164,7 +164,8 @@ export class AnalysisService {
         recent_transactions: data.recentTransactions,
         // Tiered expected rent for multifamily
         tiered_expected_rent: data.tieredExpectedRent,
-        selected_tier_expected_rent: data.selectedTierExpectedRent
+        selected_tier_expected_rent: data.selectedTierExpectedRent,
+        filtered_transactions: data.filteredTransactions
       });
 
     if (error) {
