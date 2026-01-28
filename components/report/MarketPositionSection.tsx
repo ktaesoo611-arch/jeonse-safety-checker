@@ -16,6 +16,18 @@ import {
 // BOK Rate constant for jeonse calculation
 const CONVERSION_RATE = 0.045; // 4.5% (BOK 2.5% + 2%)
 
+// Tiered expected rent for multifamily
+interface TieredExpectedRent {
+  tier: 'budget' | 'standard' | 'mid' | 'premium';
+  label: string;
+  expectedRent: number;
+  impliedJeonse: number;
+  unitJeonse: number;
+  transactionCount: number;
+  effectiveSampleSize: number;
+  depreciationRate: number;
+}
+
 interface WolseMarketData {
   userDeposit: number;
   userMonthlyRent: number;
@@ -51,6 +63,9 @@ interface WolseMarketData {
   // Jeonse-centric data
   impliedJeonseToday?: number;
   userImpliedJeonse?: number;
+  // Tiered expected rent for multifamily
+  tieredExpectedRent?: TieredExpectedRent[];
+  selectedTierExpectedRent?: number;
 }
 
 interface JeonseMarketData {
@@ -91,12 +106,14 @@ interface MarketPositionSectionProps {
   reportType: 'jeonse' | 'wolse';
   wolseData?: WolseMarketData;
   jeonseData?: JeonseMarketData;
+  selectedTier?: 'budget' | 'standard' | 'mid' | 'premium';
 }
 
 export default function MarketPositionSection({
   reportType,
   wolseData,
   jeonseData,
+  selectedTier,
 }: MarketPositionSectionProps) {
   const formatAmount = (amount: number) => {
     if (amount >= 100000000) {
@@ -200,6 +217,52 @@ export default function MarketPositionSection({
             </p>
           </div>
         </div>
+
+        {/* Tiered Expected Rent - Only for multifamily with tier data */}
+        {wolseData.tieredExpectedRent && wolseData.tieredExpectedRent.length > 0 && (
+          <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">🏠</span>
+              Expected Rent by Quality Tier
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Expected rent varies by property quality tier. Select your tier in the valuation section above.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {wolseData.tieredExpectedRent.map((tier) => {
+                const isSelected = selectedTier === tier.tier;
+                return (
+                  <div
+                    key={tier.tier}
+                    className={`rounded-xl p-4 text-center transition-all duration-200 ${
+                      isSelected
+                        ? 'bg-amber-50 border-2 border-amber-400 shadow-md'
+                        : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <p className={`text-xs font-medium mb-1 ${isSelected ? 'text-amber-700' : 'text-gray-500'}`}>
+                      {tier.label.split(' ')[0]}
+                    </p>
+                    <p className={`text-lg sm:text-xl font-bold ${isSelected ? 'text-amber-700' : 'text-gray-700'}`}>
+                      {formatAmount(tier.expectedRent)}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {tier.transactionCount} txns
+                    </p>
+                    {isSelected && (
+                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-200 text-amber-800 text-xs rounded-full">
+                        Selected
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-4">
+              * Expected rent is calculated from implied jeonse values of comparable transactions, filtered by floor and building age.
+            </p>
+          </div>
+        )}
 
         {/* Rent at Your Deposit Level - Scatter Plot with Regression */}
         {wolseData.recentTransactions && wolseData.recentTransactions.length > 0 && (() => {

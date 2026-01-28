@@ -80,6 +80,9 @@ export interface WolsePriceData {
   trendAdvice: string | null;
   negotiationOptions: any | null;
   recentTransactions: any | null;
+  // Tiered expected rent for multifamily
+  tieredExpectedRent?: any | null;
+  selectedTierExpectedRent?: number | null;
 }
 
 export interface WolsePriceAnalysis extends AnalysisBase {
@@ -197,7 +200,10 @@ export function dbRowToWolsePriceData(row: any): WolsePriceData {
     trendPercentage: row.trend_percentage,
     trendAdvice: row.trend_advice,
     negotiationOptions: row.negotiation_options,
-    recentTransactions: row.recent_transactions
+    recentTransactions: row.recent_transactions,
+    // Tiered expected rent for multifamily
+    tieredExpectedRent: row.tiered_expected_rent,
+    selectedTierExpectedRent: row.selected_tier_expected_rent
   };
 }
 

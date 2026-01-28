@@ -213,7 +213,10 @@ export async function POST(request: NextRequest) {
         trendPercentage: result.trend.percentage,
         trendAdvice: result.trend.advice,
         negotiationOptions: result.negotiationOptions,
-        recentTransactions: result.recentTransactions
+        recentTransactions: result.recentTransactions,
+        // Tiered expected rent for multifamily
+        tieredExpectedRent: result.tieredExpectedRent,
+        selectedTierExpectedRent: result.selectedTierExpectedRent
       }, result.expiresAt);
       console.log(`✅ Wolse price data saved with ${result.recentTransactions?.length || 0} transactions`);
 
@@ -311,6 +314,9 @@ export async function GET(request: NextRequest) {
         },
         negotiationOptions: newResult.negotiation_options,
         recentTransactions: newResult.recent_transactions,
+        // Tiered expected rent for multifamily
+        tieredExpectedRent: newResult.tiered_expected_rent,
+        selectedTierExpectedRent: newResult.selected_tier_expected_rent,
         createdAt: newResult.created_at,
         expiresAt: newResult.expires_at
       };

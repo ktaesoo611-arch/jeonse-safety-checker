@@ -265,6 +265,9 @@ export default function ReportPage() {
       savingsPotential: wolseAnalysis?.savingsPotential || { vsMarket: 0, vsLegal: 0 },
       trend: wolseAnalysis?.trend,
       recentTransactions: wolseAnalysis?.recentTransactions,
+      // Tiered expected rent for multifamily
+      tieredExpectedRent: wolseAnalysis?.tieredExpectedRent,
+      selectedTierExpectedRent: wolseAnalysis?.selectedTierExpectedRent,
     } : undefined,
   };
 
@@ -335,7 +338,7 @@ export default function ReportPage() {
           selectedTier={selectedTier}
           onScoresRecalculated={handleScoresRecalculated}
         />
-        <MarketPositionSection {...marketProps} />
+        <MarketPositionSection {...marketProps} selectedTier={selectedTier} />
         <ActionItemsSection {...actionProps} />
 
         {/* New Analysis Button */}

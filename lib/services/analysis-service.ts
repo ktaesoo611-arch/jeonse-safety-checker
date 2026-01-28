@@ -161,7 +161,10 @@ export class AnalysisService {
         trend_percentage: data.trendPercentage,
         trend_advice: data.trendAdvice,
         negotiation_options: data.negotiationOptions,
-        recent_transactions: data.recentTransactions
+        recent_transactions: data.recentTransactions,
+        // Tiered expected rent for multifamily
+        tiered_expected_rent: data.tieredExpectedRent,
+        selected_tier_expected_rent: data.selectedTierExpectedRent
       });
 
     if (error) {
