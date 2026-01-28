@@ -3,29 +3,41 @@ import { supabaseAdmin } from '../supabase';
 import { PropertyDetails, ValuationResult, MolitTransaction, BuildingType, QualityTier, TierEstimate, TierGuidance, PercentileThresholds } from '../types';
 
 /**
- * Triple-Weighted Valuation Configuration
+ * Valuation Configuration
  *
- * For 연립다세대, we use three weighting factors:
- * 1. Recency: Recent transactions are weighted higher (60-day half-life)
- * 2. Age Similarity: Similar-age buildings are weighted higher (10-year half-life)
- * 3. Area Similarity: Similar-size units are weighted higher (20% of target area half-life)
- *
- * Combined Weight = exp(-daysAgo/60) × exp(-|yearDiff|/10) × exp(-|areaDiff|/(targetArea×0.20))
+ * For apartments: Uses recency-weighted average (building-level data is consistent)
+ * For 연립다세대: Uses tiered hierarchy with floor/age filtering
  */
 const VALUATION_CONFIG = {
-  // Recency weighting
+  // Recency weighting for apartments
   RECENCY_HALFLIFE_DAYS: 60,
-
-  // Age similarity weighting (building year)
-  AGE_HALFLIFE_YEARS: 10,
-  DEFAULT_AGE_WEIGHT: 0.5, // When building year is unknown
-
-  // Area similarity weighting (percentage-based)
-  AREA_HALFLIFE_PERCENT: 20, // 20% of target area
-  AREA_FILTER_PERCENT: 15, // ±15% pre-filter for multifamily
 
   // For apartments, we use tighter area filtering (building-level data is more consistent)
   APARTMENT_AREA_TOLERANCE: 2, // ±2㎡ for apartments
+
+  // Area filter for multifamily (±15% pre-filter from MOLIT)
+  AREA_FILTER_PERCENT: 15,
+
+  // Legacy: kept for apartment triple-weighted calculation (not used for multifamily)
+  AREA_HALFLIFE_PERCENT: 20,
+  AGE_HALFLIFE_YEARS: 10,
+  DEFAULT_AGE_WEIGHT: 0.5,
+};
+
+/**
+ * Multifamily Filtering Configuration
+ *
+ * For 연립다세대, we apply additional filtering to get comparable transactions:
+ * 1. Floor filter: Remove basement/semi-basement (floor ≤ 0)
+ * 2. Age filter: Keep buildings within ±10 years of target (with fallback)
+ */
+const MULTIFAMILY_FILTER_CONFIG = {
+  // Minimum transactions required after filtering
+  MIN_TRANSACTIONS: 5,
+
+  // Building age tolerance (years)
+  AGE_TOLERANCE_PRIMARY: 10,   // First try: ±10 years
+  AGE_TOLERANCE_FALLBACK: 15,  // Fallback: ±15 years
 };
 
 /**
@@ -204,19 +216,20 @@ export class PropertyValuationEngine {
       console.log(`   ✅ 12-month period provides ${((recentTransactions.length / Math.max(1, transactions6M.length) - 1) * 100).toFixed(0)}% more data points`);
     }
 
-    // Step 2: Calculate base value from recent sales using triple-weighted approach
-    const baseValue = this.calculateTripleWeightedValue(
-      recentTransactions,
-      property.exclusiveArea,
-      property.buildingYear,
-      buildingType
-    );
-
-    // Step 2b: For multifamily, also calculate tiered hierarchy estimates
+    // Different calculation paths for apartments vs multifamily
+    let valueLow: number;
+    let valueMid: number;
+    let valueHigh: number;
+    let baseValue: number;
     let tierEstimates: TierEstimate[] | undefined;
     let tierGuidance: TierGuidance | undefined;
     let tierPercentiles: PercentileThresholds | undefined;
+
     if (buildingType === 'multifamily') {
+      // ===== MULTIFAMILY: Tiered hierarchy with floor/age filtering =====
+      // No base value calculation, no floor adjustment
+      // Final values come directly from tier estimates
+
       const tieredResult = this.calculateTieredHierarchyValue(
         recentTransactions,
         property.exclusiveArea,
@@ -225,51 +238,60 @@ export class PropertyValuationEngine {
       tierEstimates = tieredResult.estimates;
       tierPercentiles = tieredResult.thresholds;
       tierGuidance = TIERED_CONFIG.GUIDANCE;
-    }
 
-    // Step 3: Apply floor premium/discount
-    const totalFloors = this.getTotalFloorsFromTransactions(recentTransactions);
-    const floorAdjustedValue = this.applyFloorAdjustment(
-      baseValue,
-      property.floor,
-      totalFloors
-    );
-
-    // Step 4: Calculate trend (with R-squared for confidence)
-    const trend = this.calculateTrend(recentTransactions);
-
-    // Step 5: Determine confidence (using R-squared + data quality)
-    const confidence = this.determineConfidence(recentTransactions, trend.rSquared);
-
-    // Step 6: Determine value range
-    // For multifamily with tier estimates, use tier values for consistency
-    // This ensures the "Est. Value" matches the tier breakdown
-    let valueLow: number;
-    let valueMid: number;
-    let valueHigh: number;
-
-    if (tierEstimates && tierEstimates.length >= 4) {
-      // Use tier values: Budget for low, Mid tier for mid, Premium for high
+      // Use tier values directly as final output
       const budgetTier = tierEstimates.find(t => t.tier === 'budget');
+      const standardTier = tierEstimates.find(t => t.tier === 'standard');
       const midTier = tierEstimates.find(t => t.tier === 'mid');
       const premiumTier = tierEstimates.find(t => t.tier === 'premium');
 
-      valueLow = budgetTier?.value || Math.floor(floorAdjustedValue * 0.95);
-      valueMid = midTier?.value || Math.floor(floorAdjustedValue);
-      valueHigh = premiumTier?.value || Math.floor(floorAdjustedValue * 1.05);
+      // valueLow = Budget, valueMid = Mid, valueHigh = Premium
+      // Use Standard as fallback for Mid if Mid tier is empty
+      valueLow = budgetTier?.value || 0;
+      valueMid = midTier?.value || standardTier?.value || 0;
+      valueHigh = premiumTier?.value || 0;
 
-      console.log('📊 Using tier-based value range for multifamily:');
-      console.log(`   Low (Budget): ${(valueLow / 100000000).toFixed(2)}억`);
-      console.log(`   Mid: ${(valueMid / 100000000).toFixed(2)}억`);
-      console.log(`   High (Premium): ${(valueHigh / 100000000).toFixed(2)}억`);
+      // Base value for data sources display (use mid tier value)
+      baseValue = valueMid;
+
+      console.log('\n📊 Final Multifamily Tier Values:');
+      console.log(`   Budget:   ${budgetTier ? (budgetTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${budgetTier?.transactionCount || 0} txns)`);
+      console.log(`   Standard: ${standardTier ? (standardTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${standardTier?.transactionCount || 0} txns)`);
+      console.log(`   Mid:      ${midTier ? (midTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${midTier?.transactionCount || 0} txns)`);
+      console.log(`   Premium:  ${premiumTier ? (premiumTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${premiumTier?.transactionCount || 0} txns)`);
+
     } else {
-      // Traditional ±5% range for apartments or when no tier data
+      // ===== APARTMENTS: Traditional recency-weighted approach =====
+      // Uses base value calculation + floor adjustment
+
+      baseValue = this.calculateTripleWeightedValue(
+        recentTransactions,
+        property.exclusiveArea,
+        property.buildingYear,
+        buildingType
+      );
+
+      // Apply floor premium/discount for apartments
+      const totalFloors = this.getTotalFloorsFromTransactions(recentTransactions);
+      const floorAdjustedValue = this.applyFloorAdjustment(
+        baseValue,
+        property.floor,
+        totalFloors
+      );
+
+      // Traditional ±5% range for apartments
       valueLow = Math.floor(floorAdjustedValue * 0.95);
       valueMid = Math.floor(floorAdjustedValue);
       valueHigh = Math.floor(floorAdjustedValue * 1.05);
     }
 
-    // Step 7: Cache results
+    // Calculate trend (with R-squared for confidence)
+    const trend = this.calculateTrend(recentTransactions);
+
+    // Determine confidence (using R-squared + data quality)
+    const confidence = this.determineConfidence(recentTransactions, trend.rSquared);
+
+    // Cache results
     await this.cacheResults(property, recentTransactions);
 
     return {
@@ -278,7 +300,7 @@ export class PropertyValuationEngine {
       valueHigh,
       confidence,
       recentSales: this.formatRecentSales(recentTransactions),
-      pricePerPyeong: Math.floor(valueMid / (property.exclusiveArea * 0.3025)),
+      pricePerPyeong: valueMid > 0 ? Math.floor(valueMid / (property.exclusiveArea * 0.3025)) : 0,
       trend: trend.direction,
       trendPercentage: trend.percentage,
       dataSources: [
@@ -432,17 +454,157 @@ export class PropertyValuationEngine {
   }
 
   /**
+   * Filter transactions by floor (remove basement/semi-basement)
+   * @param transactions - Raw transactions from MOLIT API
+   * @returns Filtered transactions with floor > 0
+   */
+  private filterByFloor(transactions: MolitTransaction[]): {
+    filtered: MolitTransaction[];
+    removedCount: number;
+  } {
+    const filtered = transactions.filter(t => t.floor > 0);
+    return {
+      filtered,
+      removedCount: transactions.length - filtered.length,
+    };
+  }
+
+  /**
+   * Filter transactions by building age (within tolerance of target year)
+   * @param transactions - Transactions to filter
+   * @param targetYear - Target building year
+   * @param toleranceYears - Age tolerance in years (e.g., 10 = ±10 years)
+   * @returns Filtered transactions within age tolerance
+   */
+  private filterByBuildingAge(
+    transactions: MolitTransaction[],
+    targetYear: number | undefined,
+    toleranceYears: number
+  ): {
+    filtered: MolitTransaction[];
+    removedCount: number;
+  } {
+    // If no target year, keep all transactions
+    if (!targetYear) {
+      return { filtered: transactions, removedCount: 0 };
+    }
+
+    const filtered = transactions.filter(t => {
+      // Keep transactions without building year (don't lose data)
+      if (!t.buildingYear) return true;
+      return Math.abs(t.buildingYear - targetYear) <= toleranceYears;
+    });
+
+    return {
+      filtered,
+      removedCount: transactions.length - filtered.length,
+    };
+  }
+
+  /**
+   * Apply floor and age filtering with fallback logic for 연립다세대
+   *
+   * Filtering steps:
+   * 1. Remove floor ≤ 0 (basement/semi-basement)
+   * 2. Keep buildingYear ±10 years of target
+   * 3. Fallback to ±15 years if insufficient data
+   * 4. Fallback to no age filter if still insufficient
+   *
+   * @param transactions - Raw transactions from MOLIT API
+   * @param targetBuildingYear - Target property's building year
+   * @returns Filtered transactions and filter metadata
+   */
+  private applyMultifamilyFilters(
+    transactions: MolitTransaction[],
+    targetBuildingYear: number | undefined
+  ): {
+    filtered: MolitTransaction[];
+    filterLog: {
+      originalCount: number;
+      afterFloorFilter: number;
+      afterAgeFilter: number;
+      floorRemovedCount: number;
+      ageRemovedCount: number;
+      ageTolerance: number | null;
+      usedFallback: boolean;
+    };
+  } {
+    const originalCount = transactions.length;
+
+    // Step 1: Floor filter (remove basement/semi-basement)
+    const floorResult = this.filterByFloor(transactions);
+    let current = floorResult.filtered;
+    const afterFloorFilter = current.length;
+    const floorRemovedCount = floorResult.removedCount;
+
+    // Step 2: Age filter with fallback
+    let ageTolerance: number | null = null;
+    let usedFallback = false;
+    let ageRemovedCount = 0;
+
+    if (targetBuildingYear) {
+      // Try primary tolerance (±10 years)
+      const primaryResult = this.filterByBuildingAge(
+        current,
+        targetBuildingYear,
+        MULTIFAMILY_FILTER_CONFIG.AGE_TOLERANCE_PRIMARY
+      );
+
+      if (primaryResult.filtered.length >= MULTIFAMILY_FILTER_CONFIG.MIN_TRANSACTIONS) {
+        current = primaryResult.filtered;
+        ageTolerance = MULTIFAMILY_FILTER_CONFIG.AGE_TOLERANCE_PRIMARY;
+        ageRemovedCount = primaryResult.removedCount;
+      } else {
+        // Fallback to wider tolerance (±15 years)
+        const fallbackResult = this.filterByBuildingAge(
+          current,
+          targetBuildingYear,
+          MULTIFAMILY_FILTER_CONFIG.AGE_TOLERANCE_FALLBACK
+        );
+
+        if (fallbackResult.filtered.length >= MULTIFAMILY_FILTER_CONFIG.MIN_TRANSACTIONS) {
+          current = fallbackResult.filtered;
+          ageTolerance = MULTIFAMILY_FILTER_CONFIG.AGE_TOLERANCE_FALLBACK;
+          ageRemovedCount = fallbackResult.removedCount;
+          usedFallback = true;
+        } else {
+          // No age filter - keep all floor-filtered transactions
+          ageTolerance = null;
+          ageRemovedCount = 0;
+          usedFallback = true;
+        }
+      }
+    }
+
+    return {
+      filtered: current,
+      filterLog: {
+        originalCount,
+        afterFloorFilter,
+        afterAgeFilter: current.length,
+        floorRemovedCount,
+        ageRemovedCount,
+        ageTolerance,
+        usedFallback,
+      },
+    };
+  }
+
+  /**
    * Calculate tiered hierarchy valuation for 연립다세대
    *
-   * This method stratifies transactions by quality tier using percentile-based
-   * classification (adapts to any district's price level) and calculates
-   * separate estimates for each tier, allowing users to select the
-   * appropriate tier based on property characteristics.
+   * New approach (simplified):
+   * 1. Apply floor filter (remove floor ≤ 0)
+   * 2. Apply age filter (±10 years with fallback)
+   * 3. Calculate percentile thresholds from filtered data
+   * 4. Classify transactions into 4 tiers
+   * 5. Calculate tier values with recency weight + age adjustment
+   * 6. Return all 4 tier values as final output
    *
-   * @param transactions - Filtered transactions from MOLIT API
+   * @param transactions - Raw transactions from MOLIT API
    * @param targetArea - Target property's exclusive area (㎡)
    * @param targetBuildingYear - Target property's building year
-   * @returns Array of TierEstimate for each quality tier with sufficient data
+   * @returns Array of TierEstimate for each quality tier
    */
   private calculateTieredHierarchyValue(
     transactions: MolitTransaction[],
@@ -454,10 +616,36 @@ export class PropertyValuationEngine {
     const now = new Date();
     const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium'];
 
-    // Calculate percentile thresholds from all transactions
-    const thresholds = this.calculatePercentileThresholds(transactions);
+    // Step 1 & 2: Apply floor and age filtering
+    const { filtered, filterLog } = this.applyMultifamilyFilters(transactions, targetBuildingYear);
 
-    // Classify each transaction by quality tier using percentiles
+    console.log('\n📊 Multifamily Valuation (Floor + Age Filtered):');
+    console.log(`   Target Area: ${targetArea}㎡, Target Year: ${targetBuildingYear || 'unknown'}`);
+    console.log(`   Filtering:`);
+    console.log(`     - Original: ${filterLog.originalCount} transactions`);
+    console.log(`     - After floor filter (removed floor ≤ 0): ${filterLog.afterFloorFilter} (removed ${filterLog.floorRemovedCount})`);
+    if (filterLog.ageTolerance !== null) {
+      console.log(`     - After age filter (±${filterLog.ageTolerance} years): ${filterLog.afterAgeFilter} (removed ${filterLog.ageRemovedCount})`);
+    } else {
+      console.log(`     - Age filter: not applied (insufficient data or no target year)`);
+    }
+    if (filterLog.usedFallback) {
+      console.log(`     ⚠️ Used fallback filtering due to insufficient data`);
+    }
+
+    // If still no transactions after filtering, return empty
+    if (filtered.length === 0) {
+      console.log('   ❌ No transactions remaining after filtering');
+      return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 } };
+    }
+
+    // Step 3: Calculate percentile thresholds from FILTERED transactions
+    const thresholds = this.calculatePercentileThresholds(filtered);
+
+    console.log(`   Percentile Thresholds (from ${filtered.length} filtered txns):`);
+    console.log(`     P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡`);
+
+    // Step 4: Classify each transaction by quality tier
     const transactionsByTier: Record<QualityTier, Array<MolitTransaction & { unitPrice: number; daysAgo: number }>> = {
       budget: [],
       standard: [],
@@ -465,7 +653,7 @@ export class PropertyValuationEngine {
       premium: [],
     };
 
-    transactions.forEach(t => {
+    filtered.forEach(t => {
       const unitPrice = t.transactionAmount / t.exclusiveArea;
       const tier = this.classifyQualityTier(unitPrice, thresholds);
       const transactionDate = new Date(t.year, t.month - 1, t.day);
@@ -473,11 +661,9 @@ export class PropertyValuationEngine {
       transactionsByTier[tier].push({ ...t, unitPrice, daysAgo });
     });
 
-    console.log('\n📊 Tiered Hierarchy Valuation (Percentile-Based):');
-    console.log(`   Target Area: ${targetArea}㎡, Target Year: ${targetBuildingYear || 'unknown'}`);
-    console.log(`   Percentile Thresholds: P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡`);
     console.log(`   Tier distribution: budget=${transactionsByTier.budget.length}, standard=${transactionsByTier.standard.length}, mid=${transactionsByTier.mid.length}, premium=${transactionsByTier.premium.length}`);
 
+    // Step 5 & 6: Calculate tier values
     const tierEstimates: TierEstimate[] = [];
 
     for (const tier of tiers) {
@@ -491,7 +677,7 @@ export class PropertyValuationEngine {
       let totalWeight = 0;
 
       tierTxns.forEach(t => {
-        // Recency weight
+        // Recency weight (90-day half-life)
         const recencyWeight = Math.exp(-t.daysAgo / TIERED_CONFIG.RECENCY_HALFLIFE_DAYS);
 
         // Age adjustment: adjust comparable's unit price to target building year
@@ -535,9 +721,9 @@ export class PropertyValuationEngine {
       });
 
       console.log(`\n   ${TIERED_CONFIG.LABELS[tier]}:`);
-      console.log(`   - Transactions: ${tierTxns.length}, Effective N: ${effectiveSampleSize.toFixed(1)}`);
-      console.log(`   - Unit Price: ${(weightedUnitPrice / 10000).toFixed(0)}만원/㎡`);
-      console.log(`   - Estimated Value: ${(estimatedValue / 100000000).toFixed(2)}억원`);
+      console.log(`     - Transactions: ${tierTxns.length}, Effective N: ${effectiveSampleSize.toFixed(1)}`);
+      console.log(`     - Unit Price: ${(weightedUnitPrice / 10000).toFixed(0)}만원/㎡`);
+      console.log(`     - Estimated Value: ${(estimatedValue / 100000000).toFixed(2)}억원`);
     }
 
     return { estimates: tierEstimates, thresholds };
