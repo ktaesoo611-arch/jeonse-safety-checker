@@ -171,7 +171,40 @@ export default function MarketPositionSection({
       );
     }
 
-    const style = getAssessmentStyle(wolseData.assessment);
+    // Calculate dynamic values based on selected tier (for multifamily)
+    // If tier data exists and a tier is selected, use that tier's expected rent
+    const selectedTierData = wolseData.tieredExpectedRent?.find(t => t.tier === selectedTier);
+    const displayExpectedRent = selectedTierData?.expectedRent ?? wolseData.expectedRent;
+    const displayRentDifference = wolseData.userMonthlyRent - displayExpectedRent;
+    const displayRentDifferencePercent = displayExpectedRent > 0
+      ? (displayRentDifference / displayExpectedRent) * 100
+      : wolseData.rentDifferencePercent;
+
+    // Recalculate assessment based on tier selection
+    const getDisplayAssessment = () => {
+      if (!selectedTierData) return wolseData.assessment;
+
+      const MIN_OVERPRICED_AMOUNT = 100000;
+      const MIN_SEVERELY_OVERPRICED_AMOUNT = 200000;
+      const MIN_GOOD_DEAL_SAVINGS = 150000;
+
+      if (displayRentDifferencePercent <= -10 || displayRentDifference <= -MIN_GOOD_DEAL_SAVINGS) {
+        return 'GOOD_DEAL';
+      }
+      if (displayRentDifferencePercent > 15 && displayRentDifference > MIN_SEVERELY_OVERPRICED_AMOUNT) {
+        return 'SEVERELY_OVERPRICED';
+      }
+      if (displayRentDifferencePercent > 5 && displayRentDifference > MIN_OVERPRICED_AMOUNT) {
+        return 'OVERPRICED';
+      }
+      return 'FAIR';
+    };
+
+    const displayAssessment = getDisplayAssessment();
+    const style = getAssessmentStyle(displayAssessment);
+
+    // Check if using tiered data
+    const isUsingTieredData = !!selectedTierData;
 
     return (
       <div className="mb-12">
@@ -192,28 +225,28 @@ export default function MarketPositionSection({
 
           <div className="bg-white rounded-2xl p-5 sm:p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
             <p className="text-sm sm:text-base text-gray-500 mb-2">Expected Rent</p>
-            <p className="text-2xl sm:text-3xl font-bold text-emerald-600">{formatAmount(wolseData.expectedRent)}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-emerald-600">{formatAmount(displayExpectedRent)}</p>
             <p className="text-sm sm:text-base text-gray-400 mt-2">
-              at your deposit level
+              {isUsingTieredData ? `for ${selectedTier} tier` : 'at your deposit level'}
             </p>
           </div>
 
           <div className={`rounded-2xl p-5 sm:p-6 text-center shadow-sm border hover:shadow-lg transition-all duration-200 cursor-default ${
-            wolseData.rentDifference <= 0
+            displayRentDifference <= 0
               ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
-              : wolseData.rentDifferencePercent <= 5
+              : displayRentDifferencePercent <= 5
               ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
               : 'bg-red-50 border-red-200 hover:bg-red-100'
           }`}>
             <p className="text-sm sm:text-base text-gray-500 mb-2">Difference</p>
             <p className={`text-2xl sm:text-3xl font-bold ${
-              wolseData.rentDifference <= 0 ? 'text-emerald-600' :
-              wolseData.rentDifferencePercent <= 5 ? 'text-blue-600' : 'text-red-600'
+              displayRentDifference <= 0 ? 'text-emerald-600' :
+              displayRentDifferencePercent <= 5 ? 'text-blue-600' : 'text-red-600'
             }`}>
-              {wolseData.rentDifference >= 0 ? '+' : ''}{formatAmount(wolseData.rentDifference)}
+              {displayRentDifference >= 0 ? '+' : ''}{formatAmount(displayRentDifference)}
             </p>
             <p className="text-sm sm:text-base text-gray-400 mt-2">
-              {wolseData.rentDifferencePercent >= 0 ? '+' : ''}{wolseData.rentDifferencePercent.toFixed(1)}% vs expected
+              {displayRentDifferencePercent >= 0 ? '+' : ''}{displayRentDifferencePercent.toFixed(1)}% vs expected
             </p>
           </div>
         </div>
@@ -384,24 +417,24 @@ export default function MarketPositionSection({
                     {/* User's Rent Reference Line */}
                     <ReferenceLine
                       y={wolseData.userMonthlyRent / 10000}
-                      stroke={wolseData.rentDifference <= 0 ? '#10b981' : wolseData.rentDifferencePercent <= 10 ? '#f59e0b' : '#ef4444'}
+                      stroke={displayRentDifference <= 0 ? '#10b981' : displayRentDifferencePercent <= 10 ? '#f59e0b' : '#ef4444'}
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       label={{
                         value: `Your Rent: ${(wolseData.userMonthlyRent / 10000).toFixed(0)}만`,
                         position: 'right',
-                        fill: wolseData.rentDifference <= 0 ? '#10b981' : wolseData.rentDifferencePercent <= 10 ? '#f59e0b' : '#ef4444',
+                        fill: displayRentDifference <= 0 ? '#10b981' : displayRentDifferencePercent <= 10 ? '#f59e0b' : '#ef4444',
                         fontSize: 11,
                       }}
                     />
 
                     {/* Expected Rent Reference Line */}
                     <ReferenceLine
-                      y={wolseData.expectedRent / 10000}
+                      y={displayExpectedRent / 10000}
                       stroke="#10b981"
                       strokeWidth={2}
                       label={{
-                        value: `Expected: ${(wolseData.expectedRent / 10000).toFixed(0)}만`,
+                        value: `Expected: ${(displayExpectedRent / 10000).toFixed(0)}만`,
                         position: 'insideTopRight',
                         fill: '#10b981',
                         fontSize: 11,
@@ -448,7 +481,7 @@ export default function MarketPositionSection({
                   <span className="text-gray-600">Expected rent</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-0.5 border-t-2 border-dashed" style={{ borderColor: wolseData.rentDifference <= 0 ? '#10b981' : wolseData.rentDifferencePercent <= 10 ? '#f59e0b' : '#ef4444' }} />
+                  <div className="w-6 h-0.5 border-t-2 border-dashed" style={{ borderColor: displayRentDifference <= 0 ? '#10b981' : displayRentDifferencePercent <= 10 ? '#f59e0b' : '#ef4444' }} />
                   <span className="text-gray-600">Your rent</span>
                 </div>
               </div>
@@ -458,7 +491,7 @@ export default function MarketPositionSection({
                 <span className="text-lg">{style.icon}</span>
                 <span className={`font-semibold text-sm sm:text-base ${style.color}`}>{style.label}</span>
                 <span className={`text-xs sm:text-sm ${style.color}`}>
-                  ({wolseData.rentDifference >= 0 ? '+' : ''}{(wolseData.rentDifference / 10000).toFixed(0)}만, {wolseData.rentDifferencePercent >= 0 ? '+' : ''}{wolseData.rentDifferencePercent.toFixed(1)}%)
+                  ({displayRentDifference >= 0 ? '+' : ''}{(displayRentDifference / 10000).toFixed(0)}만, {displayRentDifferencePercent >= 0 ? '+' : ''}{displayRentDifferencePercent.toFixed(1)}%)
                 </span>
               </div>
 
@@ -467,16 +500,16 @@ export default function MarketPositionSection({
               )}
 
               {/* Warning for Good Deal / Fair Price */}
-              {(wolseData.assessment === 'GOOD_DEAL' || wolseData.assessment === 'FAIR') && (
+              {(displayAssessment === 'GOOD_DEAL' || displayAssessment === 'FAIR') && (
                 <div className="mt-4 p-4 sm:p-5 rounded-xl bg-amber-50 border border-amber-200">
                   <div className="flex items-start gap-3">
                     <span className="text-xl sm:text-2xl">⚠️</span>
                     <div>
                       <p className="font-semibold text-amber-900 text-sm sm:text-base">
-                        {wolseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Check Physical Condition'}
+                        {displayAssessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Check Physical Condition'}
                       </p>
                       <p className="text-sm sm:text-base text-amber-700 mt-1">
-                        {wolseData.assessment === 'GOOD_DEAL'
+                        {displayAssessment === 'GOOD_DEAL'
                           ? 'Below-market prices often have reasons. Check for physical issues (leaks, mold, noise), neighborhood problems, or why the landlord needs to rent quickly.'
                           : 'Visit the property to check for physical issues like water damage, mold, noise levels, and overall maintenance condition.'}
                       </p>
@@ -488,19 +521,26 @@ export default function MarketPositionSection({
           );
         })()}
 
-        {/* Savings Potential */}
-        {wolseData.savingsPotential.vsMarket > 0 && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-6 border border-amber-200 hover:shadow-lg transition-all duration-200">
-            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
-              <span className="text-xl sm:text-2xl">💰</span>
-              Potential Savings
-            </h3>
-            <div className="p-4 sm:p-5 rounded-xl bg-white/50 hover:bg-white hover:shadow-md transition-all duration-200 cursor-default">
-              <p className="text-sm sm:text-base text-gray-600">If negotiated to expected rent:</p>
-              <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{formatAmount(wolseData.savingsPotential.vsMarket)}/year</p>
+        {/* Savings Potential - Recalculate based on tier selection */}
+        {(() => {
+          // Calculate savings based on dynamic rent difference
+          const displaySavingsPerYear = displayRentDifference > 0 ? displayRentDifference * 12 : 0;
+
+          if (displaySavingsPerYear <= 0) return null;
+
+          return (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-6 border border-amber-200 hover:shadow-lg transition-all duration-200">
+              <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
+                <span className="text-xl sm:text-2xl">💰</span>
+                Potential Savings
+              </h3>
+              <div className="p-4 sm:p-5 rounded-xl bg-white/50 hover:bg-white hover:shadow-md transition-all duration-200 cursor-default">
+                <p className="text-sm sm:text-base text-gray-600">If negotiated to expected rent{isUsingTieredData ? ` (${selectedTier} tier)` : ''}:</p>
+                <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{formatAmount(displaySavingsPerYear)}/year</p>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Price Trend */}
         {wolseData.trend && (
