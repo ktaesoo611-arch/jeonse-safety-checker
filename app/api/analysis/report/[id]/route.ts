@@ -139,11 +139,25 @@ function generateVerdict(riskLevel: string, score: number): string {
 }
 
 /**
- * Strip unit info (동/층/호) from deunggibu full address
- * e.g., "서울특별시 마포구 와우산로24길 43-4 제2층 제1호" → "서울특별시 마포구 와우산로24길 43-4"
+ * Strip unit info and city prefix from deunggibu full address
+ * e.g., "서울특별시 마포구 창전동 6-75 제2층 제1호" → "마포구 창전동 6-75"
  */
 function cleanDeunggibuAddress(addr: string): string {
-  return addr.replace(/\s+제?\d+[동층호].*$/, '').trim();
+  // Strip unit info (제X동/층/호 and everything after) — requires 제 before digit
+  // to avoid stripping legal dong names like "창전동" or "상암3동"
+  let cleaned = addr.replace(/\s+제\d+[동층].*$/, '').trim();
+  // Strip city prefix
+  cleaned = cleaned.replace(/^(서울특별시|서울|경기도|경기)\s+/, '').trim();
+  return cleaned;
+}
+
+/**
+ * Extract unit info from deunggibu address, preserving 제 prefix
+ * e.g., "서울특별시 마포구 창전동 6-75 제2층 제1호" → "제2층 제1호"
+ */
+function extractUnitFromAddress(addr: string): string | null {
+  const match = addr.match(/(제\d+층\s*제\d+호)/);
+  return match ? match[1] : null;
 }
 
 export async function GET(
@@ -268,17 +282,19 @@ export async function GET(
         completedAt: wolseResult.completed_at,
         monthlyRent: wolseResult.user_monthly_rent || safetyData?.monthly_rent || null,
 
-        property: {
-          // Prefer deunggibu address (stripped of unit info), then building-name-based, then property table
-          address: (() => {
-            const deunggibuAddr = riskAnalysis?.deunggibu?.fullAddress || riskAnalysis?.deunggibu?.address || wolseParsedData?.fullAddress || wolseParsedData?.address;
-            if (deunggibuAddr) return cleanDeunggibuAddress(deunggibuAddr);
-            if (propertyData?.building_name) return `${propertyData?.city || '서울특별시'} ${propertyData?.district || ''} ${propertyData?.dong || ''} ${propertyData?.building_name}`.trim();
-            return propertyData?.address || 'N/A';
-          })(),
+        property: (() => {
+          const deunggibuAddr = riskAnalysis?.deunggibu?.fullAddress || riskAnalysis?.deunggibu?.address || wolseParsedData?.fullAddress || wolseParsedData?.address;
+          const deunggibuUnit = deunggibuAddr ? extractUnitFromAddress(deunggibuAddr) : null;
+          return {
+          // Prefer deunggibu address (stripped of unit info + city), then building-name-based, then property table
+          address: deunggibuAddr
+            ? cleanDeunggibuAddress(deunggibuAddr)
+            : propertyData?.building_name
+              ? `${propertyData?.city || '서울특별시'} ${propertyData?.district || ''} ${propertyData?.dong || ''} ${propertyData?.building_name}`.trim()
+              : propertyData?.address || 'N/A',
           buildingName: propertyData?.building_name || null,
           buildingNumber: propertyData?.building_number || riskAnalysis?.deunggibu?.buildingNumber || riskAnalysis?.buildingNumber || wolseBuildingNumber || null,
-          unit: propertyData?.unit || riskAnalysis?.deunggibu?.unit || riskAnalysis?.unit || wolseUnit || null,
+          unit: deunggibuUnit || wolseUnit || propertyData?.unit || riskAnalysis?.deunggibu?.unit || riskAnalysis?.unit || null,
           proposedJeonse: wolseResult.user_deposit,
           estimatedValue: riskAnalysis?.valuation?.valueMid || null,
           // Prioritize LLM-extracted area from 등기부등본 over user-entered value
@@ -290,7 +306,8 @@ export async function GET(
             tierGuidance: riskAnalysis?.valuation?.tierGuidance || null,
             tierPercentiles: riskAnalysis?.valuation?.tierPercentiles || null,
           },
-        },
+        };
+        })(),
 
         // Risk analysis from 등기부등본 (if available)
         riskAnalysis: hasSafetyData ? {
@@ -503,20 +520,20 @@ export async function GET(
         generatedAt: new Date().toISOString(),
         completedAt: newSchemaResult.completed_at,
 
-        property: {
-          // Prefer deunggibu address (stripped of unit info), then building-name-based, then property table
-          address: (() => {
-            const deunggibuAddr = riskAnalysis.deunggibu?.fullAddress || riskAnalysis.deunggibu?.address || parsedData?.fullAddress || parsedData?.address;
-            if (deunggibuAddr) return cleanDeunggibuAddress(deunggibuAddr);
-            if (newSchemaResult.building_name) return `${newSchemaResult.city || '서울특별시'} ${newSchemaResult.district || ''} ${newSchemaResult.dong || ''} ${newSchemaResult.building_name}`.trim();
-            return newSchemaResult.address || 'N/A';
-          })(),
+        property: (() => {
+          const deunggibuAddr = riskAnalysis.deunggibu?.fullAddress || riskAnalysis.deunggibu?.address || parsedData?.fullAddress || parsedData?.address;
+          const deunggibuUnit = deunggibuAddr ? extractUnitFromAddress(deunggibuAddr) : null;
+          return {
+          address: deunggibuAddr
+            ? cleanDeunggibuAddress(deunggibuAddr)
+            : newSchemaResult.building_name
+              ? `${newSchemaResult.city || '서울특별시'} ${newSchemaResult.district || ''} ${newSchemaResult.dong || ''} ${newSchemaResult.building_name}`.trim()
+              : newSchemaResult.address || 'N/A',
           buildingName: newSchemaResult.building_name || null,
           buildingNumber: newSchemaResult.building_number || riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || jeonseBuildingNumber || null,
-          unit: newSchemaResult.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || jeonseUnit || null,
+          unit: deunggibuUnit || jeonseUnit || newSchemaResult.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || null,
           proposedJeonse: newSchemaResult.proposed_jeonse,
           estimatedValue: newSchemaResult.valuation_data?.valueMid || riskAnalysis.valuation?.valueMid || null,
-          // Prioritize LLM-extracted area from 등기부등본
           area: riskAnalysis.deunggibu?.area || riskAnalysis.area || null,
           buildingAge: parsedData?.property?.buildingAge || null,
           propertyType: parsedData?.property?.type || null,
@@ -526,12 +543,12 @@ export async function GET(
             valueHigh: newSchemaResult.valuation_data?.valueHigh || riskAnalysis.valuation?.valueHigh || null,
             confidence: newSchemaResult.valuation_data?.confidence || riskAnalysis.valuation?.confidence || null,
             marketTrend: newSchemaResult.valuation_data?.marketTrend || riskAnalysis.valuation?.marketTrend || null,
-            // Tiered hierarchy for multifamily (연립다세대)
             tierEstimates: newSchemaResult.valuation_data?.tierEstimates || riskAnalysis.valuation?.tierEstimates || null,
             tierGuidance: newSchemaResult.valuation_data?.tierGuidance || riskAnalysis.valuation?.tierGuidance || null,
             tierPercentiles: newSchemaResult.valuation_data?.tierPercentiles || riskAnalysis.valuation?.tierPercentiles || null,
           },
-        },
+        };
+        })(),
 
         owner: { name: null, phone: null },
 
@@ -813,17 +830,17 @@ export async function GET(
       // Property Information
       property: (() => {
         const prop = Array.isArray(analysis.properties) ? analysis.properties[0] : analysis.properties;
+        const deunggibuAddr = riskAnalysis.deunggibu?.fullAddress || riskAnalysis.deunggibu?.address || parsedData?.fullAddress || parsedData?.address;
+        const deunggibuUnit = deunggibuAddr ? extractUnitFromAddress(deunggibuAddr) : null;
         return {
-          // Prefer deunggibu address (stripped of unit info), then building-name-based, then property table
-          address: (() => {
-            const deunggibuAddr = riskAnalysis.deunggibu?.fullAddress || riskAnalysis.deunggibu?.address || parsedData?.fullAddress || parsedData?.address;
-            if (deunggibuAddr) return cleanDeunggibuAddress(deunggibuAddr);
-            if (prop?.building_name) return `${prop?.city || '서울특별시'} ${prop?.district || ''} ${prop?.dong || ''} ${prop?.building_name}`.trim();
-            return prop?.address || 'N/A';
-          })(),
+          address: deunggibuAddr
+            ? cleanDeunggibuAddress(deunggibuAddr)
+            : prop?.building_name
+              ? `${prop?.city || '서울특별시'} ${prop?.district || ''} ${prop?.dong || ''} ${prop?.building_name}`.trim()
+              : prop?.address || 'N/A',
           buildingName: prop?.building_name || null,
           buildingNumber: prop?.building_number || riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || fallbackBuildingNumber || null,
-          unit: prop?.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || fallbackUnit || null,
+          unit: deunggibuUnit || fallbackUnit || prop?.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || null,
           proposedJeonse: analysis.proposed_jeonse,
           estimatedValue: riskAnalysis.valuation?.valueMid || null,
           // Prioritize LLM-extracted area from 등기부등본
