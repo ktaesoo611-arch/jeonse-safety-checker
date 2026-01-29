@@ -230,12 +230,27 @@ export default function PreviewPage() {
         }
 
         // Also refresh from API after a small delay to ensure consistency
+        // Preserve locally-merged wolse data (tiered fields etc.) if the DB
+        // refresh doesn't include them (e.g., migration not yet applied)
         setTimeout(async () => {
           try {
             const refreshedReport = await fetch(`/api/analysis/report/${analysisId}`);
             if (refreshedReport.ok) {
               const refreshedData = await refreshedReport.json();
-              setReportData(refreshedData);
+              setReportData((prev: any) => {
+                const merged = { ...refreshedData };
+                // Preserve locally-merged wolse tiered data if DB doesn't have it
+                if (prev?.wolseAnalysis?.tieredExpectedRent && !merged.wolseAnalysis?.tieredExpectedRent) {
+                  merged.wolseAnalysis = {
+                    ...merged.wolseAnalysis,
+                    tieredExpectedRent: prev.wolseAnalysis.tieredExpectedRent,
+                    selectedTierExpectedRent: prev.wolseAnalysis.selectedTierExpectedRent,
+                    filteredTransactions: prev.wolseAnalysis.filteredTransactions,
+                  };
+                  console.log('[Wolse Analysis] Preserved tiered data from local merge during refresh');
+                }
+                return merged;
+              });
             }
           } catch (err) {
             console.log('[Wolse Analysis] Background refresh failed, using local data');
