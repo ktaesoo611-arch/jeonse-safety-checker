@@ -68,6 +68,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if this is a test email (bypass counter decrement)
+    const testEmails = (process.env.BETA_TEST_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+    const isTestEmail = testEmails.includes(email.toLowerCase());
+
     // Check if this email + analysis combo already exists (prevent duplicate unlocks)
     const { data: existingCapture } = await supabase
       .from('beta_email_captures')
@@ -103,24 +110,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Decrement counter only after successful email capture
-    const newRemaining = settings ? settings.free_unlocks_remaining - 1 : 46;
+    // Decrement counter only after successful email capture (skip for test emails)
+    const currentRemaining = settings?.free_unlocks_remaining ?? 47;
+    let newRemaining = currentRemaining;
 
-    const { error: updateError } = await supabase
-      .from('beta_settings')
-      .update({
-        free_unlocks_remaining: newRemaining,
-        total_unlocks_used: (settings ? 50 - settings.free_unlocks_remaining : 3) + 1,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', 'default');
+    if (!isTestEmail) {
+      newRemaining = currentRemaining - 1;
 
-    if (updateError) {
-      console.error('[Beta Unlock] Error updating counter:', updateError);
-      // Don't fail the request, just log
+      const { error: updateError } = await supabase
+        .from('beta_settings')
+        .update({
+          free_unlocks_remaining: newRemaining,
+          total_unlocks_used: (settings ? 50 - settings.free_unlocks_remaining : 3) + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 'default');
+
+      if (updateError) {
+        console.error('[Beta Unlock] Error updating counter:', updateError);
+      }
+    } else {
+      console.log(`[Beta Unlock] Test email detected, skipping counter decrement`);
     }
 
-    console.log(`[Beta Unlock] Email captured: ${email}, Analysis: ${analysisId}, Type: ${type}, Remaining: ${newRemaining}`);
+    console.log(`[Beta Unlock] Email captured: ${email}, Analysis: ${analysisId}, Type: ${type}, Remaining: ${newRemaining}, Test: ${isTestEmail}`);
 
     return NextResponse.json({
       success: true,
