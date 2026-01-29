@@ -218,6 +218,10 @@ export default function PreviewPage() {
               trend: saveData.result.trend,
               recentTransactions: saveData.result.recentTransactions,
               negotiationOptions: saveData.result.negotiationOptions,
+              // Tiered expected rent for multifamily
+              tieredExpectedRent: saveData.result.tieredExpectedRent,
+              selectedTierExpectedRent: saveData.result.selectedTierExpectedRent,
+              filteredTransactions: saveData.result.filteredTransactions,
             }
           }));
           console.log('[Wolse Analysis] Merged wolse data directly, recentTransactions:', saveData.result.recentTransactions?.length || 0);

@@ -131,7 +131,11 @@ export async function POST(request: NextRequest) {
       trendPercentage: result.trend.percentage,
       trendAdvice: result.trend.advice,
       negotiationOptions: result.negotiationOptions,
-      recentTransactions: result.recentTransactions
+      recentTransactions: result.recentTransactions,
+      // Tiered expected rent for multifamily
+      tieredExpectedRent: result.tieredExpectedRent,
+      selectedTierExpectedRent: result.selectedTierExpectedRent,
+      filteredTransactions: result.filteredTransactions
     }, result.expiresAt);
 
     // Update status to completed
