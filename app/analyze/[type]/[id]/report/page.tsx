@@ -42,8 +42,7 @@ export default function ReportPage() {
         console.log('[Report] Loaded from cache:', {
           hasWolseAnalysis: !!parsed.wolseAnalysis,
           wolseAnalysisKeys: parsed.wolseAnalysis ? Object.keys(parsed.wolseAnalysis) : [],
-          recentTransactions: parsed.wolseAnalysis?.recentTransactions?.length || 0,
-          tieredExpectedRent: parsed.wolseAnalysis?.tieredExpectedRent,
+          recentTransactions: parsed.wolseAnalysis?.recentTransactions?.length || 0
         });
         return parsed;
       }
@@ -167,8 +166,7 @@ export default function ReportPage() {
     userDeposit: wolseAnalysis?.userDeposit,
     userMonthlyRent: wolseAnalysis?.userMonthlyRent,
     recentTransactions: wolseAnalysis?.recentTransactions?.length,
-    contractCount: wolseAnalysis?.contractCount,
-    tieredExpectedRent: wolseAnalysis?.tieredExpectedRent,
+    contractCount: wolseAnalysis?.contractCount
   });
 
   // Get selected tier label for display

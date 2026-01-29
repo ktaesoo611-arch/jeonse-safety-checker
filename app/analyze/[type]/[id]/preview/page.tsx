@@ -179,7 +179,6 @@ export default function PreviewPage() {
 
       const previewData = await previewResponse.json();
       console.log('[Wolse Analysis] Preview result:', previewData);
-      console.log('[Wolse Analysis] Preview tieredExpectedRent:', previewData.result?.tieredExpectedRent, 'buildingType sent:', buildingType);
 
       // Save the analysis result
       const saveResponse = await fetch('/api/wolse/save', {
@@ -225,7 +224,7 @@ export default function PreviewPage() {
               filteredTransactions: saveData.result.filteredTransactions,
             }
           }));
-          console.log('[Wolse Analysis] Merged wolse data directly, recentTransactions:', saveData.result.recentTransactions?.length || 0, 'tieredExpectedRent:', saveData.result.tieredExpectedRent);
+          console.log('[Wolse Analysis] Merged wolse data directly, recentTransactions:', saveData.result.recentTransactions?.length || 0);
           setWolseAnalysisComplete(true);
         }
 

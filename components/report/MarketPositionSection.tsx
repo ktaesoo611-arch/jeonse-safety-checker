@@ -187,9 +187,7 @@ export default function MarketPositionSection({
 
     // Calculate dynamic values based on selected tier (for multifamily)
     // If tier data exists and a tier is selected, use that tier's expected rent
-    console.log('[MarketPosition] selectedTier:', selectedTier, 'tieredExpectedRent:', wolseData.tieredExpectedRent);
     const selectedTierData = wolseData.tieredExpectedRent?.find(t => t.tier === selectedTier);
-    console.log('[MarketPosition] selectedTierData:', selectedTierData, 'fallback expectedRent:', wolseData.expectedRent);
     const displayExpectedRent = selectedTierData?.expectedRent ?? wolseData.expectedRent;
     const displayRentDifference = wolseData.userMonthlyRent - displayExpectedRent;
     const displayRentDifferencePercent = displayExpectedRent > 0
