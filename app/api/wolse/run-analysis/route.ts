@@ -89,10 +89,17 @@ export async function POST(request: NextRequest) {
       exclusiveArea,
       deposit,
       monthlyRent,
-      buildingType = 'apartment' as BuildingType,
+      buildingType: rawBuildingType = 'apartment' as BuildingType,
       selectedTier,
       targetBuildingYear
     } = inputData;
+
+    // Infer 'multifamily' when no building name is provided
+    let buildingType: BuildingType = rawBuildingType;
+    if (buildingType === 'apartment' && !apartmentName) {
+      buildingType = 'multifamily';
+      console.log('[wolse/run-analysis] Inferred buildingType: multifamily (no apartmentName)');
+    }
 
     // Update status to processing
     await supabaseAdmin

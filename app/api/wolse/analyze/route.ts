@@ -34,7 +34,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Extract buildingType (defaults to 'apartment' for backwards compatibility)
-    const buildingType: BuildingType = body.buildingType || 'apartment';
+    // Infer 'multifamily' when no building name is provided — matches the detection
+    // logic in documents/parse and preview page, ensuring tiered rent is computed
+    let buildingType: BuildingType = body.buildingType || 'apartment';
+    if (buildingType === 'apartment' && !body.apartmentName) {
+      buildingType = 'multifamily';
+      console.log('[wolse/analyze] Inferred buildingType: multifamily (no apartmentName)');
+    }
 
     // Validate required fields - apartmentName not required for multifamily
     const requiredFields = buildingType === 'multifamily'
