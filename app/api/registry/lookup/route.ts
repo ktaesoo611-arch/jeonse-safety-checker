@@ -81,6 +81,7 @@ interface RegistryLookupRequest {
   buildingName?: string;     // 건물명칭
   dong?: string;             // 동 (e.g., "101")
   ho?: string;               // 호 (e.g., "1001")
+  floor?: string;            // 층 (e.g., "2")
   // Other params
   type?: '토지' | '집합건물' | '건물';
   analysisId: string;
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
     console.log(`[RegistryLookup] Analysis ID: ${body.analysisId}`);
     console.log(`[RegistryLookup] Type: ${propertyType}`);
     if (hasStructuredAddress) {
-      console.log(`[RegistryLookup] Structured: sido=${body.addr_sido}, sigungu=${body.addr_sigungu}, dong=${body.addr_dong}, lot=${body.addr_lotNumber}, building=${body.buildingName}, 동=${body.dong}, 호=${body.ho}`);
+      console.log(`[RegistryLookup] Structured: sido=${body.addr_sido}, sigungu=${body.addr_sigungu}, dong=${body.addr_dong}, lot=${body.addr_lotNumber}, building=${body.buildingName}, 동=${body.dong}, 호=${body.ho}, 층=${body.floor}`);
     }
 
     // Update analysis status to 'processing' immediately
@@ -140,6 +141,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       buildingName: body.buildingName,
       dong: body.dong,
       ho: body.ho,
+      floor: body.floor,
     }, propertyType, body.analysisId);
 
     // If CODEF failed, mark analysis as failed with error message
@@ -197,6 +199,7 @@ async function fetchViaCodef(
     buildingName?: string;
     dong?: string;
     ho?: string;
+    floor?: string;
   },
   type: '토지' | '집합건물' | '건물',
   analysisId: string
@@ -237,6 +240,7 @@ async function fetchViaCodef(
       buildingName: addressParams.buildingName,
       dong: addressParams.dong,
       ho: addressParams.ho,
+      floor: addressParams.floor,
     }, type);
   } else {
     console.log('[RegistryLookup] Using combined address string for CODEF');
@@ -262,8 +266,21 @@ async function fetchViaCodef(
     };
     const targetType = typeMap[type] || '집합건물';
 
-    // Priority: matching type + 현행 > matching type > 현행 > first result
+    // Build floor+ho matching pattern for address list selection
+    // e.g., floor="2", ho="1" → match addresses containing "제2층" and "제1호"
+    const userFloor = addressParams.floor;
+    const userHo = addressParams.ho;
+    const matchesFloorHo = (addr: string) => {
+      if (!userFloor && !userHo) return false;
+      const floorOk = !userFloor || addr.includes(`제${userFloor}층`) || addr.includes(`${userFloor}층`);
+      const hoOk = !userHo || addr.includes(`제${userHo}호`) || addr.includes(`${userHo}호`);
+      return floorOk && hoOk;
+    };
+
+    // Priority: type + 현행 + floor/ho > type + floor/ho > type + 현행 > type > 현행 > first
     const bestMatch =
+      registryResult.addressList.find(a => a.resType === targetType && a.resState === '현행' && matchesFloorHo(a.commAddrLotNumber)) ||
+      registryResult.addressList.find(a => a.resType === targetType && matchesFloorHo(a.commAddrLotNumber)) ||
       registryResult.addressList.find(a => a.resType === targetType && a.resState === '현행') ||
       registryResult.addressList.find(a => a.resType === targetType) ||
       registryResult.addressList.find(a => a.resState === '현행') ||

@@ -261,6 +261,7 @@ export class CodefAPI {
       // For 집합건물 (apartments) - required with inquiryType='2' or '3'
       dong?: string;             // 동 (e.g., "101")
       ho?: string;               // 호 (e.g., "1001")
+      floor?: string;            // 층 (e.g., "2") - used for address list matching
 
       // Structured address for inquiryType='3' (도로명주소로 찾기)
       addr_roadName?: string;        // 도로명 (e.g., "새터로")
@@ -422,10 +423,19 @@ export class CodefAPI {
         if (extraInfo?.resAddrList && extraInfo.resAddrList.length > 0) {
           console.log(`[CODEF] Found ${extraInfo.resAddrList.length} address matches`);
 
-          // Auto-select if single match
+          // Auto-select: prefer match with correct floor/ho, then 현행, then first
+          const matchesFloorHo = (addr: string) => {
+            if (!params.floor && !params.ho) return false;
+            const floorOk = !params.floor || addr.includes(`제${params.floor}층`) || addr.includes(`${params.floor}층`);
+            const hoOk = !params.ho || addr.includes(`제${params.ho}호`) || addr.includes(`${params.ho}호`);
+            return floorOk && hoOk;
+          };
           const match = extraInfo.resAddrList.length === 1
             ? extraInfo.resAddrList[0]
-            : extraInfo.resAddrList.find((a: any) => a.resState === '현행') || extraInfo.resAddrList[0];
+            : extraInfo.resAddrList.find((a: any) => a.resState === '현행' && matchesFloorHo(a.commAddrLotNumber))
+              || extraInfo.resAddrList.find((a: any) => matchesFloorHo(a.commAddrLotNumber))
+              || extraInfo.resAddrList.find((a: any) => a.resState === '현행')
+              || extraInfo.resAddrList[0];
 
           console.log(`[CODEF] Selecting: ${match.commUniqueNo} - ${match.commAddrLotNumber}`);
 
@@ -541,6 +551,7 @@ export class CodefAPI {
       buildingName?: string;      // 건물명칭
       dong?: string;              // 동 (for 집합건물)
       ho?: string;                // 호 (for 집합건물)
+      floor?: string;             // 층 (for address list matching)
       addr_roadName?: string;     // 도로명
       addr_buildingNumber?: string; // 건물번호
     },
