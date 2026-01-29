@@ -138,6 +138,14 @@ function generateVerdict(riskLevel: string, score: number): string {
   return verdicts[riskLevel] || verdicts['UNKNOWN'];
 }
 
+/**
+ * Strip unit info (동/층/호) from deunggibu full address
+ * e.g., "서울특별시 마포구 와우산로24길 43-4 제2층 제1호" → "서울특별시 마포구 와우산로24길 43-4"
+ */
+function cleanDeunggibuAddress(addr: string): string {
+  return addr.replace(/\s+제?\d+[동층호].*$/, '').trim();
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -204,7 +212,7 @@ export async function GET(
       if (wolseParsedData?.unitNumber && (!wolseBuildingNumber || !wolseUnit)) {
         const unitNumberStr = wolseParsedData.unitNumber;
         const dongMatch = unitNumberStr.match(/(\d+)동/);
-        const floorHoMatch = unitNumberStr.match(/(\d+)층\s*(\d+)호/);
+        const floorHoMatch = unitNumberStr.match(/제?(\d+)층\s*제?(\d+)호/);
         if (!wolseBuildingNumber && dongMatch) {
           wolseBuildingNumber = `${dongMatch[1]}동`;
         }
@@ -261,10 +269,13 @@ export async function GET(
         monthlyRent: wolseResult.user_monthly_rent || safetyData?.monthly_rent || null,
 
         property: {
-          // Always include building name in address
-          address: propertyData?.building_name
-            ? `${propertyData?.city || '서울특별시'} ${propertyData?.district || ''} ${propertyData?.dong || ''} ${propertyData?.building_name}`.trim()
-            : propertyData?.address || 'N/A',
+          // Prefer deunggibu address (stripped of unit info), then building-name-based, then property table
+          address: (() => {
+            const deunggibuAddr = riskAnalysis?.deunggibu?.fullAddress || riskAnalysis?.deunggibu?.address || wolseParsedData?.fullAddress || wolseParsedData?.address;
+            if (deunggibuAddr) return cleanDeunggibuAddress(deunggibuAddr);
+            if (propertyData?.building_name) return `${propertyData?.city || '서울특별시'} ${propertyData?.district || ''} ${propertyData?.dong || ''} ${propertyData?.building_name}`.trim();
+            return propertyData?.address || 'N/A';
+          })(),
           buildingName: propertyData?.building_name || null,
           buildingNumber: propertyData?.building_number || riskAnalysis?.deunggibu?.buildingNumber || riskAnalysis?.buildingNumber || wolseBuildingNumber || null,
           unit: propertyData?.unit || riskAnalysis?.deunggibu?.unit || riskAnalysis?.unit || wolseUnit || null,
@@ -401,7 +412,7 @@ export async function GET(
       if (parsedData?.unitNumber && (!jeonseBuildingNumber || !jeonseUnit)) {
         const unitNumberStr = parsedData.unitNumber;
         const dongMatch = unitNumberStr.match(/(\d+)동/);
-        const floorHoMatch = unitNumberStr.match(/(\d+)층\s*(\d+)호/);
+        const floorHoMatch = unitNumberStr.match(/제?(\d+)층\s*제?(\d+)호/);
         if (!jeonseBuildingNumber && dongMatch) {
           jeonseBuildingNumber = `${dongMatch[1]}동`;
         }
@@ -493,10 +504,13 @@ export async function GET(
         completedAt: newSchemaResult.completed_at,
 
         property: {
-          // Always include building name in address
-          address: newSchemaResult.building_name
-            ? `${newSchemaResult.city || '서울특별시'} ${newSchemaResult.district || ''} ${newSchemaResult.dong || ''} ${newSchemaResult.building_name}`.trim()
-            : newSchemaResult.address || 'N/A',
+          // Prefer deunggibu address (stripped of unit info), then building-name-based, then property table
+          address: (() => {
+            const deunggibuAddr = riskAnalysis.deunggibu?.fullAddress || riskAnalysis.deunggibu?.address || parsedData?.fullAddress || parsedData?.address;
+            if (deunggibuAddr) return cleanDeunggibuAddress(deunggibuAddr);
+            if (newSchemaResult.building_name) return `${newSchemaResult.city || '서울특별시'} ${newSchemaResult.district || ''} ${newSchemaResult.dong || ''} ${newSchemaResult.building_name}`.trim();
+            return newSchemaResult.address || 'N/A';
+          })(),
           buildingName: newSchemaResult.building_name || null,
           buildingNumber: newSchemaResult.building_number || riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || jeonseBuildingNumber || null,
           unit: newSchemaResult.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || jeonseUnit || null,
@@ -696,7 +710,7 @@ export async function GET(
     if (parsedData?.unitNumber && (!fallbackBuildingNumber || !fallbackUnit)) {
       const unitNumberStr = parsedData.unitNumber;
       const dongMatch = unitNumberStr.match(/(\d+)동/);
-      const floorHoMatch = unitNumberStr.match(/(\d+)층\s*(\d+)호/);
+      const floorHoMatch = unitNumberStr.match(/제?(\d+)층\s*제?(\d+)호/);
       if (!fallbackBuildingNumber && dongMatch) {
         fallbackBuildingNumber = `${dongMatch[1]}동`;
       }
@@ -800,10 +814,13 @@ export async function GET(
       property: (() => {
         const prop = Array.isArray(analysis.properties) ? analysis.properties[0] : analysis.properties;
         return {
-          // Always include building name in address
-          address: prop?.building_name
-            ? `${prop?.city || '서울특별시'} ${prop?.district || ''} ${prop?.dong || ''} ${prop?.building_name}`.trim()
-            : prop?.address || 'N/A',
+          // Prefer deunggibu address (stripped of unit info), then building-name-based, then property table
+          address: (() => {
+            const deunggibuAddr = riskAnalysis.deunggibu?.fullAddress || riskAnalysis.deunggibu?.address || parsedData?.fullAddress || parsedData?.address;
+            if (deunggibuAddr) return cleanDeunggibuAddress(deunggibuAddr);
+            if (prop?.building_name) return `${prop?.city || '서울특별시'} ${prop?.district || ''} ${prop?.dong || ''} ${prop?.building_name}`.trim();
+            return prop?.address || 'N/A';
+          })(),
           buildingName: prop?.building_name || null,
           buildingNumber: prop?.building_number || riskAnalysis.deunggibu?.buildingNumber || riskAnalysis.buildingNumber || fallbackBuildingNumber || null,
           unit: prop?.unit || riskAnalysis.deunggibu?.unit || riskAnalysis.unit || fallbackUnit || null,

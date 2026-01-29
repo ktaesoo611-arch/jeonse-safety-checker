@@ -460,7 +460,9 @@ async function performRealAnalysis(
         marketTrend: 'stable' as const, // Keep for backward compatibility
         recentSales: [],
         pricePerPyeong: 0,
-        dataSources: []
+        dataSources: [],
+        // Preserve jeonse transactions from MOLIT even when sale data was unavailable
+        allJeonseTransactions: molitValuation?.allJeonseTransactions || [],
       };
     }
 

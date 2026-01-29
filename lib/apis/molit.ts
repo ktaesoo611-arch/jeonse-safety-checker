@@ -504,15 +504,12 @@ export class MolitAPI {
     dong: string,
     area: number | undefined,
     monthsBack: number = 12,
-    areaFilterPercent: number = 15 // ±15% default for triple-weighted approach
+    areaFilterPercent: number = 15 // kept for API compatibility but no longer used for sale queries
   ): Promise<MolitTransaction[]> {
-    const areaTolerance = area !== undefined ? area * (areaFilterPercent / 100) : undefined;
-
-    console.log(`\n🔍 MOLIT 연립/다세대 Sales Query (Dong-level):`);
+    console.log(`\n🔍 MOLIT 연립/다세대 Sales Query (Dong-level, no area filter):`);
     console.log(`   lawdCd: "${lawdCd}"`);
     console.log(`   dong: "${dong}"`);
-    console.log(`   area: ${area}㎡`);
-    console.log(`   areaFilter: ±${areaFilterPercent}% (±${areaTolerance?.toFixed(1) || 'N/A'}㎡)`);
+    console.log(`   area: ${area}㎡ (not used for filtering — tier calc normalizes via unit price)`);
     console.log(`   monthsBack: ${monthsBack}`);
 
     const transactions: MolitTransaction[] = [];
@@ -533,25 +530,17 @@ export class MolitAPI {
           // Safety check: if dong is empty, we can't filter properly
           if (!dong || dong.trim() === '') {
             console.warn(`   ⚠️ Empty dong - cannot filter by neighborhood. Returning all transactions.`);
-            if (area !== undefined && areaTolerance !== undefined) {
-              return Math.abs(t.exclusiveArea - area) <= areaTolerance;
-            }
             return true;
           }
 
-          // Match by dong - exact or partial match
-          // Check legalDong is non-empty before using includes()
+          // Match by dong only — no area filter for sale queries
+          // The downstream tier calculation normalizes via unit price (per ㎡)
+          // and handles area variation through percentile stratification
           const dongMatches = t.legalDong === dong ||
             (t.legalDong && t.legalDong.includes(dong)) ||
             (t.legalDong && dong.includes(t.legalDong));
 
-          if (!dongMatches) return false;
-
-          if (area !== undefined && areaTolerance !== undefined) {
-            return Math.abs(t.exclusiveArea - area) <= areaTolerance;
-          }
-
-          return true;
+          return dongMatches;
         });
 
         if (filtered.length > 0) {
