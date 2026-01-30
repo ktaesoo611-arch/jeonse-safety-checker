@@ -27,6 +27,7 @@ import { PropertyDetails, ValuationResult, BuildingType } from '@/lib/types';
 import { analysisService } from '@/lib/services/analysis-service';
 import { buildingRegistryAPI } from '@/lib/apis/building-registry';
 import { parseKoreanAddress, extractLegalDongFromJibunAddress, isRoadNameAddress } from '@/lib/utils/address-parser';
+import { SIDO_NAMES, DISTRICT_CODES } from '@/lib/data/nationwide-codes';
 import { parseDeunggibuExcel, extractTextFromExcel } from '@/lib/analyzers/excel-deunggibu-parser';
 
 // Module-level supabase client (service role for bypassing RLS)
@@ -62,32 +63,101 @@ async function fetchPropertyValuation(
     console.log('   Building Type:', buildingType);
     console.log('   Area:', area);
 
-    // Parse address to extract city, district, dong
-    // Supports both Seoul (서울특별시) and Gyeonggi (경기도)
-    const seoulMatch = address.match(/(서울특별시|서울)\s+([가-힣]+구)\s*([가-힣0-9]+동)?/);
-    const gyeonggiMatch = address.match(/(경기도|경기)\s+([가-힣]+시)\s*([가-힣]+구)?\s*([가-힣0-9]+동)?/);
+    // Parse address to extract city, district, dong — supports all 16 시도 nationwide
+    let city: string = '';
+    let district: string = '';
+    let dong: string = '';
 
-    const addressMatch = seoulMatch || gyeonggiMatch;
-    if (!addressMatch) {
+    // Ordered sido patterns (longest match first for disambiguation)
+    const sidoPatterns: { pattern: RegExp; sidoCode: string }[] = [
+      { pattern: /(세종특별자치시)/, sidoCode: '36' },
+      { pattern: /(강원특별자치도)/, sidoCode: '51' },
+      { pattern: /(전북특별자치도)/, sidoCode: '52' },
+      { pattern: /(제주특별자치도)/, sidoCode: '50' },
+      { pattern: /(서울특별시)/, sidoCode: '11' },
+      { pattern: /(부산광역시)/, sidoCode: '26' },
+      { pattern: /(대구광역시)/, sidoCode: '27' },
+      { pattern: /(인천광역시)/, sidoCode: '28' },
+      { pattern: /(광주광역시)/, sidoCode: '29' },
+      { pattern: /(대전광역시)/, sidoCode: '30' },
+      { pattern: /(울산광역시)/, sidoCode: '31' },
+      { pattern: /(경기도)/, sidoCode: '41' },
+      { pattern: /(충청북도)/, sidoCode: '43' },
+      { pattern: /(충청남도)/, sidoCode: '44' },
+      { pattern: /(전라남도)/, sidoCode: '46' },
+      { pattern: /(경상북도)/, sidoCode: '47' },
+      { pattern: /(경상남도)/, sidoCode: '48' },
+      { pattern: /(강원도)/, sidoCode: '51' },
+      { pattern: /(전라북도)/, sidoCode: '52' },
+      // Abbreviations (with trailing space to avoid partial matches)
+      { pattern: /(서울)\s/, sidoCode: '11' },
+      { pattern: /(부산)\s/, sidoCode: '26' },
+      { pattern: /(대구)\s/, sidoCode: '27' },
+      { pattern: /(인천)\s/, sidoCode: '28' },
+      { pattern: /(대전)\s/, sidoCode: '30' },
+      { pattern: /(울산)\s/, sidoCode: '31' },
+      { pattern: /(세종)\s/, sidoCode: '36' },
+      { pattern: /(경기)\s/, sidoCode: '41' },
+      { pattern: /(강원)\s/, sidoCode: '51' },
+      { pattern: /(충북)\s/, sidoCode: '43' },
+      { pattern: /(충남)\s/, sidoCode: '44' },
+      { pattern: /(전북)\s/, sidoCode: '52' },
+      { pattern: /(전남)\s/, sidoCode: '46' },
+      { pattern: /(경북)\s/, sidoCode: '47' },
+      { pattern: /(경남)\s/, sidoCode: '48' },
+      { pattern: /(제주)\s/, sidoCode: '50' },
+    ];
+
+    let sidoCode: string | undefined;
+    let sidoName: string = '';
+    let afterSido: string = address;
+
+    for (const { pattern, sidoCode: code } of sidoPatterns) {
+      const match = address.match(pattern);
+      if (match) {
+        sidoCode = code;
+        sidoName = match[1];
+        city = SIDO_NAMES[code] || sidoName;
+        afterSido = address.substring(address.indexOf(match[1]) + match[1].length).trim();
+        break;
+      }
+    }
+
+    if (!sidoCode) {
       console.warn('Could not parse city/district from address:', address);
       return null;
     }
 
-    let city: string;
-    let district: string;
-    let dong: string;
-
-    if (seoulMatch) {
-      city = seoulMatch[1] === '서울' ? '서울특별시' : seoulMatch[1];
-      district = seoulMatch[2]; // e.g., 강남구
-      dong = seoulMatch[3] || '';
+    // Extract district and dong based on the 시도
+    if (sidoCode === '36') {
+      // 세종: no 시군구 level
+      district = '세종시';
+      // Dong directly follows sido
+      const dongMatch = afterSido.match(/([가-힣]+(?:동|읍|면|리))/);
+      dong = dongMatch?.[1] || '';
     } else {
-      city = gyeonggiMatch![1] === '경기' ? '경기도' : gyeonggiMatch![1];
-      // Gyeonggi format: 경기도 성남시 분당구 정자동 or 경기도 하남시 미사동
-      const cityName = gyeonggiMatch![2]; // e.g., 성남시, 하남시
-      const guName = gyeonggiMatch![3]; // e.g., 분당구 (optional)
-      district = guName ? `${cityName} ${guName}` : cityName; // e.g., 성남시 분당구 or 하남시
-      dong = gyeonggiMatch![4] || gyeonggiMatch![3] || ''; // dong if captured, or gu as fallback
+      // Try 4-level: "XX시 XX구" (cities with multiple 구)
+      const cityGuMatch = afterSido.match(/([가-힣]+시)\s+([가-힣]+구)/);
+      if (cityGuMatch && DISTRICT_CODES[`${sidoCode}|${cityGuMatch[1]} ${cityGuMatch[2]}`]) {
+        district = `${cityGuMatch[1]} ${cityGuMatch[2]}`;
+        const afterDistrict = afterSido.substring(afterSido.indexOf(cityGuMatch[2]) + cityGuMatch[2].length).trim();
+        const dongMatch = afterDistrict.match(/([가-힣0-9]+(?:동|읍|면|리)\d*가?)/);
+        dong = dongMatch?.[1] || '';
+      } else {
+        // Try 3-level: "XX구" / "XX시" / "XX군"
+        const districtMatch = afterSido.match(/([가-힣]+(?:구|시|군))/);
+        if (districtMatch) {
+          district = districtMatch[1];
+          const afterDistrict = afterSido.substring(afterSido.indexOf(districtMatch[1]) + districtMatch[1].length).trim();
+          const dongMatch = afterDistrict.match(/([가-힣0-9]+(?:동|읍|면|리)\d*가?)/);
+          dong = dongMatch?.[1] || '';
+        }
+      }
+    }
+
+    if (!district) {
+      console.warn('Could not parse district from address:', address);
+      return null;
     }
 
     // For multifamily properties, we MUST have the correct legal dong (법정동)

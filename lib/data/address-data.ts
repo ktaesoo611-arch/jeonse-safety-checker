@@ -4,6 +4,7 @@
  */
 
 import apartmentDatabaseJson from './apartment-database.json';
+import { DISTRICT_CODES, DONG_CODES } from './nationwide-codes';
 
 export interface Dong {
   name: string;
@@ -26,7 +27,22 @@ export interface City {
 
 export const SUPPORTED_CITIES: City[] = [
   { name: '서울특별시', nameEn: 'Seoul', code: '11' },
-  { name: '경기도', nameEn: 'Gyeonggi-do', code: '41' }
+  { name: '부산광역시', nameEn: 'Busan', code: '26' },
+  { name: '대구광역시', nameEn: 'Daegu', code: '27' },
+  { name: '인천광역시', nameEn: 'Incheon', code: '28' },
+  { name: '광주광역시', nameEn: 'Gwangju', code: '29' },
+  { name: '대전광역시', nameEn: 'Daejeon', code: '30' },
+  { name: '울산광역시', nameEn: 'Ulsan', code: '31' },
+  { name: '세종특별자치시', nameEn: 'Sejong', code: '36' },
+  { name: '경기도', nameEn: 'Gyeonggi-do', code: '41' },
+  { name: '충청북도', nameEn: 'Chungcheongbuk-do', code: '43' },
+  { name: '충청남도', nameEn: 'Chungcheongnam-do', code: '44' },
+  { name: '전라남도', nameEn: 'Jeollanam-do', code: '46' },
+  { name: '경상북도', nameEn: 'Gyeongsangbuk-do', code: '47' },
+  { name: '경상남도', nameEn: 'Gyeongsangnam-do', code: '48' },
+  { name: '제주특별자치도', nameEn: 'Jeju', code: '50' },
+  { name: '강원특별자치도', nameEn: 'Gangwon-do', code: '51' },
+  { name: '전북특별자치도', nameEn: 'Jeonbuk-do', code: '52' },
 ];
 
 export interface Apartment {
@@ -3437,12 +3453,44 @@ export const GYEONGGI_DISTRICTS: District[] = [
  * Combined districts for both Seoul and Gyeonggi
  */
 export function getDistrictsByCity(cityName: string): District[] {
+  // Return curated data for Seoul and Gyeonggi (has English translations)
   if (cityName === '서울특별시' || cityName === '서울') {
     return SEOUL_DISTRICTS;
   } else if (cityName === '경기도' || cityName === '경기') {
     return GYEONGGI_DISTRICTS;
   }
-  return [];
+
+  // For all other provinces/cities, dynamically generate from nationwide codes
+  const city = SUPPORTED_CITIES.find(c => c.name === cityName);
+  if (!city) return [];
+
+  const sidoCode = city.code;
+  const districts: District[] = [];
+
+  // Find all districts (시군구) for this sido
+  for (const [key, sigunguCd] of Object.entries(DISTRICT_CODES)) {
+    const [keySido, districtName] = key.split('|');
+    if (keySido !== sidoCode || !districtName) continue;
+
+    // Build dongs array from DONG_CODES
+    const dongMap = DONG_CODES[sigunguCd] || {};
+    const dongs: Dong[] = Object.entries(dongMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, code]) => ({
+        name,
+        nameEn: name, // Korean name as fallback (no curated English translations)
+        code,
+      }));
+
+    districts.push({
+      name: districtName,
+      nameEn: districtName, // Korean name as fallback
+      code: sigunguCd,
+      dongs,
+    });
+  }
+
+  return districts.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
