@@ -124,6 +124,15 @@ export async function POST(request: NextRequest) {
         console.error('⚠️ Building type detection failed:', error);
         // Continue with default 'apartment' - will be validated below
       }
+
+      // Fallback: if detection failed/skipped but building name contains 오피스텔, classify as officetel
+      if (detectedBuildingType === 'apartment' && building) {
+        const buildingLower = building.toLowerCase();
+        if (buildingLower.includes('오피스텔') || buildingLower.includes('officetel')) {
+          detectedBuildingType = 'officetel';
+          console.log(`🏢 Fallback: detected officetel from building name "${building}"`);
+        }
+      }
     }
 
     console.log(`Creating analysis: type=${analysisType}, buildingType=${detectedBuildingType}, building="${building || '(none)'}"`);

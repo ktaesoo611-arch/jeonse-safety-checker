@@ -390,6 +390,15 @@ async function performRealAnalysis(
       } catch (error) {
         console.error('⚠️ Building type detection failed, defaulting to apartment:', error);
       }
+
+      // Fallback: if detection failed/skipped but building name contains 오피스텔, classify as officetel
+      if (detectedBuildingType === 'apartment' && buildingNameForValuation) {
+        const nameLower = buildingNameForValuation.toLowerCase();
+        if (nameLower.includes('오피스텔') || nameLower.includes('officetel')) {
+          detectedBuildingType = 'officetel';
+          console.log(`🏢 Fallback: detected officetel from building name "${buildingNameForValuation}"`);
+        }
+      }
     }
 
     // Check for unsupported building types
