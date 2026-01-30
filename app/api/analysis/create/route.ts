@@ -104,7 +104,9 @@ export async function POST(request: NextRequest) {
       try {
         // Use jibunAddress (lot-based) for parsing as it contains dong name (e.g., "황학동")
         // Road name addresses (도로명주소) don't contain dong which is needed for building registry lookup
-        const addressForParsing = body.jibunAddress || body.address;
+        // Validate jibunAddress has real address content (not just a unit number like " 1301호")
+        const hasRealJibunAddress = body.jibunAddress && /[가-힣]{2,}/.test(body.jibunAddress);
+        const addressForParsing = hasRealJibunAddress ? body.jibunAddress! : body.address;
         const addressComponents = parseKoreanAddress(addressForParsing);
         console.log('🏠 Parsed address components:', addressComponents, 'from:', addressForParsing);
         if (addressComponents) {

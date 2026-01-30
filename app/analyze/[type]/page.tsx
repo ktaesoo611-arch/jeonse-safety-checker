@@ -61,7 +61,11 @@ export default function SimplifiedAnalysisPage() {
     openPostcode({
       onComplete: (data) => {
         // Extract address components
-        let fullAddress = data.roadAddress || data.jibunAddress;
+        // Use autoJibunAddress first — when user selects a road name address with
+        // 1:N jibun mapping, Daum puts the auto-mapped jibun in autoJibunAddress
+        // and leaves jibunAddress empty
+        const jibunAddress = data.autoJibunAddress || data.jibunAddress;
+        let fullAddress = data.roadAddress || jibunAddress;
 
         // Add building name if exists
         if (data.buildingName) {
@@ -71,7 +75,7 @@ export default function SimplifiedAnalysisPage() {
         // Extract lot number (지번) from jibunAddress
         // Format: "경기 광명시 광명동 123-45" -> "123-45"
         let lotNumber = '';
-        const jibunMatch = data.jibunAddress?.match(/(\d+(?:-\d+)?)\s*$/);
+        const jibunMatch = jibunAddress?.match(/(\d+(?:-\d+)?)\s*$/);
         if (jibunMatch) {
           lotNumber = jibunMatch[1];
         }
@@ -92,7 +96,7 @@ export default function SimplifiedAnalysisPage() {
 
         setAddressData({
           fullAddress,
-          jibunAddress: data.jibunAddress,
+          jibunAddress,
           sido: data.sido,
           sigungu: data.sigungu,
           bname: data.bname,
@@ -174,9 +178,10 @@ export default function SimplifiedAnalysisPage() {
         : addressData.fullAddress;
 
       // Build jibun address with unit number (for CODEF lookup - works better with lot numbers)
-      const jibunAddressWithUnit = unitNumber
-        ? `${addressData.jibunAddress} ${unitNumber}`
-        : addressData.jibunAddress;
+      // Guard against empty jibunAddress (some officetels only have road addresses)
+      const jibunAddressWithUnit = addressData.jibunAddress
+        ? (unitNumber ? `${addressData.jibunAddress} ${unitNumber}` : addressData.jibunAddress)
+        : '';
 
       // Step 1: Create analysis
       const createResponse = await fetch('/api/analysis/create', {
