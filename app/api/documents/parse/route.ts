@@ -392,11 +392,10 @@ async function performRealAnalysis(
       }
     }
 
-    // Check for unsupported building types - only 아파트 and 연립/다세대 are supported
-    const supportedTypes = ['apartment', 'multifamily'];
+    // Check for unsupported building types
+    const supportedTypes = ['apartment', 'multifamily', 'officetel'];
     if (!supportedTypes.includes(detectedBuildingType)) {
       const buildingTypeLabels: Record<string, string> = {
-        'officetel': '오피스텔',
         'unknown': '알 수 없는 건물 유형',
       };
       const buildingTypeLabel = buildingTypeLabels[detectedBuildingType] || detectedBuildingType;
@@ -408,8 +407,8 @@ async function performRealAnalysis(
           errorCode: 'UNSUPPORTED_BUILDING_TYPE',
           buildingType: detectedBuildingType,
           buildingTypeLabel,
-          message: `${buildingTypeLabel}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트 또는 연립/다세대 주택만 분석 가능합니다.`,
-          messageEn: `${buildingTypeLabel} properties are not yet supported. Currently, only apartments (아파트) and multi-family housing (연립/다세대) can be analyzed.`
+          message: `${buildingTypeLabel}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트, 연립/다세대 주택, 또는 주거용 오피스텔만 분석 가능합니다.`,
+          messageEn: `${buildingTypeLabel} properties are not yet supported. Currently, apartments (아파트), multi-family housing (연립/다세대), and residential officetel (오피스텔) can be analyzed.`
         },
         { status: 400 }
       );

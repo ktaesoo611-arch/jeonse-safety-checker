@@ -147,11 +147,11 @@ export class PropertyValuationEngine {
       throw new Error(`District code not found for ${property.city} ${property.district}`);
     }
 
-    // For apartments: use building name as identifier
+    // For apartments and officetel: use building name as identifier (officetel has reliable names)
     // For multifamily (연립/다세대): use dong as identifier (building names are unreliable)
-    const identifier = buildingType === 'apartment'
-      ? property.buildingName
-      : property.dong;
+    const identifier = buildingType === 'multifamily'
+      ? property.dong
+      : property.buildingName;
 
     console.log(`📊 Valuation for ${buildingType}: identifier="${identifier}", area=${property.exclusiveArea}㎡`);
 
@@ -216,7 +216,7 @@ export class PropertyValuationEngine {
       console.log(`   ✅ 12-month period provides ${((recentTransactions.length / Math.max(1, transactions6M.length) - 1) * 100).toFixed(0)}% more data points`);
     }
 
-    // Different calculation paths for apartments vs multifamily
+    // Different calculation paths based on building type
     let valueLow: number;
     let valueMid: number;
     let valueHigh: number;
@@ -224,6 +224,7 @@ export class PropertyValuationEngine {
     let tierEstimates: TierEstimate[] | undefined;
     let tierGuidance: TierGuidance | undefined;
     let tierPercentiles: PercentileThresholds | undefined;
+    let valuationMethod: 'building' | 'dong-tiered' | undefined;
 
     if (buildingType === 'multifamily') {
       // ===== MULTIFAMILY: Tiered hierarchy with floor/age filtering =====
@@ -253,6 +254,7 @@ export class PropertyValuationEngine {
 
       // Base value for data sources display (use mid tier value)
       baseValue = valueMid;
+      valuationMethod = 'dong-tiered';
 
       console.log('\n📊 Final Multifamily Tier Values:');
       console.log(`   Budget:   ${budgetTier ? (budgetTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${budgetTier?.transactionCount || 0} txns)`);
@@ -260,9 +262,89 @@ export class PropertyValuationEngine {
       console.log(`   Mid:      ${midTier ? (midTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${midTier?.transactionCount || 0} txns)`);
       console.log(`   Premium:  ${premiumTier ? (premiumTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${premiumTier?.transactionCount || 0} txns)`);
 
+    } else if (buildingType === 'officetel') {
+      // ===== OFFICETEL: Hybrid approach =====
+      // Primary: building-name match (like apartments)
+      // Fallback: dong-level tiered (like multifamily) if insufficient building data
+      const MIN_BUILDING_TXNS = 3;
+
+      if (recentTransactions.length >= MIN_BUILDING_TXNS) {
+        // Sufficient building-level data → apartment-style valuation
+        console.log(`📊 Officetel: Using building-level valuation (${recentTransactions.length} txns)`);
+        valuationMethod = 'building';
+
+        baseValue = this.calculateTripleWeightedValue(
+          recentTransactions,
+          property.exclusiveArea,
+          property.buildingYear,
+          'apartment' // Use apartment-style single-weight (building data is consistent)
+        );
+
+        // Apply floor adjustment (officetel is typically high-rise like apartments)
+        const totalFloors = this.getTotalFloorsFromTransactions(recentTransactions);
+        const floorAdjustedValue = this.applyFloorAdjustment(
+          baseValue,
+          property.floor,
+          totalFloors
+        );
+
+        valueLow = Math.floor(floorAdjustedValue * 0.95);
+        valueMid = Math.floor(floorAdjustedValue);
+        valueHigh = Math.floor(floorAdjustedValue * 1.05);
+
+      } else {
+        // Insufficient building-level data → dong-level tiered fallback
+        console.log(`📊 Officetel: Building data insufficient (${recentTransactions.length} txns). Falling back to dong-level tiered.`);
+        valuationMethod = 'dong-tiered';
+
+        // Fetch dong-level data using officetel endpoints
+        const dongTransactions = await this.molitAPI.getRecentOfficetelByDong(
+          lawdCd, property.dong, property.exclusiveArea, 12
+        );
+        const dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDong(
+          lawdCd, property.dong, property.exclusiveArea, 12
+        );
+
+        // Merge dong-level jeonse if we got any
+        if (dongJeonseTransactions.length > 0) {
+          jeonseTransactions = dongJeonseTransactions;
+        }
+
+        if (dongTransactions.length === 0) {
+          throw new Error('No recent transaction data found for this officetel property (dong-level fallback)');
+        }
+
+        // Use tiered hierarchy (same as multifamily)
+        const tieredResult = this.calculateTieredHierarchyValue(
+          dongTransactions,
+          property.exclusiveArea,
+          property.buildingYear
+        );
+        tierEstimates = tieredResult.estimates;
+        tierPercentiles = tieredResult.thresholds;
+        tierGuidance = TIERED_CONFIG.GUIDANCE;
+
+        const budgetTier = tierEstimates.find(t => t.tier === 'budget');
+        const standardTier = tierEstimates.find(t => t.tier === 'standard');
+        const midTier = tierEstimates.find(t => t.tier === 'mid');
+        const premiumTier = tierEstimates.find(t => t.tier === 'premium');
+
+        valueLow = budgetTier?.value || 0;
+        valueMid = midTier?.value || standardTier?.value || 0;
+        valueHigh = premiumTier?.value || 0;
+        baseValue = valueMid;
+
+        console.log('\n📊 Final Officetel Tier Values (Dong-level Fallback):');
+        console.log(`   Budget:   ${budgetTier ? (budgetTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${budgetTier?.transactionCount || 0} txns)`);
+        console.log(`   Standard: ${standardTier ? (standardTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${standardTier?.transactionCount || 0} txns)`);
+        console.log(`   Mid:      ${midTier ? (midTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${midTier?.transactionCount || 0} txns)`);
+        console.log(`   Premium:  ${premiumTier ? (premiumTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${premiumTier?.transactionCount || 0} txns)`);
+      }
+
     } else {
       // ===== APARTMENTS: Traditional recency-weighted approach =====
       // Uses base value calculation + floor adjustment
+      valuationMethod = 'building';
 
       baseValue = this.calculateTripleWeightedValue(
         recentTransactions,
@@ -313,10 +395,11 @@ export class PropertyValuationEngine {
       ],
       allTransactions: recentTransactions, // Include all SALE transactions for price analysis
       allJeonseTransactions: jeonseTransactions, // Include all JEONSE transactions for jeonse price analysis
-      // Tiered hierarchy for multifamily
+      // Tiered hierarchy for multifamily and officetel dong-level fallback
       tierEstimates,
       tierGuidance,
       tierPercentiles,
+      valuationMethod,
     };
   }
 

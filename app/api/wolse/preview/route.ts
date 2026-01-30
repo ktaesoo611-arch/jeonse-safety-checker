@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Extract buildingType (defaults to 'apartment' for backwards compatibility)
     // Infer 'multifamily' when no building name is provided
+    // Note: 'officetel' is always explicitly detected, never inferred
     let buildingType = body.buildingType || 'apartment';
     if (buildingType === 'apartment' && !body.apartmentName) {
       buildingType = 'multifamily';

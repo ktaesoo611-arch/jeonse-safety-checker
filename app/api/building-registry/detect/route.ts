@@ -66,18 +66,24 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const supportedTypes = ['apartment', 'multifamily'];
+    const supportedTypes = ['apartment', 'multifamily', 'officetel'];
     const isSupported = supportedTypes.includes(result.data.buildingType);
+
+    // For officetel, check if it's residential (주거용)
+    const isCommercialOfficetel = result.data.buildingType === 'officetel' && result.data.isResidentialOfficetel === false;
 
     return NextResponse.json({
       success: true,
       buildingType: result.data.buildingType,
       buildingName: result.data.buildingTypeName, // Korean name like "아파트", "연립주택", "오피스텔"
       floorCount: result.data.groundFloorCount || null,
-      supported: isSupported,
-      ...(isSupported ? {} : {
-        message: `${result.data.buildingTypeName || result.data.buildingType}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트 또는 연립/다세대 주택만 분석 가능합니다.`
-      })
+      supported: isSupported && !isCommercialOfficetel,
+      isResidentialOfficetel: result.data.isResidentialOfficetel,
+      ...(isCommercialOfficetel ? {
+        message: '업무용 오피스텔은 지원되지 않습니다. 주거용 오피스텔만 분석 가능합니다.'
+      } : !isSupported ? {
+        message: `${result.data.buildingTypeName || result.data.buildingType}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트, 연립/다세대 주택, 또는 주거용 오피스텔만 분석 가능합니다.`
+      } : {})
     });
   } catch (error) {
     console.error('[BuildingRegistry] Detection error:', error);

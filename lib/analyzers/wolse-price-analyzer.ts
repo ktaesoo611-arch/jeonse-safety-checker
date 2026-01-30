@@ -207,7 +207,7 @@ export class WolsePriceAnalyzer {
     console.log('\n🔍 Starting Wolse Price Analysis');
     console.log(`   Building Type: ${buildingType}`);
     console.log(`   Quote: ${(quote.deposit / 10000).toLocaleString()}만원 보증금 / ${(quote.monthlyRent / 10000).toLocaleString()}만원 월세`);
-    if (buildingType === 'multifamily') {
+    if (buildingType === 'multifamily' || buildingType === 'officetel') {
       console.log(`   Selected Tier: ${selectedTier || 'standard (default)'}`);
       console.log(`   Target Building Year: ${targetBuildingYear || 'unknown'}`);
     }
@@ -223,12 +223,12 @@ export class WolsePriceAnalyzer {
       buildingType
     );
 
-    // Step 1.5: For multifamily, calculate tiered expected rent
+    // Step 1.5: For multifamily (or officetel with dong-level data), calculate tiered expected rent
     let tieredExpectedRent: TieredExpectedRent[] | undefined;
     let selectedTierExpectedRent: number | undefined;
     let filteredTransactions: WolseTransaction[] | undefined;
 
-    if (buildingType === 'multifamily') {
+    if (buildingType === 'multifamily' || (buildingType === 'officetel' && marketData.dataSource === 'dong')) {
       const tieredResult = this.calculateTieredExpectedRent(
         marketData.transactions,
         quote.deposit,

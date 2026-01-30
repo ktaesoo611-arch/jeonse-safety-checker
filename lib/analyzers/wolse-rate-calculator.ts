@@ -197,7 +197,7 @@ export class WolseRateCalculator {
 
   /**
    * Calculate market rate for a specific property
-   * Supports both apartments and multifamily (연립/다세대) buildings
+   * Supports apartments, multifamily (연립/다세대), and officetel (오피스텔)
    */
   async calculateMarketRate(
     city: string,
@@ -236,6 +236,29 @@ export class WolseRateCalculator {
       );
       dataSource = 'dong';
       confidenceLevel = transactions.length >= 10 ? 'MEDIUM' : 'LOW';
+    } else if (buildingType === 'officetel') {
+      // For officetel, try building-level first (reliable names), fallback to dong
+      console.log(`\n🏢 Officetel property: Trying building-level data first`);
+      transactions = await this.wolseAPI.getRecentWolseForOfficetelByBuilding(
+        lawdCd,
+        apartmentName,
+        exclusiveArea,
+        monthsBack
+      );
+      dataSource = 'building';
+
+      if (transactions.length < 5) {
+        console.log(`\n⚠️ Officetel building data insufficient (${transactions.length}). Expanding to dong level...`);
+        transactions = await this.wolseAPI.getRecentWolseForOfficetelByDong(
+          lawdCd,
+          dong,
+          exclusiveArea,
+          12,
+          0.10  // ±10% area tolerance for dong-level officetel
+        );
+        dataSource = 'dong';
+        confidenceLevel = transactions.length >= 10 ? 'MEDIUM' : 'LOW';
+      }
     } else {
       // For apartments, try building-level first
       transactions = await this.wolseAPI.getRecentWolseForApartment(

@@ -6,6 +6,7 @@ import { WolseTransaction, BuildingType } from '../types';
  * Endpoints:
  * - 아파트 전월세 실거래가 API (RTMSDataSvcAptRent)
  * - 연립/다세대 전월세 실거래가 API (RTMSDataSvcRHRent)
+ * - 오피스텔 전월세 실거래가 API (RTMSDataSvcOffiRent)
  *
  * Data includes both jeonse (전세) and wolse (월세) transactions
  */
@@ -13,6 +14,7 @@ export class MolitWolseAPI {
   private apiKey: string;
   private baseUrl = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent';
   private baseUrlMultifamily = 'https://apis.data.go.kr/1613000/RTMSDataSvcRHRent';
+  private baseUrlOfficetel = 'https://apis.data.go.kr/1613000/RTMSDataSvcOffiRent';
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -324,6 +326,176 @@ export class MolitWolseAPI {
     });
   }
 
+  // ============ 오피스텔 (Officetel) Methods ============
+
+  /**
+   * Get officetel rent transaction data for a district and month
+   * Uses RTMSDataSvcOffiRent endpoint for 오피스텔
+   */
+  async getOfficetelRentTransactions(
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<WolseTransaction[]> {
+    try {
+      const response = await axios.get(
+        `${this.baseUrlOfficetel}/getRTMSDataSvcOffiRent`,
+        {
+          params: {
+            serviceKey: this.apiKey,
+            pageNo: 1,
+            numOfRows: 1000,
+            LAWD_CD: lawdCd,
+            DEAL_YMD: dealYmd
+          },
+          timeout: 30000
+        }
+      );
+
+      const result = response.data;
+      const items = result.response?.body?.items?.item || [];
+      const transactions = Array.isArray(items) ? items : (items ? [items] : []);
+
+      console.log(`MOLIT 오피스텔 Wolse API: Found ${transactions.length} rent transactions for ${lawdCd} ${dealYmd}`);
+
+      return transactions.map((item: any) => ({
+        apartmentName: item.offiNm?.trim() || '', // 오피스텔 uses offiNm (단지명)
+        legalDong: item.umdNm?.trim() || '',
+        exclusiveArea: parseFloat(item.excluUseAr) || 0,
+        floor: parseInt(item.floor) || 0,
+        deposit: this.parseAmount(item.deposit),
+        monthlyRent: this.parseAmount(item.monthlyRent),
+        year: parseInt(item.dealYear),
+        month: parseInt(item.dealMonth),
+        day: parseInt(item.dealDay),
+        contractType: item.contractType?.trim() || undefined,
+        buildingYear: item.buildYear ? parseInt(item.buildYear) : undefined
+      }));
+    } catch (error) {
+      console.error('MOLIT 오피스텔 Wolse API Error:', error);
+      throw new Error('Failed to fetch 오피스텔 rent transaction data');
+    }
+  }
+
+  /**
+   * Get officetel wolse-only transactions (filter out pure jeonse)
+   */
+  async getOfficetelWolseTransactions(
+    lawdCd: string,
+    dealYmd: string
+  ): Promise<WolseTransaction[]> {
+    const allTransactions = await this.getOfficetelRentTransactions(lawdCd, dealYmd);
+    return allTransactions.filter(t => t.monthlyRent > 0);
+  }
+
+  /**
+   * Get recent wolse transactions for 오피스텔 by building name
+   * Primary approach: officetel buildings have reliable names (offiNm)
+   */
+  async getRecentWolseForOfficetelByBuilding(
+    lawdCd: string,
+    buildingName: string,
+    area?: number,
+    monthsBack: number = 6
+  ): Promise<WolseTransaction[]> {
+    console.log(`\n🏢 MOLIT 오피스텔 Wolse API - Building-level Query:`);
+    console.log(`   lawdCd: "${lawdCd}", buildingName: "${buildingName}"`);
+    console.log(`   Period: ${monthsBack} months, Area: ${area}㎡`);
+
+    const transactions: WolseTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        const monthData = await this.getOfficetelWolseTransactions(lawdCd, yearMonth);
+
+        const filtered = monthData.filter(t => {
+          const nameMatches = this.matchOfficetelName(t.apartmentName, buildingName);
+          if (!nameMatches) return false;
+
+          if (area !== undefined) {
+            const areaTolerance = area * 0.1; // ±10% tolerance
+            return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+          }
+          return true;
+        });
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch 오피스텔 wolse data for ${yearMonth}:`, error);
+      }
+    }
+
+    console.log(`   → Total: ${transactions.length} building-level wolse transactions`);
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  /**
+   * Get recent wolse transactions for 오피스텔 by dong (dong-level fallback)
+   * Used when building-name match yields insufficient data
+   */
+  async getRecentWolseForOfficetelByDong(
+    lawdCd: string,
+    dong: string,
+    area?: number,
+    monthsBack: number = 6,
+    areaToleranceRatio: number = 0.1
+  ): Promise<WolseTransaction[]> {
+    console.log(`\n🏢 MOLIT 오피스텔 Wolse API - Dong-level Fallback:`);
+    console.log(`   lawdCd: "${lawdCd}", dong: "${dong}"`);
+    console.log(`   Period: ${monthsBack} months, Area tolerance: ±${(areaToleranceRatio * 100).toFixed(0)}%`);
+
+    const transactions: WolseTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        const monthData = await this.getOfficetelWolseTransactions(lawdCd, yearMonth);
+
+        const filtered = monthData.filter(t => {
+          const dongMatches = t.legalDong === dong || t.legalDong.includes(dong);
+          if (!dongMatches) return false;
+
+          if (area !== undefined) {
+            const areaTolerance = area * areaToleranceRatio;
+            return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+          }
+          return true;
+        });
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch 오피스텔 dong wolse data for ${yearMonth}:`, error);
+      }
+    }
+
+    console.log(`   → Total: ${transactions.length} dong-level wolse transactions`);
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
   // ============ Unified Methods (Route by Building Type) ============
 
   /**
@@ -335,6 +507,9 @@ export class MolitWolseAPI {
     lawdCd: string,
     dealYmd: string
   ): Promise<WolseTransaction[]> {
+    if (buildingType === 'officetel') {
+      return this.getOfficetelRentTransactions(lawdCd, dealYmd);
+    }
     return buildingType === 'apartment'
       ? this.getRentTransactions(lawdCd, dealYmd)
       : this.getMultifamilyRentTransactions(lawdCd, dealYmd);
@@ -348,6 +523,9 @@ export class MolitWolseAPI {
     lawdCd: string,
     dealYmd: string
   ): Promise<WolseTransaction[]> {
+    if (buildingType === 'officetel') {
+      return this.getOfficetelWolseTransactions(lawdCd, dealYmd);
+    }
     return buildingType === 'apartment'
       ? this.getWolseTransactions(lawdCd, dealYmd)
       : this.getMultifamilyWolseTransactions(lawdCd, dealYmd);
@@ -356,21 +534,50 @@ export class MolitWolseAPI {
   /**
    * Get recent wolse transactions based on building type
    * For apartments: uses building name matching
+   * For officetel: uses building name matching (primary; identifier = building name)
    * For multifamily: uses dong-level matching (building names are unreliable)
    */
   async getRecentWolseByType(
     buildingType: BuildingType,
     lawdCd: string,
-    identifier: string, // apartment name for 'apartment', dong name for 'multifamily'
+    identifier: string, // apartment/officetel name for 'apartment'/'officetel', dong name for 'multifamily'
     area?: number,
     monthsBack: number = 6
   ): Promise<WolseTransaction[]> {
     if (buildingType === 'apartment') {
       return this.getRecentWolseForApartment(lawdCd, identifier, area, monthsBack);
+    } else if (buildingType === 'officetel') {
+      return this.getRecentWolseForOfficetelByBuilding(lawdCd, identifier, area, monthsBack);
     } else {
       // For 연립/다세대, identifier is dong name
       return this.getRecentWolseForMultifamilyByDong(lawdCd, identifier, area, monthsBack);
     }
+  }
+
+  /**
+   * Match officetel names with various normalizations
+   */
+  private matchOfficetelName(targetName: string, queryName: string): boolean {
+    const normalize = (name: string): string => {
+      return name
+        .replace(/오피스텔$/g, '')
+        .replace(/아파트$/g, '')
+        .replace(/APT$/gi, '')
+        .replace(/\s+/g, '')
+        .trim()
+        .toLowerCase();
+    };
+
+    const normalizedQuery = normalize(queryName);
+    const normalizedTarget = normalize(targetName);
+
+    return (
+      targetName === queryName ||
+      normalizedTarget === normalizedQuery ||
+      targetName.startsWith(queryName + '(') ||
+      normalizedTarget.startsWith(normalizedQuery + '(') ||
+      normalizedTarget.includes(normalizedQuery)
+    );
   }
 
   /**

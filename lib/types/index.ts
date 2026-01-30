@@ -1,7 +1,7 @@
 // Building Types
 // - apartment: 아파트
 // - multifamily: 연립/다세대
-// - officetel: 오피스텔 (not yet supported for analysis)
+// - officetel: 오피스텔 (주거용 residential officetel)
 // - unknown: Unrecognized building type
 export type BuildingType = 'apartment' | 'multifamily' | 'officetel' | 'unknown';
 
@@ -16,14 +16,15 @@ export interface PropertyDetails {
   floor: number;
   unit: string;
   exclusiveArea: number;
-  buildingType?: BuildingType; // 아파트 or 연립/다세대
+  buildingType?: BuildingType; // 아파트, 연립/다세대, or 오피스텔
   buildingYear?: number; // 건축년도 - used for age similarity weighting in valuation
   jibunAddress?: string; // 지번 주소 (e.g., "역삼동 123-45")
 }
 
 // Transaction Types
-// Used for both 아파트 (RTMSDataSvcAptTrade) and 연립/다세대 (RTMSDataSvcRHTrade)
+// Used for 아파트 (RTMSDataSvcAptTrade), 연립/다세대 (RTMSDataSvcRHTrade), and 오피스텔 (RTMSDataSvcOffiTrade)
 // Note: For 연립/다세대, apartmentName may be empty or inconsistent
+// Note: For 오피스텔, apartmentName maps from offiNm (reliable building name)
 export interface MolitTransaction {
   apartmentName: string; // Building name (may be empty for 연립/다세대)
   legalDong: string;
@@ -34,7 +35,7 @@ export interface MolitTransaction {
   month: number;
   day: number;
   contractType?: string; // 신규, 갱신 - for filtering renewal contracts
-  buildingYear?: number; // 건축년도 - available in 연립/다세대 API
+  buildingYear?: number; // 건축년도 - available in 연립/다세대 and 오피스텔 APIs
 }
 
 // Quality Tier Types (for 연립다세대 tiered valuation)
@@ -86,10 +87,11 @@ export interface ValuationResult {
   }>;
   allTransactions?: MolitTransaction[]; // All SALE transactions for price analysis
   allJeonseTransactions?: MolitTransaction[]; // All JEONSE transactions for jeonse price analysis
-  // Tiered hierarchy fields (for 연립다세대)
+  // Tiered hierarchy fields (for 연립다세대 and officetel dong-level fallback)
   tierEstimates?: TierEstimate[];
   tierGuidance?: TierGuidance;
   tierPercentiles?: PercentileThresholds; // Percentile thresholds used for tier classification
+  valuationMethod?: 'building' | 'dong-tiered'; // Which valuation method was used (officetel hybrid)
 }
 
 // Deunggibu Types

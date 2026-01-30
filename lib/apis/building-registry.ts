@@ -20,6 +20,7 @@ export interface BuildingInfo {
   undergroundFloorCount?: number; // 지하 층수
   useAprDay?: string; // 사용승인일
   newOldRegstrGbCd?: string; // 신규/기존 구분
+  isResidentialOfficetel?: boolean; // true if 주거용 오피스텔, false if 업무용, undefined if not officetel
 }
 
 export interface BuildingRegistryResponse {
@@ -568,6 +569,22 @@ export class BuildingRegistryAPI {
 
       console.log(`[BuildingRegistry] Found ${itemArray.length} building(s): ${mainPurpsCdNm}, maxFloors=${maxFloorCount}, totalArea=${totalFloorAreaSum.toFixed(0)}㎡ → ${buildingType}`);
 
+      // For officetel, determine if residential (주거용) based on etcPurps
+      // Examples: "오피스텔(주거용)" → residential, "오피스텔" without qualifier → default to residential
+      // "업무시설" → commercial
+      let isResidentialOfficetel: boolean | undefined;
+      if (buildingType === 'officetel') {
+        if (etcPurps.includes('주거용')) {
+          isResidentialOfficetel = true;
+        } else if (mainPurpsCdNm === '업무시설' && !etcPurps.includes('주거')) {
+          isResidentialOfficetel = false;
+        } else {
+          // Default to true — most officetel jeonse queries are for residential units
+          isResidentialOfficetel = true;
+        }
+        console.log(`[BuildingRegistry] Officetel residential classification: ${isResidentialOfficetel} (etcPurps="${etcPurps}")`);
+      }
+
       return {
         success: true,
         data: {
@@ -577,7 +594,8 @@ export class BuildingRegistryAPI {
           totalFloorArea: totalFloorAreaSum || undefined,
           groundFloorCount: maxFloorCount || undefined,
           undergroundFloorCount: selectedItem.ugrndFlrCnt ? parseInt(selectedItem.ugrndFlrCnt) : undefined,
-          useAprDay: selectedItem.useAprDay || undefined
+          useAprDay: selectedItem.useAprDay || undefined,
+          isResidentialOfficetel
         }
       };
     } catch (error: any) {

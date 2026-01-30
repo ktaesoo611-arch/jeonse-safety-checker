@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     // Extract buildingType (defaults to 'apartment' for backwards compatibility)
     // Infer 'multifamily' when no building name is provided — matches the detection
     // logic in documents/parse and preview page, ensuring tiered rent is computed
+    // Note: 'officetel' is always explicitly detected, never inferred
     let buildingType: BuildingType = body.buildingType || 'apartment';
     if (buildingType === 'apartment' && !body.apartmentName) {
       buildingType = 'multifamily';

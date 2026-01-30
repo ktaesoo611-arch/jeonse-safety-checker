@@ -129,10 +129,9 @@ export async function POST(request: NextRequest) {
     console.log(`Creating analysis: type=${analysisType}, buildingType=${detectedBuildingType}, building="${building || '(none)'}"`);
 
     // Check if building type is supported
-    const supportedTypes: BuildingType[] = ['apartment', 'multifamily'];
+    const supportedTypes: BuildingType[] = ['apartment', 'multifamily', 'officetel'];
     if (!supportedTypes.includes(detectedBuildingType)) {
       const buildingTypeLabels: Record<string, string> = {
-        'officetel': '오피스텔',
         'unknown': '알 수 없는 건물 유형',
       };
       const buildingTypeLabel = buildingTypeLabels[detectedBuildingType] || detectedBuildingType;
@@ -144,7 +143,7 @@ export async function POST(request: NextRequest) {
           errorCode: 'UNSUPPORTED_BUILDING_TYPE',
           buildingType: detectedBuildingType,
           buildingTypeLabel,
-          message: `${buildingTypeLabel} properties are not yet supported. Currently, only apartments (아파트) and multi-family housing (연립/다세대) can be analyzed.`,
+          message: `${buildingTypeLabel} properties are not yet supported. Currently, apartments (아파트), multi-family housing (연립/다세대), and officetel (오피스텔) can be analyzed.`,
         },
         { status: 400 }
       );
