@@ -412,10 +412,10 @@ export default function LandingPage() {
       >
         <div className="max-w-3xl mx-auto text-center">
           <h2 className={`text-2xl md:text-3xl font-bold text-[#1A202C] mb-6 transition-all duration-700 ${coverageSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            Apartments, 연립/다세대 & 오피스텔 Nationwide
+            Apartments, 연립/다세대/단독/다가구 & 오피스텔 Nationwide
           </h2>
           <p className={`text-lg text-[#4A5568] max-w-xl mx-auto transition-all duration-700 ${coverageSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '150ms' }}>
-            Covering all 16 시도 across Korea. Apartments searchable by name, plus full support for 연립/다세대 (villa/low-rise) and 오피스텔 properties using neighborhood-level analysis.
+            Covering all 16 시도 across Korea. Apartments searchable by name, plus full support for 연립/다세대/단독/다가구 (villa/low-rise/detached) and 오피스텔 properties using neighborhood-level analysis.
           </p>
         </div>
       </section>

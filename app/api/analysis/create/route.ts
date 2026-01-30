@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
           errorCode: 'UNSUPPORTED_BUILDING_TYPE',
           buildingType: detectedBuildingType,
           buildingTypeLabel,
-          message: `${buildingTypeLabel} properties are not yet supported. Currently, apartments (아파트), multi-family housing (연립/다세대), and officetel (오피스텔) can be analyzed.`,
+          message: `${buildingTypeLabel} properties are not yet supported. Currently, apartments (아파트), multi-family/detached housing (연립/다세대/단독/다가구), and officetel (오피스텔) can be analyzed.`,
         },
         { status: 400 }
       );

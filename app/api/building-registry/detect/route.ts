@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       supported: isSupported,
       isResidentialOfficetel: result.data.isResidentialOfficetel,
       ...(!isSupported ? {
-        message: `${result.data.buildingTypeName || result.data.buildingType}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트, 연립/다세대 주택, 또는 오피스텔만 분석 가능합니다.`
+        message: `${result.data.buildingTypeName || result.data.buildingType}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트, 연립/다세대/단독/다가구 주택, 또는 오피스텔만 분석 가능합니다.`
       } : {})
     });
   } catch (error) {

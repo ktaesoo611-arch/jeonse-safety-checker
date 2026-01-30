@@ -486,8 +486,8 @@ async function performRealAnalysis(
           errorCode: 'UNSUPPORTED_BUILDING_TYPE',
           buildingType: detectedBuildingType,
           buildingTypeLabel,
-          message: `${buildingTypeLabel}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트, 연립/다세대 주택, 또는 오피스텔만 분석 가능합니다.`,
-          messageEn: `${buildingTypeLabel} properties are not yet supported. Currently, apartments (아파트), multi-family housing (연립/다세대), and officetel (오피스텔) can be analyzed.`
+          message: `${buildingTypeLabel}은(는) 현재 서비스 지원 대상이 아닙니다. 아파트, 연립/다세대/단독/다가구 주택, 또는 오피스텔만 분석 가능합니다.`,
+          messageEn: `${buildingTypeLabel} properties are not yet supported. Currently, apartments (아파트), multi-family/detached housing (연립/다세대/단독/다가구), and officetel (오피스텔) can be analyzed.`
         },
         { status: 400 }
       );
