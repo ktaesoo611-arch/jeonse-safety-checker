@@ -506,7 +506,7 @@ export default function PreviewPage() {
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${isWolse ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700'}`}>
             <span>{isWolse ? 'Wolse' : 'Jeonse'} Check</span>
             <span className={isWolse ? 'text-orange-400' : 'text-amber-400'}>|</span>
-            <span>Step 4 of 4</span>
+            <span>Step 3 of 4</span>
           </div>
         </div>
       </header>

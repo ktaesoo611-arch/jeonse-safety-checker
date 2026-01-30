@@ -228,7 +228,7 @@ export default function ProcessingPage() {
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-6 border ${isWolse ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
             <span>{isWolse ? 'Wolse' : 'Jeonse'} Check</span>
             <span className={isWolse ? 'text-orange-400' : 'text-amber-400'}>|</span>
-            <span>Step 3 of 4</span>
+            <span>Step 2 of 4</span>
           </div>
 
           {/* Spinning Circle */}

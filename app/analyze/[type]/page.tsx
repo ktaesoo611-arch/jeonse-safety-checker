@@ -349,6 +349,8 @@ export default function SimplifiedAnalysisPage() {
         <div className="text-center mb-10">
           <div className={`inline-flex items-center gap-2 px-4 py-2 bg-${accentColor}-50 text-${accentColor}-700 rounded-full text-sm font-semibold mb-6 border border-${accentColor}-200`}>
             <span>{isWolse ? 'Wolse' : 'Jeonse'} Check</span>
+            <span className={`text-${accentColor}-400`}>|</span>
+            <span>Step 1 of 4</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A202C] mb-4 tracking-tight">
             Quick Analysis
