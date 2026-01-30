@@ -329,24 +329,28 @@ async function performRealAnalysis(
 
     let userProvidedBuildingName: string | undefined;
     let userProvidedAddress: string | undefined;
+    let dbBuildingType: BuildingType | undefined;
     if (analysis?.property_id) {
       const { data: property, error: propertyError } = await supabase
         .from('properties')
-        .select('building_name, address')
+        .select('building_name, address, building_type')
         .eq('id', analysis.property_id)
         .single();
 
       console.log('Property data:', {
         building_name: property?.building_name,
         address: property?.address,
+        building_type: property?.building_type,
         error: propertyError
       });
 
       userProvidedBuildingName = property?.building_name;
       userProvidedAddress = property?.address;
+      dbBuildingType = property?.building_type as BuildingType | undefined;
       console.log('User-provided from Step 1:', {
         buildingName: userProvidedBuildingName,
-        address: userProvidedAddress
+        address: userProvidedAddress,
+        buildingType: dbBuildingType
       });
     } else {
       console.log('No property_id found in analysis');
@@ -363,14 +367,19 @@ async function performRealAnalysis(
       area: deunggibuData.area
     });
 
-    // Step 3.5: Use user-provided building type or detect using Building Registry API
-    // User-provided type is preferred as it's selected by the user on the frontend
-    let detectedBuildingType: BuildingType = userBuildingType || 'apartment';
+    // Step 3.5: Determine building type
+    // Priority: 1) frontend-provided → 2) DB-stored (from create route) → 3) Building Registry API re-detection
+    let detectedBuildingType: BuildingType = 'apartment';
 
     if (userBuildingType) {
+      detectedBuildingType = userBuildingType;
       console.log(`🏠 Using user-provided building type: ${userBuildingType}`);
+    } else if (dbBuildingType) {
+      detectedBuildingType = dbBuildingType;
+      console.log(`🏠 Using DB-stored building type: ${dbBuildingType}`);
     } else {
-      // Fall back to Building Registry API detection if not provided
+      // Last resort: re-detect using Building Registry API
+      console.log('⚠️ No building type from frontend or DB, attempting re-detection...');
       try {
         const addressComponents = parseKoreanAddress(addressForValuation);
         if (addressComponents) {
@@ -389,15 +398,6 @@ async function performRealAnalysis(
         }
       } catch (error) {
         console.error('⚠️ Building type detection failed, defaulting to apartment:', error);
-      }
-
-      // Fallback: if detection failed/skipped but building name contains 오피스텔, classify as officetel
-      if (detectedBuildingType === 'apartment' && buildingNameForValuation) {
-        const nameLower = buildingNameForValuation.toLowerCase();
-        if (nameLower.includes('오피스텔') || nameLower.includes('officetel')) {
-          detectedBuildingType = 'officetel';
-          console.log(`🏢 Fallback: detected officetel from building name "${buildingNameForValuation}"`);
-        }
       }
     }
 

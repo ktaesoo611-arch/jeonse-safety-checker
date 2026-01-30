@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     // Query for existing property - use maybeSingle() instead of single() to handle multiple matches
     const { data: existingProperty, error: findError } = await supabase
       .from('properties')
-      .select('id, building_name')
+      .select('id, building_name, building_type')
       .eq('address', body.address)
       .is('building_number', null)
       .is('floor', null)
@@ -182,11 +182,18 @@ export async function POST(request: NextRequest) {
     if (existingProperty) {
       propertyId = existingProperty.id;
 
-      // Update building name if provided and different
+      // Update building name and building type if changed
+      const updates: Record<string, string> = {};
       if (building && building !== existingProperty.building_name) {
+        updates.building_name = building;
+      }
+      if (detectedBuildingType && detectedBuildingType !== existingProperty.building_type) {
+        updates.building_type = detectedBuildingType;
+      }
+      if (Object.keys(updates).length > 0) {
         await supabase
           .from('properties')
-          .update({ building_name: building })
+          .update(updates)
           .eq('id', propertyId);
       }
     } else {
@@ -200,6 +207,7 @@ export async function POST(request: NextRequest) {
             district,
             dong,
             building_name: building,
+            building_type: detectedBuildingType,
             exclusive_area: exclusiveArea,
             created_at: new Date().toISOString(),
           },
