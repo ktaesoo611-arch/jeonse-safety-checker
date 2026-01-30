@@ -470,6 +470,7 @@ export async function GET(
 
       // Run jeonse price analysis if we have JEONSE transaction data (not sale data)
       let jeonseAnalysis = null;
+      let tieredExpectedJeonse = null;
       const allJeonseTransactions = newSchemaResult.valuation_data?.allJeonseTransactions || riskAnalysis.valuation?.allJeonseTransactions;
       if (allJeonseTransactions && allJeonseTransactions.length > 0) {
         const analyzer = new JeonsePriceAnalyzer();
@@ -479,6 +480,16 @@ export async function GET(
           allJeonseTransactions,
           userArea
         );
+
+        // Run tiered analysis for dong-tiered valuations
+        const valuationMethod = newSchemaResult.valuation_data?.valuationMethod || riskAnalysis.valuation?.valuationMethod;
+        if (valuationMethod === 'dong-tiered' && allJeonseTransactions.length >= 4) {
+          const tieredResult = analyzer.analyzeTiered(allJeonseTransactions, userArea);
+          if (tieredResult) {
+            tieredExpectedJeonse = tieredResult.tieredExpectedJeonse;
+            console.log(`📊 Tiered jeonse analysis (new schema): ${tieredExpectedJeonse.length} tiers computed`);
+          }
+        }
 
         // Even if analysis returns null (insufficient data for regression),
         // preserve raw transaction data for the transaction table
@@ -546,6 +557,7 @@ export async function GET(
             tierEstimates: newSchemaResult.valuation_data?.tierEstimates || riskAnalysis.valuation?.tierEstimates || null,
             tierGuidance: newSchemaResult.valuation_data?.tierGuidance || riskAnalysis.valuation?.tierGuidance || null,
             tierPercentiles: newSchemaResult.valuation_data?.tierPercentiles || riskAnalysis.valuation?.tierPercentiles || null,
+            valuationMethod: newSchemaResult.valuation_data?.valuationMethod || riskAnalysis.valuation?.valuationMethod || null,
           },
         };
         })(),
@@ -613,6 +625,7 @@ export async function GET(
           transactionData: jeonseAnalysis.transactionData,
           regressionLine: jeonseAnalysis.regressionLine,
           contractCount: jeonseAnalysis.contractCount,
+          tieredExpectedJeonse: tieredExpectedJeonse || null,
         } : null,
 
         documents: documents?.map((d: any) => ({
@@ -768,6 +781,7 @@ export async function GET(
 
     // Run jeonse price analysis if we have JEONSE transaction data (not sale data)
     let jeonseAnalysisFallback = null;
+    let tieredExpectedJeonseFallback = null;
     const allJeonseTransactionsFallback = riskAnalysis.valuation?.allJeonseTransactions;
     if (allJeonseTransactionsFallback && allJeonseTransactionsFallback.length > 0) {
       const analyzer = new JeonsePriceAnalyzer();
@@ -777,6 +791,16 @@ export async function GET(
         allJeonseTransactionsFallback,
         userArea
       );
+
+      // Run tiered analysis for dong-tiered valuations
+      const valuationMethodFallback = riskAnalysis.valuation?.valuationMethod;
+      if (valuationMethodFallback === 'dong-tiered' && allJeonseTransactionsFallback.length >= 4) {
+        const tieredResult = analyzer.analyzeTiered(allJeonseTransactionsFallback, userArea);
+        if (tieredResult) {
+          tieredExpectedJeonseFallback = tieredResult.tieredExpectedJeonse;
+          console.log(`📊 Tiered jeonse analysis (fallback): ${tieredExpectedJeonseFallback.length} tiers computed`);
+        }
+      }
 
       // Even if analysis returns null (insufficient data for regression),
       // preserve raw transaction data for the transaction table
@@ -857,6 +881,7 @@ export async function GET(
             tierEstimates: riskAnalysis.valuation?.tierEstimates || null,
             tierGuidance: riskAnalysis.valuation?.tierGuidance || null,
             tierPercentiles: riskAnalysis.valuation?.tierPercentiles || null,
+            valuationMethod: riskAnalysis.valuation?.valuationMethod || null,
           },
         };
       })(),
@@ -942,6 +967,7 @@ export async function GET(
         transactionData: jeonseAnalysisFallback.transactionData,
         regressionLine: jeonseAnalysisFallback.regressionLine,
         contractCount: jeonseAnalysisFallback.contractCount,
+        tieredExpectedJeonse: tieredExpectedJeonseFallback || null,
       } : null,
 
       // Wolse analysis (if wolse price data exists)

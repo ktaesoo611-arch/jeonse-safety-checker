@@ -82,6 +82,16 @@ interface WolseMarketData {
   }>;
 }
 
+// Tiered expected jeonse for dong-tiered valuations
+interface TieredExpectedJeonse {
+  tier: 'budget' | 'standard' | 'mid' | 'premium';
+  label: string;
+  expectedJeonse: number;
+  unitJeonse: number;
+  transactionCount: number;
+  effectiveSampleSize: number;
+}
+
 interface JeonseMarketData {
   marketTrend: 'rising' | 'stable' | 'falling' | null;
   confidence: number | null;
@@ -114,6 +124,8 @@ interface JeonseMarketData {
     intercept: number; // Value at daysAgo=0 (in 억)
   } | null;
   contractCount?: number;
+  // Tiered expected jeonse for dong-tiered valuations
+  tieredExpectedJeonse?: TieredExpectedJeonse[];
 }
 
 interface MarketPositionSectionProps {
@@ -626,9 +638,31 @@ export default function MarketPositionSection({
 
   // Jeonse Market Position
   if (reportType === 'jeonse' && jeonseData) {
-    const style = jeonseData.assessment ? getAssessmentStyle(jeonseData.assessment) : null;
     const hasAnalysis = jeonseData.expectedJeonse !== null && jeonseData.expectedJeonse !== undefined &&
                         jeonseData.transactionData && jeonseData.transactionData.length > 0;
+
+    // Calculate dynamic values based on selected tier (for dong-tiered valuations)
+    const selectedTierJeonse = jeonseData.tieredExpectedJeonse?.find(t => t.tier === selectedTier);
+    const displayExpectedJeonse = selectedTierJeonse?.expectedJeonse ?? jeonseData.expectedJeonse ?? 0;
+    const displayDifference = jeonseData.proposedJeonse - displayExpectedJeonse;
+    const displayDifferencePercent = displayExpectedJeonse > 0
+      ? (displayDifference / displayExpectedJeonse) * 100
+      : (jeonseData.jeonseDifferencePercent || 0);
+
+    // Recalculate assessment based on tier selection
+    const getDisplayAssessment = (): 'GOOD_DEAL' | 'FAIR' | 'OVERPRICED' | 'SEVERELY_OVERPRICED' | null => {
+      if (!hasAnalysis) return null;
+      if (!selectedTierJeonse) return jeonseData.assessment || null;
+
+      if (displayDifferencePercent <= -3) return 'GOOD_DEAL';
+      if (displayDifferencePercent <= 3) return 'FAIR';
+      if (displayDifferencePercent <= 10) return 'OVERPRICED';
+      return 'SEVERELY_OVERPRICED';
+    };
+
+    const displayAssessment = getDisplayAssessment();
+    const style = displayAssessment ? getAssessmentStyle(displayAssessment) : null;
+    const isUsingTieredData = !!selectedTierJeonse;
 
     return (
       <div className="mb-12">
@@ -647,30 +681,76 @@ export default function MarketPositionSection({
 
             <div className="bg-white rounded-2xl p-5 sm:p-6 text-center shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-default">
               <p className="text-sm sm:text-base text-gray-500 mb-2">Expected Jeonse</p>
-              <p className="text-2xl sm:text-3xl font-bold text-emerald-600">{formatAmount(jeonseData.expectedJeonse!)}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-emerald-600">{formatAmount(displayExpectedJeonse)}</p>
               <p className="text-sm sm:text-base text-gray-400 mt-2">
-                based on {jeonseData.contractCount || 0} recent contracts
+                {isUsingTieredData ? `for ${selectedTier} tier` : `based on ${jeonseData.contractCount || 0} recent contracts`}
               </p>
             </div>
 
             <div className={`rounded-2xl p-5 sm:p-6 text-center shadow-sm border hover:shadow-lg transition-all duration-200 cursor-default ${
-              (jeonseData.jeonseDifference || 0) <= 0
+              displayDifference <= 0
                 ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
-                : (jeonseData.jeonseDifferencePercent || 0) <= 5
+                : displayDifferencePercent <= 5
                 ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
                 : 'bg-red-50 border-red-200 hover:bg-red-100'
             }`}>
               <p className="text-sm sm:text-base text-gray-500 mb-2">Difference</p>
               <p className={`text-2xl sm:text-3xl font-bold ${
-                (jeonseData.jeonseDifference || 0) <= 0 ? 'text-emerald-600' :
-                (jeonseData.jeonseDifferencePercent || 0) <= 5 ? 'text-blue-600' : 'text-red-600'
+                displayDifference <= 0 ? 'text-emerald-600' :
+                displayDifferencePercent <= 5 ? 'text-blue-600' : 'text-red-600'
               }`}>
-                {(jeonseData.jeonseDifference || 0) >= 0 ? '+' : ''}{formatAmount(jeonseData.jeonseDifference || 0)}
+                {displayDifference >= 0 ? '+' : ''}{formatAmount(displayDifference)}
               </p>
               <p className="text-sm sm:text-base text-gray-400 mt-2">
-                {(jeonseData.jeonseDifferencePercent || 0) >= 0 ? '+' : ''}{(jeonseData.jeonseDifferencePercent || 0).toFixed(1)}% vs expected
+                {displayDifferencePercent >= 0 ? '+' : ''}{displayDifferencePercent.toFixed(1)}% vs expected
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Tiered Expected Jeonse - Only for dong-tiered with tier data */}
+        {jeonseData.tieredExpectedJeonse && jeonseData.tieredExpectedJeonse.length > 0 && (
+          <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">🏠</span>
+              Expected Jeonse by Quality Tier
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Expected jeonse varies by property quality tier. Select your tier in the valuation section above.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {jeonseData.tieredExpectedJeonse.map((tier) => {
+                const isSelected = selectedTier === tier.tier;
+                return (
+                  <div
+                    key={tier.tier}
+                    className={`rounded-xl p-4 text-center transition-all duration-200 ${
+                      isSelected
+                        ? 'bg-amber-50 border-2 border-amber-400 shadow-md'
+                        : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <p className={`text-xs font-medium mb-1 ${isSelected ? 'text-amber-700' : 'text-gray-500'}`}>
+                      {tier.label.split(' ')[0]}
+                    </p>
+                    <p className={`text-lg sm:text-xl font-bold ${isSelected ? 'text-amber-700' : 'text-gray-700'}`}>
+                      {formatAmount(tier.expectedJeonse)}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {tier.transactionCount} txns
+                    </p>
+                    {isSelected && (
+                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-200 text-amber-800 text-xs rounded-full">
+                        Selected
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-4">
+              * Expected jeonse is calculated from Theil-Sen regression on comparable jeonse transactions, segmented by unit jeonse percentiles.
+            </p>
           </div>
         )}
 
@@ -681,7 +761,7 @@ export default function MarketPositionSection({
 
           // Y-axis bounds (in 억)
           const userJeonseInEok = jeonseData.proposedJeonse / 100000000;
-          const expectedInEok = (jeonseData.expectedJeonse || 0) / 100000000;
+          const expectedInEok = displayExpectedJeonse / 100000000;
           const allPrices = [...scatterData.map(d => d.price), userJeonseInEok, expectedInEok];
           const yMin = Math.floor(Math.min(...allPrices) * 0.9 * 10) / 10;
           const yMax = Math.ceil(Math.max(...allPrices) * 1.1 * 10) / 10;
@@ -755,13 +835,13 @@ export default function MarketPositionSection({
                     {/* User's Jeonse Reference Line */}
                     <ReferenceLine
                       y={userJeonseInEok}
-                      stroke={(jeonseData.jeonseDifference || 0) <= 0 ? '#10b981' : (jeonseData.jeonseDifferencePercent || 0) <= 10 ? '#f59e0b' : '#ef4444'}
+                      stroke={displayDifference <= 0 ? '#10b981' : displayDifferencePercent <= 10 ? '#f59e0b' : '#ef4444'}
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       label={{
                         value: `Your Jeonse: ${userJeonseInEok.toFixed(2)}억`,
                         position: 'right',
-                        fill: (jeonseData.jeonseDifference || 0) <= 0 ? '#10b981' : (jeonseData.jeonseDifferencePercent || 0) <= 10 ? '#f59e0b' : '#ef4444',
+                        fill: displayDifference <= 0 ? '#10b981' : displayDifferencePercent <= 10 ? '#f59e0b' : '#ef4444',
                         fontSize: 11,
                       }}
                     />
@@ -816,10 +896,10 @@ export default function MarketPositionSection({
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-0.5 bg-emerald-500" />
-                  <span className="text-gray-600">Expected jeonse</span>
+                  <span className="text-gray-600">Expected jeonse{isUsingTieredData ? ` (${selectedTier})` : ''}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-0.5 border-t-2 border-dashed" style={{ borderColor: (jeonseData.jeonseDifference || 0) <= 0 ? '#10b981' : (jeonseData.jeonseDifferencePercent || 0) <= 10 ? '#f59e0b' : '#ef4444' }} />
+                  <div className="w-6 h-0.5 border-t-2 border-dashed" style={{ borderColor: displayDifference <= 0 ? '#10b981' : displayDifferencePercent <= 10 ? '#f59e0b' : '#ef4444' }} />
                   <span className="text-gray-600">Your jeonse</span>
                 </div>
               </div>
@@ -830,26 +910,26 @@ export default function MarketPositionSection({
                   <span className="text-lg">{style.icon}</span>
                   <span className={`font-semibold text-sm sm:text-base ${style.color}`}>{style.label}</span>
                   <span className={`text-xs sm:text-sm ${style.color}`}>
-                    ({(jeonseData.jeonseDifference || 0) >= 0 ? '+' : ''}{((jeonseData.jeonseDifference || 0) / 100000000).toFixed(2)}억, {(jeonseData.jeonseDifferencePercent || 0) >= 0 ? '+' : ''}{(jeonseData.jeonseDifferencePercent || 0).toFixed(1)}%)
+                    ({displayDifference >= 0 ? '+' : ''}{(displayDifference / 100000000).toFixed(2)}억, {displayDifferencePercent >= 0 ? '+' : ''}{displayDifferencePercent.toFixed(1)}%)
                   </span>
                 </div>
               )}
 
-              {jeonseData.assessmentDetails && (
+              {jeonseData.assessmentDetails && !isUsingTieredData && (
                 <p className="mt-4 text-gray-600 text-sm sm:text-base">{jeonseData.assessmentDetails}</p>
               )}
 
               {/* Warning for Good Deal / Fair Price */}
-              {jeonseData.assessment && (jeonseData.assessment === 'GOOD_DEAL' || jeonseData.assessment === 'FAIR') && (
+              {displayAssessment && (displayAssessment === 'GOOD_DEAL' || displayAssessment === 'FAIR') && (
                 <div className="mt-4 p-4 sm:p-5 rounded-xl bg-amber-50 border border-amber-200">
                   <div className="flex items-start gap-3">
                     <span className="text-xl sm:text-2xl">⚠️</span>
                     <div>
                       <p className="font-semibold text-amber-900 text-sm sm:text-base">
-                        {jeonseData.assessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Check Physical Condition'}
+                        {displayAssessment === 'GOOD_DEAL' ? 'Verify Why Price is Low' : 'Check Physical Condition'}
                       </p>
                       <p className="text-sm sm:text-base text-amber-700 mt-1">
-                        {jeonseData.assessment === 'GOOD_DEAL'
+                        {displayAssessment === 'GOOD_DEAL'
                           ? 'Below-market jeonse often has reasons. Check for physical issues (leaks, mold, noise), building maintenance, or why the landlord needs funds urgently.'
                           : 'Visit the property to check for physical issues like water damage, mold, noise levels, and overall maintenance condition.'}
                       </p>
@@ -862,15 +942,15 @@ export default function MarketPositionSection({
         })()}
 
         {/* Potential Savings */}
-        {jeonseData.potentialSavings && jeonseData.potentialSavings > 0 && (
+        {displayDifference > 0 && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-6 border border-amber-200 hover:shadow-lg transition-all duration-200">
             <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
               <span className="text-xl sm:text-2xl">💰</span>
               Potential Savings
             </h3>
             <div className="p-4 sm:p-5 rounded-xl bg-white/50 hover:bg-white hover:shadow-md transition-all duration-200 cursor-default">
-              <p className="text-sm sm:text-base text-gray-600">If negotiated to expected jeonse:</p>
-              <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{formatAmount(jeonseData.potentialSavings)}</p>
+              <p className="text-sm sm:text-base text-gray-600">If negotiated to expected jeonse{isUsingTieredData ? ` (${selectedTier} tier)` : ''}:</p>
+              <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">{formatAmount(displayDifference)}</p>
             </div>
           </div>
         )}

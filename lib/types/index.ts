@@ -363,6 +363,16 @@ export interface WolseNegotiationOption {
   recommended?: boolean;
 }
 
+// Tiered Expected Jeonse for 연립/다세대 and officetel dong-fallback
+export interface TieredExpectedJeonse {
+  tier: QualityTier;
+  label: string;
+  expectedJeonse: number;       // Theil-Sen regression intercept (value today) for this tier
+  unitJeonse: number;           // Weighted unit jeonse (₩/㎡) for this tier
+  transactionCount: number;
+  effectiveSampleSize: number;
+}
+
 // Tiered Expected Rent for 연립/다세대
 export interface TieredExpectedRent {
   tier: QualityTier;

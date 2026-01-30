@@ -247,6 +247,7 @@ export default function ReportPage() {
       transactionData: jeonseAnalysis?.transactionData || [],
       regressionLine: jeonseAnalysis?.regressionLine || null,
       contractCount: jeonseAnalysis?.contractCount || 0,
+      tieredExpectedJeonse: jeonseAnalysis?.tieredExpectedJeonse || undefined,
     } : undefined,
     wolseData: isWolse ? {
       userDeposit: wolseAnalysis?.userDeposit || property?.proposedJeonse || 0,

@@ -1,4 +1,4 @@
-import { MolitTransaction } from '../types';
+import { MolitTransaction, QualityTier, TieredExpectedJeonse } from '../types';
 
 /**
  * Jeonse Price Analysis Result
@@ -373,5 +373,158 @@ export class JeonsePriceAnalyzer {
       level: 'SEVERELY_OVERPRICED',
       details: `Your proposed jeonse is ${formatWon(difference)} (${differencePercent.toFixed(1)}%) above the expected market price of ${formatWon(expectedJeonse)}. This is significantly overpriced - strongly recommend negotiating or looking for alternatives.`
     };
+  }
+
+  /**
+   * Tiered jeonse analysis for dong-tiered valuations.
+   *
+   * Segments jeonse transactions into 4 quality tiers based on unit jeonse
+   * percentiles (P25/P50/P75), then runs Theil-Sen regression per tier.
+   *
+   * @returns Tiered expected jeonse values and percentile thresholds, or null if insufficient data
+   */
+  analyzeTiered(
+    transactions: MolitTransaction[],
+    userArea?: number
+  ): { tieredExpectedJeonse: TieredExpectedJeonse[]; percentileThresholds: { p25: number; p50: number; p75: number } } | null {
+    // Step 1: Filter by area if provided
+    let filtered = transactions;
+    if (userArea) {
+      filtered = this.filterByArea(transactions, userArea);
+    }
+
+    // Filter out renewal contracts (갱신)
+    const renewalResult = filterRenewalContracts(filtered);
+    filtered = renewalResult.filtered;
+
+    // Remove outliers
+    const { clean } = removeOutliers(filtered);
+
+    if (clean.length < 4) {
+      console.log(`⚠️ Insufficient transactions for tiered jeonse analysis: ${clean.length}`);
+      return null;
+    }
+
+    // Step 2: Calculate unit jeonse per transaction
+    const now = new Date();
+    const enriched = clean.map(t => {
+      const unitJeonse = t.transactionAmount / t.exclusiveArea;
+      const txDate = new Date(t.year, t.month - 1, t.day);
+      const daysAgo = Math.floor((now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24));
+      return { ...t, unitJeonse, daysAgo };
+    });
+
+    // Step 3: Compute percentile thresholds
+    const thresholds = this.calculatePercentileThresholds(enriched.map(e => e.unitJeonse));
+
+    console.log(`\n📊 Tiered Jeonse Analysis:`);
+    console.log(`   Transactions: ${enriched.length} clean`);
+    console.log(`   P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡`);
+
+    // Step 4: Classify into tiers
+    const tierLabels: Record<QualityTier, string> = {
+      budget: 'Budget Tier',
+      standard: 'Standard Tier',
+      mid: 'Mid Tier',
+      premium: 'Premium Tier',
+    };
+
+    const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium'];
+    const transactionsByTier: Record<QualityTier, typeof enriched> = {
+      budget: [],
+      standard: [],
+      mid: [],
+      premium: [],
+    };
+
+    enriched.forEach(t => {
+      const tier = this.classifyTier(t.unitJeonse, thresholds);
+      transactionsByTier[tier].push(t);
+    });
+
+    console.log(`   Tier distribution: budget=${transactionsByTier.budget.length}, standard=${transactionsByTier.standard.length}, mid=${transactionsByTier.mid.length}, premium=${transactionsByTier.premium.length}`);
+
+    // Step 5: Run Theil-Sen regression per tier
+    const tieredExpectedJeonse: TieredExpectedJeonse[] = [];
+
+    for (const tier of tiers) {
+      const tierTxns = transactionsByTier[tier];
+      if (tierTxns.length < 3) {
+        console.log(`   ${tierLabels[tier]}: skipped (${tierTxns.length} < 3 transactions)`);
+        continue;
+      }
+
+      const regression = theilSenTimeRegression(
+        tierTxns.map(t => ({ daysAgo: t.daysAgo, value: t.transactionAmount }))
+      );
+
+      // Calculate recency-weighted unit jeonse
+      const HALFLIFE_DAYS = 90;
+      const weights = tierTxns.map(t => Math.exp(-t.daysAgo / HALFLIFE_DAYS));
+      const sumW = weights.reduce((a, b) => a + b, 0);
+      const sumW2 = weights.reduce((a, b) => a + b * b, 0);
+      const effectiveSampleSize = (sumW * sumW) / sumW2;
+
+      let totalWeightedUnitJeonse = 0;
+      tierTxns.forEach((t, i) => {
+        totalWeightedUnitJeonse += t.unitJeonse * weights[i];
+      });
+      const weightedUnitJeonse = totalWeightedUnitJeonse / sumW;
+
+      tieredExpectedJeonse.push({
+        tier,
+        label: tierLabels[tier],
+        expectedJeonse: Math.round(regression.intercept),
+        unitJeonse: Math.round(weightedUnitJeonse),
+        transactionCount: tierTxns.length,
+        effectiveSampleSize: Math.round(effectiveSampleSize * 10) / 10,
+      });
+
+      console.log(`   ${tierLabels[tier]}: expected=${formatWon(regression.intercept)}, unitJeonse=${(weightedUnitJeonse/10000).toFixed(0)}만/㎡, n=${tierTxns.length}, effN=${effectiveSampleSize.toFixed(1)}`);
+    }
+
+    if (tieredExpectedJeonse.length === 0) {
+      console.log(`   ⚠️ No tiers had sufficient transactions`);
+      return null;
+    }
+
+    return { tieredExpectedJeonse, percentileThresholds: thresholds };
+  }
+
+  /**
+   * Calculate P25/P50/P75 percentile thresholds from unit values
+   */
+  private calculatePercentileThresholds(values: number[]): { p25: number; p50: number; p75: number } {
+    if (values.length === 0) return { p25: 0, p50: 0, p75: 0 };
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const n = sorted.length;
+
+    const getPercentile = (p: number): number => {
+      const idx = (p / 100) * (n - 1);
+      const lower = Math.floor(idx);
+      const upper = Math.ceil(idx);
+      const weight = idx - lower;
+      return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+    };
+
+    return {
+      p25: getPercentile(25),
+      p50: getPercentile(50),
+      p75: getPercentile(75),
+    };
+  }
+
+  /**
+   * Classify a transaction into a quality tier based on unit jeonse
+   */
+  private classifyTier(
+    unitJeonse: number,
+    thresholds: { p25: number; p50: number; p75: number }
+  ): QualityTier {
+    if (unitJeonse < thresholds.p25) return 'budget';
+    if (unitJeonse < thresholds.p50) return 'standard';
+    if (unitJeonse < thresholds.p75) return 'mid';
+    return 'premium';
   }
 }
