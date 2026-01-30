@@ -266,7 +266,7 @@ export class PropertyValuationEngine {
       // ===== OFFICETEL: Hybrid approach =====
       // Primary: building-name match (like apartments)
       // Fallback: dong-level tiered (like multifamily) if insufficient building data
-      const MIN_BUILDING_TXNS = 3;
+      const MIN_BUILDING_TXNS = 5;
 
       if (recentTransactions.length >= MIN_BUILDING_TXNS) {
         // Sufficient building-level data → apartment-style valuation
