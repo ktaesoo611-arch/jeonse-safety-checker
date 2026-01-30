@@ -1,7 +1,7 @@
 // Building Types
 // - apartment: 아파트
 // - multifamily: 연립/다세대
-// - officetel: 오피스텔 (주거용 residential officetel)
+// - officetel: 오피스텔 (all types including residential and commercial)
 // - unknown: Unrecognized building type
 export type BuildingType = 'apartment' | 'multifamily' | 'officetel' | 'unknown';
 

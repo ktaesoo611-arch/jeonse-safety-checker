@@ -252,7 +252,7 @@ export default function PricingPage() {
               />
               <FAQItem
                 question="What areas and property types do you cover?"
-                answer="We support apartments, 연립/다세대 (villa/low-rise apartment), and 주거용 오피스텔 (residential officetel) nationwide across all of South Korea (전국). For apartments and officetel, we use building-level transaction data. For 연립/다세대, we use neighborhood-level market data for accurate valuation."
+                answer="We support apartments, 연립/다세대 (villa/low-rise apartment), and 오피스텔 (officetel) nationwide across all of South Korea (전국). For apartments and officetel, we use building-level transaction data. For 연립/다세대, we use neighborhood-level market data for accurate valuation."
               />
             </div>
           </div>
