@@ -212,7 +212,7 @@ export function WolseInputForm({ onSubmit, loading }: WolseInputFormProps) {
         {/* Building Name */}
         <div className="relative">
           <Input
-            label="Building / Apartment Name *"
+            label="Building Name *"
             placeholder="Type to search: e.g., 래미안역삼, Raemian"
             value={formData.building || apartmentSearch}
             onChange={(e) => {

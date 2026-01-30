@@ -60,10 +60,14 @@ export default function TermsPage() {
               <p className="text-gray-700 leading-relaxed mb-4">
                 Both services include English translation of Korean property registers (등기부등본), comprehensive safety scores (0-100), and downloadable PDF reports delivered instantly.
               </p>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                Supported property types: apartments (아파트), multi-family housing (연립/다세대), detached/multi-unit housing (단독/다가구), and officetel (오피스텔) nationwide across South Korea.
+              </p>
               <p className="text-gray-700 leading-relaxed">
                 전세안전연구소는 외국인을 위한 한국 부동산 분석 리포트를 제공하는 디지털 서비스입니다.
                 전세 체크와 월세 체크 두 가지 서비스를 제공하며, 등기부등본 영문 번역, 20개 이상의 위험 요소 분석,
                 시장 데이터 기반 예상 가격 분석, 안전도 점수 및 실행 가능한 조언을 포함한 PDF 리포트를 즉시 제공합니다.
+                지원 건물 유형: 아파트, 연립/다세대, 단독/다가구, 오피스텔 (전국 지원).
               </p>
             </div>
           </section>
