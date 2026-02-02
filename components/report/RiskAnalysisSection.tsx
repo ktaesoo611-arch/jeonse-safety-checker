@@ -517,15 +517,15 @@ export default function RiskAnalysisSection({
               <p className="text-xl sm:text-2xl font-bold text-purple-900">{formatAmount(proposedDeposit)}</p>
             </div>
             <div className={`p-4 sm:p-5 rounded-xl transition-all duration-200 ${
-              metrics.availableEquity > 0
+              calculatedEquity > 0
                 ? 'bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 hover:shadow-md'
                 : 'bg-red-50 border border-red-100 hover:bg-red-100 hover:shadow-md'
             }`}>
-              <p className={`text-sm sm:text-base font-medium ${metrics.availableEquity > 0 ? 'text-emerald-600' : 'text-red-600'} mb-1`}>
+              <p className={`text-sm sm:text-base font-medium ${calculatedEquity > 0 ? 'text-emerald-600' : 'text-red-600'} mb-1`}>
                 Available Equity
               </p>
-              <p className={`text-xl sm:text-2xl font-bold ${metrics.availableEquity > 0 ? 'text-emerald-900' : 'text-red-900'}`}>
-                {metrics.availableEquity >= 0 ? '+' : ''}{formatAmount(metrics.availableEquity)}
+              <p className={`text-xl sm:text-2xl font-bold ${calculatedEquity > 0 ? 'text-emerald-900' : 'text-red-900'}`}>
+                {calculatedEquity >= 0 ? '+' : ''}{formatAmount(calculatedEquity)}
               </p>
             </div>
           </div>
