@@ -212,7 +212,8 @@ function testRiskAnalyzer() {
 
   const smallAmountResult = analyzer.checkSmallAmountPriority(
     150000000,  // ₩1.5억 jeonse
-    '서울특별시 강남구 역삼동 123-45'
+    '서울특별시 강남구 역삼동 123-45',
+    500000000   // ₩5억 property value
   );
 
   console.log(`Jeonse Amount: ₩${(150000000 / 100000000).toFixed(1)}억`);

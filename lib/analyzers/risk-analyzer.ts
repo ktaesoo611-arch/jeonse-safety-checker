@@ -188,7 +188,8 @@ export class RiskAnalyzer {
     // Check small amount priority eligibility
     const smallAmountPriority = this.checkSmallAmountPriority(
       proposedJeonse,
-      deunggibu.address
+      deunggibu.address,
+      safetyPropertyValue
     );
 
     // Identify all risk factors
@@ -471,23 +472,34 @@ export class RiskAnalyzer {
    */
   checkSmallAmountPriority(
     jeonseAmount: number,
-    address: string
+    address: string,
+    propertyValue: number
   ): SmallAmountPriorityResult {
 
     // Determine region from address
     const region = this.determineRegion(address);
 
-    // Get threshold based on region (2024 standards)
+    // Get threshold based on region (제11조)
     const threshold = this.getSmallAmountThreshold(region);
     const protectedAmount = this.getProtectedAmount(region);
 
     const isEligible = jeonseAmount <= threshold;
 
+    // 제10조 ②: 보증금 중 일정액이 주택가액의 2분의 1을 초과하는 경우에는
+    // 주택가액의 2분의 1에 해당하는 금액까지만 우선변제를 받을 수 있다
+    const halfPropertyValue = propertyValue > 0 ? Math.floor(propertyValue / 2) : Infinity;
+    const cappedProtectedAmount = Math.min(protectedAmount, halfPropertyValue);
+    const isCapped = protectedAmount > halfPropertyValue && propertyValue > 0;
+
     let explanation = '';
     if (isEligible) {
+      const actualProtected = Math.min(jeonseAmount, cappedProtectedAmount);
       explanation = `Your deposit (₩${(jeonseAmount / 10000).toFixed(0)}만원) qualifies for 소액보증금 우선변제 in ${region}. ` +
-        `Up to ₩${(protectedAmount / 10000).toFixed(0)}만원 is protected with priority repayment even if senior mortgages exist. ` +
-        `CRITICAL: Must get 확정일자 + residence registration + 점유 on SAME DAY. For foreigners: 외국인등록 or 체류지변경신고. For overseas Koreans: 국내거소신고 or 거소이전신고.`;
+        `Up to ₩${(actualProtected / 10000).toFixed(0)}만원 is protected with priority repayment even if senior mortgages exist.`;
+      if (isCapped) {
+        explanation += ` (제10조②: capped at 1/2 of property value ₩${(propertyValue / 10000).toFixed(0)}만원)`;
+      }
+      explanation += ` CRITICAL: Must get 확정일자 + residence registration + 점유 on SAME DAY. For foreigners: 외국인등록 or 체류지변경신고. For overseas Koreans: 국내거소신고 or 거소이전신고.`;
     } else {
       explanation = `Your deposit (₩${(jeonseAmount / 10000).toFixed(0)}만원) EXCEEDS the 소액보증금 threshold (₩${(threshold / 10000).toFixed(0)}만원) for ${region}. ` +
         `You will NOT receive priority repayment protection. Senior mortgages will be paid first in foreclosure.`;
@@ -495,7 +507,7 @@ export class RiskAnalyzer {
 
     return {
       isEligible,
-      protectedAmount: isEligible ? Math.min(jeonseAmount, protectedAmount) : 0,
+      protectedAmount: isEligible ? Math.min(jeonseAmount, cappedProtectedAmount) : 0,
       threshold,
       region,
       explanation
@@ -589,7 +601,8 @@ export class RiskAnalyzer {
   }
 
   /**
-   * Get small amount threshold by region (2025 - 주택임대차보호법 시행령 제10조)
+   * Get small amount threshold by region (2025 - 주택임대차보호법 시행령 제11조)
+   * 제11조 (우선변제를 받을 임차인의 범위)
    *
    * Reference: 주택임대차보호법 시행령 [시행 2025. 3. 1.] [대통령령 제35161호, 2024. 12. 31., 일부개정]
    */
@@ -606,16 +619,13 @@ export class RiskAnalyzer {
   }
 
   /**
-   * Get protected amount by region (2025 - 주택임대차보호법 시행령 제10조)
+   * Get protected amount by region (2025 - 주택임대차보호법 시행령 제10조 ①)
+   * 제10조 (보증금 중 일정액의 범위 등)
+   * ① "임차인의 보증금 중 일정액의 범위는 다음 각 호의 구분에 의한 금액 이하로 한다"
    *
-   * Protected amount = 2/3 of threshold for 2nd priority (after 1st priority mortgage)
-   *
-   * Reference: 주택임대차보호법 시행령 제10조제2항
-   * "임차인의 보증금 중 일정액의 범위는 다음 각 호의 구분에 의한 금액 이하로 한다"
+   * Reference: 주택임대차보호법 시행령 [시행 2025. 3. 1.] [대통령령 제35161호, 2024. 12. 31., 일부개정]
    */
   private getProtectedAmount(region: string): number {
-    // Based on 제10조(보증금 중 일정액의 범위 등)
-    // 제2항: 법 제8조에 따라 우선변제를 받을 임차인은 보증금이 다음 각 호의 구분에 의한 금액 이하인 임차인으로 한다
     const amounts: Record<string, number> = {
       '서울': 55000000,            // ₩5,500만원 (서울특별시)
       '수도권 과밀억제권역': 48000000, // ₩4,800만원 (수도권정비계획법)

@@ -82,7 +82,8 @@ testCases.forEach((testCase, index) => {
 
   const result = analyzer.checkSmallAmountPriority(
     testCase.expectedThreshold - 10000000, // Test with amount just below threshold
-    testCase.address
+    testCase.address,
+    1000000000  // ₩10억 property value (high enough to not trigger 제10조② cap)
   );
 
   const regionMatch = result.region === testCase.expectedRegion;
