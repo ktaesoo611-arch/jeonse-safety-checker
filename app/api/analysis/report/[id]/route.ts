@@ -217,6 +217,14 @@ export async function GET(
       const wolseDeunggibuDoc = wolseDocuments?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef');
       const wolseParsedData = wolseDeunggibuDoc?.parsed_data || null;
 
+      // Fetch tiered expected rent data directly from wolse_price_data
+      // (not included in wolse_price_full view which predates these columns)
+      const { data: wolseTieredData } = await supabase
+        .from('wolse_price_data')
+        .select('tiered_expected_rent, selected_tier_expected_rent, filtered_transactions')
+        .eq('analysis_id', analysisId)
+        .single();
+
       // Extract buildingNumber and unit from parsed data
       // CODEF parser stores combined in 'unitNumber' (e.g., "1105동 1층 104호")
       let wolseBuildingNumber = wolseParsedData?.buildingNumber || null;
@@ -371,6 +379,10 @@ export async function GET(
           } : null,
           recentTransactions: wolseResult.recent_transactions || [],
           negotiationOptions: wolseResult.negotiation_options || [],
+          // Tiered expected rent for multifamily
+          tieredExpectedRent: wolseTieredData?.tiered_expected_rent || null,
+          selectedTierExpectedRent: wolseTieredData?.selected_tier_expected_rent || null,
+          filteredTransactions: wolseTieredData?.filtered_transactions || null,
         },
 
         recommendations: hasSafetyData ? {
