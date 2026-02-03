@@ -247,7 +247,8 @@ export default function ReportPage() {
       transactionData: jeonseAnalysis?.transactionData || [],
       regressionLine: jeonseAnalysis?.regressionLine || null,
       contractCount: jeonseAnalysis?.contractCount || 0,
-      tieredExpectedJeonse: jeonseAnalysis?.tieredExpectedJeonse || undefined,
+      // Only include tiered jeonse when valuation is also tiered
+      tieredExpectedJeonse: valuation?.tierEstimates?.length > 0 ? jeonseAnalysis?.tieredExpectedJeonse : undefined,
     } : undefined,
     wolseData: isWolse ? {
       userDeposit: wolseAnalysis?.userDeposit || property?.proposedJeonse || 0,
@@ -266,10 +267,11 @@ export default function ReportPage() {
       savingsPotential: wolseAnalysis?.savingsPotential || { vsMarket: 0, vsLegal: 0 },
       trend: wolseAnalysis?.trend,
       recentTransactions: wolseAnalysis?.recentTransactions,
-      // Tiered expected rent for multifamily
-      tieredExpectedRent: wolseAnalysis?.tieredExpectedRent,
-      selectedTierExpectedRent: wolseAnalysis?.selectedTierExpectedRent,
-      filteredTransactions: wolseAnalysis?.filteredTransactions,
+      // Tiered expected rent — only include when valuation is also tiered
+      // (prevents showing 4-tier rent when Est. Value is a single building-level figure)
+      tieredExpectedRent: valuation?.tierEstimates?.length > 0 ? wolseAnalysis?.tieredExpectedRent : undefined,
+      selectedTierExpectedRent: valuation?.tierEstimates?.length > 0 ? wolseAnalysis?.selectedTierExpectedRent : undefined,
+      filteredTransactions: valuation?.tierEstimates?.length > 0 ? wolseAnalysis?.filteredTransactions : undefined,
     } : undefined,
   };
 
