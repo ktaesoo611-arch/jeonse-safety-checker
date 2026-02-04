@@ -301,9 +301,9 @@ export class MolitWolseAPI {
     monthsBack: number = 6,
     areaToleranceRatio: number = 0.1
   ): Promise<WolseTransaction[]> {
-    const dongList = dongs.join(', ');
-    console.log(`\n🏘️ MOLIT Multifamily Wolse API - Multi-Dong Query:`);
-    console.log(`   lawdCd: "${lawdCd}", dongs: [${dongList}]`);
+    const dongList = dongs.length > 0 ? dongs.join(', ') : '(district-wide)';
+    console.log(`\n🏘️ MOLIT Multifamily Wolse API - ${dongs.length > 0 ? 'Multi-Dong' : 'District-Wide'} Query:`);
+    console.log(`   lawdCd: "${lawdCd}", dongs: ${dongs.length > 0 ? `[${dongList}]` : dongList}`);
     console.log(`   Period: ${monthsBack} months, Area tolerance: ±${(areaToleranceRatio * 100).toFixed(0)}%`);
 
     const transactions: WolseTransaction[] = [];
@@ -320,12 +320,15 @@ export class MolitWolseAPI {
       try {
         const monthData = await this.getMultifamilyWolseTransactions(lawdCd, yearMonth);
 
-        // Filter by any of the dongs and area
+        // Filter by dongs (if specified) and area
         const filtered = monthData.filter(t => {
-          const dongMatches = dongs.some(dong =>
-            t.legalDong === dong || t.legalDong.includes(dong)
-          );
-          if (!dongMatches) return false;
+          // If dongs specified, filter by dong; otherwise district-wide (no dong filter)
+          if (dongs.length > 0) {
+            const dongMatches = dongs.some(dong =>
+              t.legalDong === dong || t.legalDong.includes(dong)
+            );
+            if (!dongMatches) return false;
+          }
 
           if (area !== undefined) {
             const areaTolerance = area * areaToleranceRatio;
