@@ -334,7 +334,7 @@ function parseSectionB(section: CodefRegistrationSection, result: ExcelDeunggibu
           }
         }
       }
-      if (purpose.includes('전세권') || purpose.includes('임차권')) {
+      if (purpose.includes('전세권') || purpose.includes('임차권') || purpose.includes('주택임차권')) {
         const rankMatch = purpose.match(/(\d+)번/);
         if (rankMatch) {
           const cancelled = result.jeonseRights.find(j => j.rank === parseInt(rankMatch[1]));
@@ -359,7 +359,8 @@ function parseSectionB(section: CodefRegistrationSection, result: ExcelDeunggibu
 
     // Jeonse rights and lease rights (only new registrations, not cancellations)
     // 전세권설정 = Jeonse right, 임차권등기/임차권설정 = Lease right
-    if (purpose.includes('전세권설정') || purpose.includes('임차권등기') || purpose.includes('임차권설정')) {
+    // 주택임차권 = Housing lease right (court-ordered lease registration)
+    if (purpose.includes('전세권설정') || purpose.includes('임차권등기') || purpose.includes('임차권설정') || purpose.includes('주택임차권')) {
       jeonseRank++;
       const jeonse = parseJeonseFromRow(cols, jeonseRank, isCancelled, purpose);
       if (jeonse) {
@@ -541,6 +542,8 @@ function parseJeonseFromRow(
       type = '임차권등기';
     } else if (purpose.includes('임차권설정')) {
       type = '임차권설정';
+    } else if (purpose.includes('주택임차권')) {
+      type = '주택임차권';
     }
   }
 
