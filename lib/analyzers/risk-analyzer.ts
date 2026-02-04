@@ -847,13 +847,15 @@ export class RiskAnalyzer {
       const totalAmount = deunggibu.jeonseRights.reduce((sum, j) => sum + j.amount, 0);
 
       // Separate by type for better labeling
-      const jeonseRights = deunggibu.jeonseRights.filter(j => j.type === '전세권');
-      const leaseRights = deunggibu.jeonseRights.filter(j => j.type === '임차권설정' || j.type === '임차권등기' || j.type === '임차권등기명령');
+      const jeonseRights = deunggibu.jeonseRights.filter(j => j.type === '전세권' || j.type === '전세권설정');
+      const leaseRights = deunggibu.jeonseRights.filter(j =>
+        j.type === '임차권설정' || j.type === '임차권등기' || j.type === '임차권등기명령' || j.type === '주택임차권'
+      );
 
       // Build list without tenant names
       const rightsList = deunggibu.jeonseRights.map((j, idx) => {
         let typeLabel = '전세권';
-        if (j.type === '임차권설정') typeLabel = '임차권';
+        if (j.type === '임차권설정' || j.type === '주택임차권') typeLabel = '임차권';
         else if (j.type === '임차권등기' || j.type === '임차권등기명령') typeLabel = '임차권등기';
 
         return `#${idx + 1}: ₩${(j.amount / 100000000).toFixed(1)}억 (${typeLabel})`;

@@ -116,7 +116,7 @@ export default function RiskAnalysisSection({
   const recalculatedLtvScore = calculateLtvScore(calculatedLtv);
 
   // Filter out property-value-dependent risks and regenerate them based on tier selection
-  const valueBasedRiskTypes = ['critical_ltv', 'high_ltv', 'elevated_ltv', 'high_deposit_ratio'];
+  const valueBasedRiskTypes = ['critical_ltv', 'high_ltv', 'elevated_ltv', 'high_deposit_ratio', 'high_debt'];
   const nonValueBasedRisks = risks.filter(r => !valueBasedRiskTypes.includes(r.type));
 
   // Generate dynamic LTV risk based on calculated LTV
@@ -162,11 +162,34 @@ export default function RiskAnalysisSection({
     return null;
   })();
 
+  // Generate dynamic high debt risk based on selected tier's property value
+  const dynamicHighDebtRisk: RiskItem | null = (() => {
+    if (displayPropertyValue <= 0 || metrics.totalDebt <= 0) return null;
+    const debtRatio = (metrics.totalDebt / displayPropertyValue) * 100;
+    if (debtRatio > 70) {
+      return {
+        type: 'high_debt',
+        severity: 'HIGH',
+        description: `Existing debt is ${formatAmount(metrics.totalDebt)} (${debtRatio.toFixed(1)}% of property value). High risk of foreclosure.`,
+        category: 'debt' as const,
+      };
+    } else if (debtRatio > 50) {
+      return {
+        type: 'high_debt',
+        severity: 'MEDIUM',
+        description: `Existing debt is ${formatAmount(metrics.totalDebt)} (${debtRatio.toFixed(1)}% of property value). Moderate debt level.`,
+        category: 'debt' as const,
+      };
+    }
+    return null;
+  })();
+
   // Combine non-value-based risks with dynamic risks
   const displayRisks = [
     ...nonValueBasedRisks,
     ...(dynamicLtvRisk ? [dynamicLtvRisk] : []),
     ...(dynamicDepositRatioRisk ? [dynamicDepositRatioRisk] : []),
+    ...(dynamicHighDebtRisk ? [dynamicHighDebtRisk] : []),
   ];
 
   // Recalculate overall score and risk level using the updated risks
@@ -314,7 +337,12 @@ export default function RiskAnalysisSection({
 
           {/* Legal */}
           {(() => {
-            const legalIssueCount = risks.filter(r => r.category === 'legal').length;
+            // Count legal issues but exclude existing tenant claims (jeonse/lease rights)
+            // Those are separate tenant rights, not legal problems like seizures/auctions
+            const tenantClaimTypes = ['existing_jeonse', 'existing_lease', 'existing_jeonse_lease'];
+            const legalIssueCount = risks.filter(r =>
+              r.category === 'legal' && !tenantClaimTypes.includes(r.type)
+            ).length;
             return (
               <div className="text-center p-4 sm:p-5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 transition-all duration-200 cursor-default">
                 <div className="flex items-center justify-center gap-1.5 mb-2">
