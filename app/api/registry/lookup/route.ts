@@ -1,9 +1,12 @@
 /**
  * POST /api/registry/lookup
  *
- * Fetches 등기부등본 (Property Registry) using CODEF API.
+ * Fetches 등기부등본 (Property Registry) using CODEF or APick API.
  *
  * CODEF returns structured JSON directly (~10s response time).
+ * APick returns Excel file (~60-90s response time).
+ *
+ * API provider is configurable via REGISTRY_API_PROVIDER env variable.
  *
  * Request Body:
  * - address: string (full property address including unit number)
@@ -13,19 +16,24 @@
  * Response:
  * - success: boolean
  * - documentId?: string (for calling /api/documents/parse)
- * - format?: 'json'
- * - parsedData?: object (CODEF pre-parsed data)
- * - source?: 'codef'
+ * - format?: 'json' | 'excel'
+ * - parsedData?: object (parsed data)
+ * - source?: 'codef' | 'apick'
  * - error?: string
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { CodefAPI } from '@/lib/apis/codef';
+import { ApickAPI } from '@/lib/apis/apick';
 import { parseCodefRegistryData } from '@/lib/analyzers/codef-deunggibu-parser';
+import { parseDeunggibuExcel } from '@/lib/analyzers/excel-deunggibu-parser';
 import { createServiceRoleClient } from '@/lib/supabase-server';
 
-// CODEF is fast (~10s)
-export const maxDuration = 60;
+// API Provider: 'codef' (when subscription active) or 'apick' (fallback)
+const REGISTRY_API_PROVIDER = process.env.REGISTRY_API_PROVIDER || 'apick';
+
+// APick needs more time (~60-90s), CODEF is fast (~10s)
+export const maxDuration = 120;
 
 const supabase = createServiceRoleClient();
 
@@ -90,9 +98,9 @@ interface RegistryLookupRequest {
 interface RegistryLookupResponse {
   success: boolean;
   documentId?: string;
-  format?: 'json';
+  format?: 'json' | 'excel';
   parsedData?: any;
-  source?: 'codef';
+  source?: 'codef' | 'apick';
   error?: string;
 }
 
@@ -121,6 +129,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
     console.log(`[RegistryLookup] Starting lookup for: ${body.address || `${body.addr_sido} ${body.addr_sigungu} ${body.addr_dong}`}`);
     console.log(`[RegistryLookup] Analysis ID: ${body.analysisId}`);
     console.log(`[RegistryLookup] Type: ${propertyType}`);
+    console.log(`[RegistryLookup] API Provider: ${REGISTRY_API_PROVIDER}`);
     if (hasStructuredAddress) {
       console.log(`[RegistryLookup] Structured: sido=${body.addr_sido}, sigungu=${body.addr_sigungu}, dong=${body.addr_dong}, lot=${body.addr_lotNumber}, building=${body.buildingName}, 동=${body.dong}, 호=${body.ho}, 층=${body.floor}`);
     }
@@ -131,26 +140,54 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       .update({ status: 'processing' })
       .eq('id', body.analysisId);
 
-    // Use CODEF API for registry lookup
-    const codefResult = await fetchViaCodef({
-      address: body.address,
-      addr_sido: body.addr_sido,
-      addr_sigungu: body.addr_sigungu,
-      addr_dong: body.addr_dong,
-      addr_lotNumber: body.addr_lotNumber,
-      buildingName: body.buildingName,
-      dong: body.dong,
-      ho: body.ho,
-      floor: body.floor,
-    }, propertyType, body.analysisId);
+    // Check CODEF credentials availability
+    const hasCodefCredentials = !!(
+      process.env.CODEF_CLIENT_ID &&
+      process.env.CODEF_CLIENT_SECRET &&
+      process.env.CODEF_PUBLIC_KEY
+    );
 
-    // If CODEF failed, mark analysis as failed with error message
-    if (!codefResult.success && codefResult.error) {
-      console.log(`[RegistryLookup] CODEF failed, marking analysis as failed`);
-      console.log(`[RegistryLookup] Error: ${codefResult.error}`);
+    // Select API provider based on config and credentials
+    let result: RegistryLookupResponse;
+
+    if (REGISTRY_API_PROVIDER === 'codef' && hasCodefCredentials) {
+      console.log('[RegistryLookup] Using CODEF API');
+      result = await fetchViaCodef({
+        address: body.address,
+        addr_sido: body.addr_sido,
+        addr_sigungu: body.addr_sigungu,
+        addr_dong: body.addr_dong,
+        addr_lotNumber: body.addr_lotNumber,
+        buildingName: body.buildingName,
+        dong: body.dong,
+        ho: body.ho,
+        floor: body.floor,
+      }, propertyType, body.analysisId);
+    } else {
+      // Use APick: Build combined address from structured params if needed
+      let combinedAddress = body.address || '';
+      if (!combinedAddress && hasStructuredAddress) {
+        combinedAddress = [
+          body.addr_sido,
+          body.addr_sigungu,
+          body.addr_dong,
+          body.addr_lotNumber,
+          body.buildingName,
+          body.dong && `${body.dong}동`,
+          body.ho && `${body.ho}호`,
+        ].filter(Boolean).join(' ');
+      }
+      console.log(`[RegistryLookup] Using APick API with address: ${combinedAddress}`);
+      result = await fetchViaApick(combinedAddress, propertyType, body.analysisId);
+    }
+
+    // If lookup failed, mark analysis as failed with error message
+    if (!result.success && result.error) {
+      console.log(`[RegistryLookup] ${result.source || 'API'} failed, marking analysis as failed`);
+      console.log(`[RegistryLookup] Error: ${result.error}`);
 
       // Translate error message to English for user display
-      const translatedError = translateCodefError(codefResult.error);
+      const translatedError = translateCodefError(result.error);
 
       // Update analysis status to failed with error message
       const { error: updateError } = await supabase
@@ -160,7 +197,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
           deunggibu_data: {
             error: translatedError,
             errorCode: 'REGISTRY_LOOKUP_FAILED',
-            originalError: codefResult.error, // Keep original for debugging
+            originalError: result.error, // Keep original for debugging
             failedAt: new Date().toISOString()
           }
         })
@@ -171,7 +208,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
       }
     }
 
-    return NextResponse.json(codefResult);
+    return NextResponse.json(result);
 
   } catch (error: any) {
     console.error('[RegistryLookup] Unexpected error:', error);
@@ -359,5 +396,107 @@ async function fetchViaCodef(
     format: 'json',
     parsedData,
     source: 'codef',
+  };
+}
+
+/**
+ * Fetch registry via APick API (fallback - Excel format)
+ *
+ * APick returns an Excel file which we parse into ExcelDeunggibuData format.
+ * Takes longer (~60-90s) but is more cost-effective at low traffic.
+ */
+async function fetchViaApick(
+  address: string,
+  type: '토지' | '집합건물' | '건물',
+  analysisId: string
+): Promise<RegistryLookupResponse> {
+  // Check if APick API key is configured
+  if (!process.env.APICK_API_KEY) {
+    return {
+      success: false,
+      source: 'apick',
+      error: 'APick API key not configured (missing APICK_API_KEY)',
+    };
+  }
+
+  console.log(`[RegistryLookup] Attempting APick lookup for: ${address}`);
+
+  const apickAPI = new ApickAPI();
+
+  // Request registry with Excel format for parsing
+  const registryResult = await apickAPI.getRegistry(address, type, 'excel');
+
+  if (!registryResult.success || !registryResult.fileBuffer) {
+    return {
+      success: false,
+      source: 'apick',
+      error: registryResult.error || 'APick lookup failed',
+    };
+  }
+
+  console.log(`[RegistryLookup] APick returned Excel file, size: ${registryResult.fileBuffer.length} bytes`);
+
+  // Parse Excel buffer into ExcelDeunggibuData format
+  const parsedData = parseDeunggibuExcel(registryResult.fileBuffer);
+
+  console.log(`[RegistryLookup] APick parsing complete:`, {
+    address: parsedData.address,
+    mortgages: parsedData.mortgages.length,
+    activeMortgages: parsedData.activeMortgages.length,
+    totalMortgage: parsedData.totalMortgageAmount,
+  });
+
+  // Upload Excel file to Supabase storage
+  const filename = `deunggibu-apick-${Date.now()}.xlsx`;
+  const storagePath = `deunggibu/${analysisId}/${filename}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('documents')
+    .upload(storagePath, registryResult.fileBuffer, {
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error('[RegistryLookup] Storage upload failed:', uploadError);
+    // Continue anyway - we have the parsed data
+  }
+
+  // Store document record in database
+  const { data: insertData, error: insertError } = await supabase
+    .from('uploaded_documents')
+    .insert({
+      analysis_id: analysisId,
+      document_type: 'deunggibu-apick',
+      original_filename: filename,
+      file_path: uploadError ? '' : storagePath,
+      parsed_data: {
+        ...parsedData,
+        apickIcId: registryResult.ic_id,
+        apickCost: registryResult.cost,
+        extractedAt: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (insertError || !insertData) {
+    console.error('[RegistryLookup] Database insert failed:', insertError);
+    return {
+      success: false,
+      source: 'apick',
+      error: 'Failed to register document',
+    };
+  }
+
+  console.log(`[RegistryLookup] APick document registered: ${insertData.id}`);
+
+  return {
+    success: true,
+    documentId: insertData.id,
+    format: 'excel',
+    parsedData,
+    source: 'apick',
   };
 }
