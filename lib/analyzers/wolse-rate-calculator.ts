@@ -224,10 +224,12 @@ export class WolseRateCalculator {
     let dataSource = 'building';
     let confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT' = 'HIGH';
     let usedAdjacentDongs: string[] = [];  // Track which adjacent dongs were used
+    let usedAreaTolerance = 0.10;  // Track which area tolerance was used
 
     // For multifamily (연립/다세대), always start with dong-level data
     // Building names are unreliable in MOLIT data for these property types
     if (buildingType === 'multifamily') {
+      usedAreaTolerance = 0.10;  // Reset for this property type
       console.log(`\n🏘️ Multifamily property: Using dong-level data directly`);
       transactions = await this.wolseAPI.getRecentWolseForMultifamilyByDong(
         lawdCd,
@@ -253,8 +255,28 @@ export class WolseRateCalculator {
             0.10  // ±10% area tolerance
           );
           usedAdjacentDongs = adjacentDongs;
-          console.log(`   → After expansion: ${transactions.length} transactions`);
+          console.log(`   → After dong expansion: ${transactions.length} transactions`);
           confidenceLevel = transactions.length >= 10 ? 'LOW' : 'INSUFFICIENT';
+        }
+
+        // If still insufficient, widen area tolerance progressively
+        // This handles unusual property sizes (very large/small units)
+        const areaToleranсes = [0.20, 0.30];
+        for (const tolerance of areaToleranсes) {
+          if (transactions.length < 5) {
+            console.log(`\n⚠️ Still only ${transactions.length} transactions. Widening area tolerance to ±${tolerance * 100}%...`);
+            const searchDongs = usedAdjacentDongs.length > 0 ? [dong, ...usedAdjacentDongs] : [dong];
+            transactions = await this.wolseAPI.getRecentWolseForMultifamilyByDongs(
+              lawdCd,
+              searchDongs,
+              exclusiveArea,
+              monthsBack,
+              tolerance
+            );
+            usedAreaTolerance = tolerance;
+            console.log(`   → After ±${tolerance * 100}% tolerance: ${transactions.length} transactions`);
+            confidenceLevel = 'INSUFFICIENT';  // Lower confidence when using wider tolerance
+          }
         }
       }
     } else if (buildingType === 'officetel') {
@@ -361,15 +383,16 @@ export class WolseRateCalculator {
     }
 
     // Generate data source note
-    const getDataSourceNote = (source: string, count: number, cleanCount: number, outliers: number, building: string, dongName: string, adjacentDongs: string[]): string => {
+    const getDataSourceNote = (source: string, count: number, cleanCount: number, outliers: number, building: string, dongName: string, adjacentDongs: string[], areaTolerance: number): string => {
       const outlierNote = outliers > 0 ? ` (${outliers} outliers removed)` : '';
+      const toleranceNote = areaTolerance > 0.10 ? ` [±${Math.round(areaTolerance * 100)}% area tolerance]` : '';
       if (source === 'building') {
         return `Based on ${cleanCount} transactions from "${building}" building${outlierNote}`;
       } else if (source === 'dong') {
         if (adjacentDongs.length > 0) {
-          return `Based on ${cleanCount} transactions from ${dongName} + adjacent areas (${adjacentDongs.join(', ')})${outlierNote}`;
+          return `Based on ${cleanCount} transactions from ${dongName} + adjacent areas (${adjacentDongs.join(', ')})${toleranceNote}${outlierNote}`;
         }
-        return `Based on ${cleanCount} transactions from ${dongName} area${outlierNote}`;
+        return `Based on ${cleanCount} transactions from ${dongName} area${toleranceNote}${outlierNote}`;
       }
       return `Based on ${cleanCount} transactions from the district${outlierNote}`;
     };
@@ -391,7 +414,7 @@ export class WolseRateCalculator {
         rate75thPercentile: baselineRate || LEGAL_CAP,
         confidenceLevel: 'LOW',
         dataSource: dataSource as 'building' | 'dong' | 'district',
-        dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs) + ' (no valid rate pairs for comparison)',
+        dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs, usedAreaTolerance) + ' (no valid rate pairs for comparison)',
         contractCount: transactions.length,
         cleanTransactionCount: cleanTransactions.length,
         outliersRemoved,
@@ -430,7 +453,7 @@ export class WolseRateCalculator {
       rate75thPercentile: marketRateStats.percentile75,
       confidenceLevel,
       dataSource: dataSource as 'building' | 'dong' | 'district',
-      dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs),
+      dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs, usedAreaTolerance),
       contractCount: transactions.length,
       cleanTransactionCount: cleanTransactions.length,
       outliersRemoved,
