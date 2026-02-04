@@ -135,7 +135,7 @@ export class WolsePriceAnalyzer {
    */
   private removeOutliers(
     transactions: WolseTransaction[],
-    dataSource: 'building' | 'dong' | 'district' = 'building'
+    dataSource: 'building' | 'dong' | 'district' | 'adjacent_districts' = 'building'
   ): {
     clean: WolseTransaction[];
     removed: WolseTransaction[];
@@ -410,7 +410,7 @@ export class WolsePriceAnalyzer {
     quote: WolseQuote,
     transactions: WolseTransaction[],
     marketRate: number,
-    dataSource: 'building' | 'dong' | 'district' = 'building',
+    dataSource: 'building' | 'dong' | 'district' | 'adjacent_districts' = 'building',
     timeAdjustedTransactions?: TimeAdjustedTransaction[],
     trend?: { direction: 'RISING' | 'LIKELY_RISING' | 'STABLE' | 'LIKELY_DECLINING' | 'DECLINING'; slopePerMonth: number; pValue: number }
   ): UserRentComparison {

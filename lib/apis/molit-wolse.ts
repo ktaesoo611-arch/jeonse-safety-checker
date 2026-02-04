@@ -352,6 +352,48 @@ export class MolitWolseAPI {
     });
   }
 
+  /**
+   * Get recent wolse transactions for multifamily across multiple districts
+   * Used for adjacent district expansion when target district has insufficient data
+   */
+  async getRecentWolseForMultifamilyByDistricts(
+    districts: { code: string; name: string }[],
+    area?: number,
+    monthsBack: number = 12,
+    areaToleranceRatio: number = 0.10
+  ): Promise<(WolseTransaction & { district?: string })[]> {
+    console.log(`\n🌐 MOLIT Multifamily Wolse API - Multi-District Query:`);
+    console.log(`   Districts: ${districts.map(d => d.name).join(', ')}`);
+    console.log(`   Period: ${monthsBack} months, Area tolerance: ±${(areaToleranceRatio * 100).toFixed(0)}%`);
+
+    const allTransactions: (WolseTransaction & { district?: string })[] = [];
+
+    for (const district of districts) {
+      const districtTxns = await this.getRecentWolseForMultifamilyByDongs(
+        district.code,
+        [],  // District-wide (no dong filter)
+        area,
+        monthsBack,
+        areaToleranceRatio
+      );
+
+      // Add district name to each transaction for tracking
+      const txnsWithDistrict = districtTxns.map(t => ({ ...t, district: district.name }));
+      allTransactions.push(...txnsWithDistrict);
+
+      console.log(`   → ${district.name}: ${districtTxns.length} transactions`);
+    }
+
+    console.log(`   → Total across all districts: ${allTransactions.length} transactions`);
+
+    // Sort by date (newest first)
+    return allTransactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
   // ============ 오피스텔 (Officetel) Methods ============
 
   /**

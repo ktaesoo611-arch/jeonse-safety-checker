@@ -418,7 +418,7 @@ export interface WolseAnalysisResult {
   };
   legalRate: number;
   confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
-  dataSource?: 'building' | 'dong' | 'district';
+  dataSource?: 'building' | 'dong' | 'district' | 'adjacent_districts';
   dataSourceNote?: string;  // Explains where data came from
   contractCount: number;
   cleanTransactionCount?: number;  // Transactions after outlier removal

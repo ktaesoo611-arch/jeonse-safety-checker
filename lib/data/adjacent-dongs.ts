@@ -135,3 +135,159 @@ export function getExpandedDongs(district: string, dong: string): string[] {
   const adjacent = getAdjacentDongs(district, dong);
   return [dong, ...adjacent];
 }
+
+/**
+ * Adjacent District Mappings for Seoul
+ *
+ * Used for expanding search radius when district-level data is still insufficient.
+ * Adjacent districts share similar market characteristics and geographic proximity.
+ *
+ * Format: { [district]: { name: string, code: string }[] }
+ */
+export const ADJACENT_DISTRICTS: Record<string, { name: string; code: string }[]> = {
+  '마포구': [
+    { name: '서대문구', code: '11410' },
+    { name: '용산구', code: '11170' },
+    { name: '영등포구', code: '11560' },
+    { name: '은평구', code: '11380' },
+  ],
+  '강남구': [
+    { name: '서초구', code: '11650' },
+    { name: '송파구', code: '11710' },
+    { name: '성동구', code: '11200' },
+    { name: '광진구', code: '11215' },
+  ],
+  '서초구': [
+    { name: '강남구', code: '11680' },
+    { name: '동작구', code: '11590' },
+    { name: '관악구', code: '11620' },
+    { name: '송파구', code: '11710' },
+  ],
+  '송파구': [
+    { name: '강남구', code: '11680' },
+    { name: '강동구', code: '11740' },
+    { name: '서초구', code: '11650' },
+    { name: '광진구', code: '11215' },
+  ],
+  '용산구': [
+    { name: '마포구', code: '11440' },
+    { name: '성동구', code: '11200' },
+    { name: '동작구', code: '11590' },
+    { name: '중구', code: '11140' },
+  ],
+  '성동구': [
+    { name: '광진구', code: '11215' },
+    { name: '동대문구', code: '11230' },
+    { name: '중구', code: '11140' },
+    { name: '용산구', code: '11170' },
+  ],
+  '광진구': [
+    { name: '성동구', code: '11200' },
+    { name: '송파구', code: '11710' },
+    { name: '강동구', code: '11740' },
+    { name: '동대문구', code: '11230' },
+  ],
+  '영등포구': [
+    { name: '마포구', code: '11440' },
+    { name: '동작구', code: '11590' },
+    { name: '구로구', code: '11530' },
+    { name: '양천구', code: '11470' },
+  ],
+  '동작구': [
+    { name: '영등포구', code: '11560' },
+    { name: '서초구', code: '11650' },
+    { name: '관악구', code: '11620' },
+    { name: '용산구', code: '11170' },
+  ],
+  '관악구': [
+    { name: '동작구', code: '11590' },
+    { name: '서초구', code: '11650' },
+    { name: '금천구', code: '11545' },
+    { name: '구로구', code: '11530' },
+  ],
+  '서대문구': [
+    { name: '마포구', code: '11440' },
+    { name: '은평구', code: '11380' },
+    { name: '종로구', code: '11110' },
+    { name: '중구', code: '11140' },
+  ],
+  '은평구': [
+    { name: '마포구', code: '11440' },
+    { name: '서대문구', code: '11410' },
+    { name: '종로구', code: '11110' },
+  ],
+  '종로구': [
+    { name: '서대문구', code: '11410' },
+    { name: '은평구', code: '11380' },
+    { name: '중구', code: '11140' },
+    { name: '성북구', code: '11290' },
+  ],
+  '중구': [
+    { name: '종로구', code: '11110' },
+    { name: '용산구', code: '11170' },
+    { name: '성동구', code: '11200' },
+    { name: '동대문구', code: '11230' },
+  ],
+  '동대문구': [
+    { name: '성동구', code: '11200' },
+    { name: '광진구', code: '11215' },
+    { name: '중랑구', code: '11260' },
+    { name: '성북구', code: '11290' },
+  ],
+  '성북구': [
+    { name: '종로구', code: '11110' },
+    { name: '동대문구', code: '11230' },
+    { name: '강북구', code: '11305' },
+    { name: '노원구', code: '11350' },
+  ],
+  '강북구': [
+    { name: '성북구', code: '11290' },
+    { name: '도봉구', code: '11320' },
+    { name: '노원구', code: '11350' },
+  ],
+  '도봉구': [
+    { name: '강북구', code: '11305' },
+    { name: '노원구', code: '11350' },
+  ],
+  '노원구': [
+    { name: '도봉구', code: '11320' },
+    { name: '강북구', code: '11305' },
+    { name: '중랑구', code: '11260' },
+  ],
+  '중랑구': [
+    { name: '동대문구', code: '11230' },
+    { name: '광진구', code: '11215' },
+    { name: '노원구', code: '11350' },
+  ],
+  '강동구': [
+    { name: '송파구', code: '11710' },
+    { name: '광진구', code: '11215' },
+  ],
+  '양천구': [
+    { name: '영등포구', code: '11560' },
+    { name: '구로구', code: '11530' },
+    { name: '강서구', code: '11500' },
+  ],
+  '강서구': [
+    { name: '양천구', code: '11470' },
+    { name: '구로구', code: '11530' },
+  ],
+  '구로구': [
+    { name: '영등포구', code: '11560' },
+    { name: '금천구', code: '11545' },
+    { name: '양천구', code: '11470' },
+    { name: '관악구', code: '11620' },
+  ],
+  '금천구': [
+    { name: '구로구', code: '11530' },
+    { name: '관악구', code: '11620' },
+  ],
+};
+
+/**
+ * Get adjacent districts for a given district
+ * Returns empty array if no adjacency mapping exists
+ */
+export function getAdjacentDistricts(district: string): { name: string; code: string }[] {
+  return ADJACENT_DISTRICTS[district] || [];
+}

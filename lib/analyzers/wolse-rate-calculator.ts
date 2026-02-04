@@ -1,6 +1,6 @@
 import { MolitWolseAPI, getDistrictCode } from '../apis/molit-wolse';
 import { WolseTransaction, WolseMarketRate, BuildingType } from '../types';
-import { getAdjacentDongs } from '../data/adjacent-dongs';
+import { getAdjacentDongs, getAdjacentDistricts } from '../data/adjacent-dongs';
 
 /**
  * Current legal conversion rate limits (Housing Lease Protection Act)
@@ -39,7 +39,7 @@ export interface MarketRateResult {
   rate25thPercentile: number;
   rate75thPercentile: number;
   confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
-  dataSource: 'building' | 'dong' | 'district';
+  dataSource: 'building' | 'dong' | 'district' | 'adjacent_districts';
   dataSourceNote: string;
   contractCount: number;
   cleanTransactionCount: number;
@@ -83,7 +83,7 @@ export class WolseRateCalculator {
    */
   private removeOutliers(
     transactions: WolseTransaction[],
-    dataSource: 'building' | 'dong' | 'district' = 'building'
+    dataSource: 'building' | 'dong' | 'district' | 'adjacent_districts' = 'building'
   ): {
     clean: WolseTransaction[];
     removed: WolseTransaction[];
@@ -97,7 +97,7 @@ export class WolseRateCalculator {
     const MAX_DEPOSIT_RATIO = 0.80; // Max deposit is 80% of property value
     const MIN_IQR_PERCENT = 0.30; // 30% of median for IQR fallback
 
-    // Use tighter bounds for dong/district level data (higher variance)
+    // Use tighter bounds for dong/district/adjacent_districts level data (higher variance)
     const multiplier = dataSource === 'building' ? 1.5 : 1.0;
 
     // Step 1: Estimate property value from transactions
@@ -221,9 +221,10 @@ export class WolseRateCalculator {
     console.log(`   District: ${district} (${lawdCd})`);
 
     let transactions: WolseTransaction[] = [];
-    let dataSource = 'building';
+    let dataSource: 'building' | 'dong' | 'district' | 'adjacent_districts' = 'building';
     let confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT' = 'HIGH';
     let usedAdjacentDongs: string[] = [];  // Track which adjacent dongs were used
+    let usedAdjacentDistricts: string[] = [];  // Track which adjacent districts were used
 
     // For multifamily (연립/다세대), always start with dong-level data
     // Building names are unreliable in MOLIT data for these property types
@@ -272,6 +273,32 @@ export class WolseRateCalculator {
           dataSource = 'district';
           console.log(`   → After district expansion: ${transactions.length} transactions`);
           confidenceLevel = transactions.length >= 5 ? 'LOW' : 'INSUFFICIENT';
+
+          // 4th fallback: If still insufficient, expand to adjacent districts
+          // This preserves area tolerance (±10%) while expanding geographic scope
+          if (transactions.length < 5) {
+            const adjacentDistricts = getAdjacentDistricts(district);
+            if (adjacentDistricts.length > 0) {
+              console.log(`\n⚠️ Still only ${transactions.length} transactions. Expanding to adjacent districts: [${adjacentDistricts.map(d => d.name).join(', ')}]`);
+
+              // Include target district + adjacent districts
+              const allDistricts = [
+                { name: district, code: lawdCd },
+                ...adjacentDistricts
+              ];
+
+              transactions = await this.wolseAPI.getRecentWolseForMultifamilyByDistricts(
+                allDistricts,
+                exclusiveArea,
+                monthsBack,
+                0.10  // Keep strict ±10% area tolerance
+              );
+              dataSource = 'adjacent_districts';
+              usedAdjacentDistricts = adjacentDistricts.map(d => d.name);
+              console.log(`   → After adjacent district expansion: ${transactions.length} transactions`);
+              confidenceLevel = transactions.length >= 5 ? 'LOW' : 'INSUFFICIENT';
+            }
+          }
         }
       }
     } else if (buildingType === 'officetel') {
@@ -346,7 +373,7 @@ export class WolseRateCalculator {
         rate25thPercentile: LEGAL_CAP,
         rate75thPercentile: LEGAL_CAP,
         confidenceLevel: 'INSUFFICIENT',
-        dataSource: dataSource as 'building' | 'dong' | 'district',
+        dataSource: dataSource as 'building' | 'dong' | 'district' | 'adjacent_districts',
         dataSourceNote: `Insufficient data: only ${transactions.length} transactions found in ${dong} area`,
         contractCount: transactions.length,
         cleanTransactionCount: transactions.length,
@@ -367,7 +394,7 @@ export class WolseRateCalculator {
     // Use tighter bounds (1.0×IQR) for dong/district level data
     const { clean: cleanTransactions, removed: outlierTransactions } = this.removeOutliers(
       transactions,
-      dataSource as 'building' | 'dong' | 'district'
+      dataSource as 'building' | 'dong' | 'district' | 'adjacent_districts'
     );
     const outliersRemoved = outlierTransactions.length;
     console.log(`\n🔍 Outlier removal: ${transactions.length} → ${cleanTransactions.length} (${outliersRemoved} outliers removed)`);
@@ -378,7 +405,7 @@ export class WolseRateCalculator {
     }
 
     // Generate data source note
-    const getDataSourceNote = (source: string, count: number, cleanCount: number, outliers: number, building: string, dongName: string, adjacentDongs: string[], districtName: string): string => {
+    const getDataSourceNote = (source: string, count: number, cleanCount: number, outliers: number, building: string, dongName: string, adjacentDongs: string[], districtName: string, adjacentDistricts: string[]): string => {
       const outlierNote = outliers > 0 ? ` (${outliers} outliers removed)` : '';
       if (source === 'building') {
         return `Based on ${cleanCount} transactions from "${building}" building${outlierNote}`;
@@ -389,6 +416,8 @@ export class WolseRateCalculator {
         return `Based on ${cleanCount} transactions from ${dongName} area${outlierNote}`;
       } else if (source === 'district') {
         return `Based on ${cleanCount} transactions from ${districtName} district (area-matched)${outlierNote}`;
+      } else if (source === 'adjacent_districts') {
+        return `Based on ${cleanCount} transactions from ${districtName} + adjacent districts (${adjacentDistricts.join(', ')})${outlierNote}`;
       }
       return `Based on ${cleanCount} transactions${outlierNote}`;
     };
@@ -409,8 +438,8 @@ export class WolseRateCalculator {
         rate25thPercentile: baselineRate || LEGAL_CAP,
         rate75thPercentile: baselineRate || LEGAL_CAP,
         confidenceLevel: 'LOW',
-        dataSource: dataSource as 'building' | 'dong' | 'district',
-        dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs, district) + ' (no valid rate pairs for comparison)',
+        dataSource: dataSource as 'building' | 'dong' | 'district' | 'adjacent_districts',
+        dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs, district, usedAdjacentDistricts) + ' (no valid rate pairs for comparison)',
         contractCount: transactions.length,
         cleanTransactionCount: cleanTransactions.length,
         outliersRemoved,
@@ -448,8 +477,8 @@ export class WolseRateCalculator {
       rate25thPercentile: marketRateStats.percentile25,
       rate75thPercentile: marketRateStats.percentile75,
       confidenceLevel,
-      dataSource: dataSource as 'building' | 'dong' | 'district',
-      dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs, district),
+      dataSource: dataSource as 'building' | 'dong' | 'district' | 'adjacent_districts',
+      dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs, district, usedAdjacentDistricts),
       contractCount: transactions.length,
       cleanTransactionCount: cleanTransactions.length,
       outliersRemoved,
