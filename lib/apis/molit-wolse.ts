@@ -281,8 +281,29 @@ export class MolitWolseAPI {
     monthsBack: number = 6,
     areaToleranceRatio: number = 0.1
   ): Promise<WolseTransaction[]> {
-    console.log(`\n🏘️ MOLIT Multifamily Wolse API - Dong-level Query:`);
-    console.log(`   lawdCd: "${lawdCd}", dong: "${dong}"`);
+    return this.getRecentWolseForMultifamilyByDongs(
+      lawdCd,
+      [dong],
+      area,
+      monthsBack,
+      areaToleranceRatio
+    );
+  }
+
+  /**
+   * Get recent wolse transactions for multiple dongs (for 연립/다세대)
+   * Used for adjacent dong expansion when target dong has insufficient data
+   */
+  async getRecentWolseForMultifamilyByDongs(
+    lawdCd: string,
+    dongs: string[],
+    area?: number,
+    monthsBack: number = 6,
+    areaToleranceRatio: number = 0.1
+  ): Promise<WolseTransaction[]> {
+    const dongList = dongs.join(', ');
+    console.log(`\n🏘️ MOLIT Multifamily Wolse API - Multi-Dong Query:`);
+    console.log(`   lawdCd: "${lawdCd}", dongs: [${dongList}]`);
     console.log(`   Period: ${monthsBack} months, Area tolerance: ±${(areaToleranceRatio * 100).toFixed(0)}%`);
 
     const transactions: WolseTransaction[] = [];
@@ -299,9 +320,11 @@ export class MolitWolseAPI {
       try {
         const monthData = await this.getMultifamilyWolseTransactions(lawdCd, yearMonth);
 
-        // Filter by dong and area
+        // Filter by any of the dongs and area
         const filtered = monthData.filter(t => {
-          const dongMatches = t.legalDong === dong || t.legalDong.includes(dong);
+          const dongMatches = dongs.some(dong =>
+            t.legalDong === dong || t.legalDong.includes(dong)
+          );
           if (!dongMatches) return false;
 
           if (area !== undefined) {

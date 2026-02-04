@@ -1,5 +1,6 @@
 import { MolitWolseAPI, getDistrictCode } from '../apis/molit-wolse';
 import { WolseTransaction, WolseMarketRate, BuildingType } from '../types';
+import { getAdjacentDongs } from '../data/adjacent-dongs';
 
 /**
  * Current legal conversion rate limits (Housing Lease Protection Act)
@@ -222,6 +223,7 @@ export class WolseRateCalculator {
     let transactions: WolseTransaction[] = [];
     let dataSource = 'building';
     let confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT' = 'HIGH';
+    let usedAdjacentDongs: string[] = [];  // Track which adjacent dongs were used
 
     // For multifamily (연립/다세대), always start with dong-level data
     // Building names are unreliable in MOLIT data for these property types
@@ -236,6 +238,25 @@ export class WolseRateCalculator {
       );
       dataSource = 'dong';
       confidenceLevel = transactions.length >= 10 ? 'MEDIUM' : 'LOW';
+
+      // If insufficient data, expand to adjacent dongs
+      if (transactions.length < 5) {
+        const adjacentDongs = getAdjacentDongs(district, dong);
+        if (adjacentDongs.length > 0) {
+          console.log(`\n⚠️ Only ${transactions.length} transactions in ${dong}. Expanding to adjacent dongs: [${adjacentDongs.join(', ')}]`);
+          const allDongs = [dong, ...adjacentDongs];
+          transactions = await this.wolseAPI.getRecentWolseForMultifamilyByDongs(
+            lawdCd,
+            allDongs,
+            exclusiveArea,
+            monthsBack,
+            0.10  // ±10% area tolerance
+          );
+          usedAdjacentDongs = adjacentDongs;
+          console.log(`   → After expansion: ${transactions.length} transactions`);
+          confidenceLevel = transactions.length >= 10 ? 'LOW' : 'INSUFFICIENT';
+        }
+      }
     } else if (buildingType === 'officetel') {
       // For officetel, try building-level first (reliable names), fallback to dong
       console.log(`\n🏢 Officetel property: Trying building-level data first`);
@@ -340,12 +361,15 @@ export class WolseRateCalculator {
     }
 
     // Generate data source note
-    const getDataSourceNote = (source: string, count: number, cleanCount: number, outliers: number, building: string, dongName: string): string => {
+    const getDataSourceNote = (source: string, count: number, cleanCount: number, outliers: number, building: string, dongName: string, adjacentDongs: string[]): string => {
       const outlierNote = outliers > 0 ? ` (${outliers} outliers removed)` : '';
       if (source === 'building') {
         return `Based on ${cleanCount} transactions from "${building}" building${outlierNote}`;
       } else if (source === 'dong') {
-        return `Based on ${cleanCount} transactions from ${dongName} area (building-specific data insufficient)${outlierNote}`;
+        if (adjacentDongs.length > 0) {
+          return `Based on ${cleanCount} transactions from ${dongName} + adjacent areas (${adjacentDongs.join(', ')})${outlierNote}`;
+        }
+        return `Based on ${cleanCount} transactions from ${dongName} area${outlierNote}`;
       }
       return `Based on ${cleanCount} transactions from the district${outlierNote}`;
     };
@@ -367,7 +391,7 @@ export class WolseRateCalculator {
         rate75thPercentile: baselineRate || LEGAL_CAP,
         confidenceLevel: 'LOW',
         dataSource: dataSource as 'building' | 'dong' | 'district',
-        dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong) + ' (no valid rate pairs for comparison)',
+        dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs) + ' (no valid rate pairs for comparison)',
         contractCount: transactions.length,
         cleanTransactionCount: cleanTransactions.length,
         outliersRemoved,
@@ -406,7 +430,7 @@ export class WolseRateCalculator {
       rate75thPercentile: marketRateStats.percentile75,
       confidenceLevel,
       dataSource: dataSource as 'building' | 'dong' | 'district',
-      dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong),
+      dataSourceNote: getDataSourceNote(dataSource, transactions.length, cleanTransactions.length, outliersRemoved, apartmentName, dong, usedAdjacentDongs),
       contractCount: transactions.length,
       cleanTransactionCount: cleanTransactions.length,
       outliersRemoved,
