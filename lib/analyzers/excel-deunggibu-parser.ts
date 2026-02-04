@@ -60,6 +60,7 @@ export interface ExcelDeunggibuData {
   area: number;  // 전용면적
   buildingStructure: string;
   totalFloors: number | null;
+  buildingYear?: number;  // Construction/registration year (from 표제부 접수일)
 
   // Ownership history
   currentOwner: OwnerInfo | null;

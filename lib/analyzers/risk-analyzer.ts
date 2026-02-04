@@ -1058,7 +1058,9 @@ export class RiskAnalyzer {
         typeLabel = '임차권등기 (Registered Lease Right)';
       } else if (jeonse.type === '임차권설정') {
         typeLabel = '임차권 (Lease Right)';
-      } else if (jeonse.type === '전세권') {
+      } else if (jeonse.type === '주택임차권') {
+        typeLabel = '주택임차권 (Housing Lease Right)';
+      } else if (jeonse.type === '전세권' || jeonse.type === '전세권설정') {
         typeLabel = '전세권 (Jeonse Right)';
       }
 

@@ -131,12 +131,15 @@ export function parseCodefRegistryData(data: CodefRegistryData): ExcelDeunggibuD
   console.log('[CodefParser] Parsing complete:', {
     address: result.address,
     buildingName: result.buildingName,
+    buildingYear: result.buildingYear,
     area: result.area,
     currentOwner: result.currentOwner?.name,
     mortgages: result.mortgages.length,
     activeMortgages: result.activeMortgages.length,
     totalMortgage: result.totalMortgageAmount,
     jeonseRights: result.jeonseRights.length,
+    activeJeonseRights: result.activeJeonseRights.length,
+    totalJeonse: result.totalJeonseAmount,
     liens: result.liens.length,
     hasAuction: result.hasAuction,
     hasSeizure: result.hasSeizure,
@@ -163,6 +166,19 @@ function parseHeaderSection(section: CodefRegistrationSection, result: ExcelDeun
     // Extract unit info (건물번호, 건물내역)
     for (const row of dataRows) {
       const cols = getColumns(row);
+      // Column 1 = 접수 (reception date, often indicates building registration year)
+      // For the first registration entry, this is typically the construction/completion year
+      if (cols[1] && !result.buildingYear) {
+        const text = cleanText(cols[1]);
+        const yearMatch = text.match(/(\d{4})년/);
+        if (yearMatch) {
+          const year = parseInt(yearMatch[1]);
+          // Only accept years in reasonable range (1900-2030)
+          if (year >= 1900 && year <= 2030) {
+            result.buildingYear = year;
+          }
+        }
+      }
       // Column 2 = 건물번호 (e.g., "제1층 제104호")
       if (cols[2] && !result.unitNumber) {
         const text = cleanText(cols[2]);
@@ -518,8 +534,9 @@ function parseJeonseFromRow(
   const rightHolder = cleanText(cols[4] || '');
 
   // Extract amount - support both 전세금 (jeonse) and 임차보증금/보증금 (lease) patterns
+  // Note: Format can be "임차보증금 금 100,000,000원" with space between 금 and amount
   let amount = 0;
-  const amountMatch = rightHolder.match(/(?:전세금|임차보증금|보증금)\s*금?([\d,]+)원/);
+  const amountMatch = rightHolder.match(/(?:전세금|임차보증금|보증금)\s*금?\s*([\d,]+)원/);
   if (amountMatch) {
     amount = parseInt(amountMatch[1].replace(/,/g, ''));
   } else {
