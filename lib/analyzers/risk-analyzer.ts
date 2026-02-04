@@ -389,10 +389,8 @@ export class RiskAnalyzer {
     if (deunggibu.hasAdvanceNotice) score -= 15; // 예고등기
     if (deunggibu.hasUnregisteredLandRights) score -= 10; // 대지권미등기
 
-    // Liens (defensive check to prevent crash)
-    if (deunggibu.liens && Array.isArray(deunggibu.liens)) {
-      score -= deunggibu.liens.length * 25;
-    }
+    // NOTE: Liens (압류, 가압류, 가처분, 경매) are already penalized via their
+    // respective boolean flags above. No additional per-lien penalty needed.
 
     return Math.max(0, score);
   }

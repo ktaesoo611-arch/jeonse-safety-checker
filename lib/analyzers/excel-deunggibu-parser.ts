@@ -37,6 +37,7 @@ export interface JeonseInfo {
   endDate: string;
   status: 'active' | 'cancelled';
   cancellationDate: string | null;
+  type?: string;  // 전세권설정, 임차권등기, 임차권설정
 }
 
 export interface LienInfo {

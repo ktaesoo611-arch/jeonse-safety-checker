@@ -334,7 +334,7 @@ function parseSectionB(section: CodefRegistrationSection, result: ExcelDeunggibu
           }
         }
       }
-      if (purpose.includes('전세권')) {
+      if (purpose.includes('전세권') || purpose.includes('임차권')) {
         const rankMatch = purpose.match(/(\d+)번/);
         if (rankMatch) {
           const cancelled = result.jeonseRights.find(j => j.rank === parseInt(rankMatch[1]));
@@ -357,10 +357,11 @@ function parseSectionB(section: CodefRegistrationSection, result: ExcelDeunggibu
       continue;
     }
 
-    // Jeonse rights (only new registrations, not cancellations)
-    if (purpose.includes('전세권설정')) {
+    // Jeonse rights and lease rights (only new registrations, not cancellations)
+    // 전세권설정 = Jeonse right, 임차권등기/임차권설정 = Lease right
+    if (purpose.includes('전세권설정') || purpose.includes('임차권등기') || purpose.includes('임차권설정')) {
       jeonseRank++;
-      const jeonse = parseJeonseFromRow(cols, jeonseRank, isCancelled);
+      const jeonse = parseJeonseFromRow(cols, jeonseRank, isCancelled, purpose);
       if (jeonse) {
         result.jeonseRights.push(jeonse);
       }
@@ -510,13 +511,14 @@ function parseMortgageFromRow(
 function parseJeonseFromRow(
   cols: Record<string, string>,
   rank: number,
-  isCancelled: boolean
+  isCancelled: boolean,
+  purpose?: string
 ): JeonseInfo | null {
   const rightHolder = cleanText(cols[4] || '');
 
-  // Extract jeonse amount
+  // Extract amount - support both 전세금 (jeonse) and 임차보증금/보증금 (lease) patterns
   let amount = 0;
-  const amountMatch = rightHolder.match(/전세금\s*금?([\d,]+)원/);
+  const amountMatch = rightHolder.match(/(?:전세금|임차보증금|보증금)\s*금?([\d,]+)원/);
   if (amountMatch) {
     amount = parseInt(amountMatch[1].replace(/,/g, ''));
   } else {
@@ -526,9 +528,21 @@ function parseJeonseFromRow(
     }
   }
 
-  // Extract tenant
-  const tenantMatch = rightHolder.match(/전세권자\s*([가-힣]{2,4})/);
-  const tenant = tenantMatch ? tenantMatch[1] : '';
+  // Extract tenant - support both 전세권자 and 임차인/임차권자 patterns
+  const tenantMatch = rightHolder.match(/(?:전세권자|임차인|임차권자)\s*([가-힣]{2,4}(?:\*+)?)/);
+  // Also try to match corporate names (주식회사...)
+  const corpMatch = rightHolder.match(/(?:전세권자|임차인|임차권자)\s*(주식회사[가-힣]+|[가-힣]+주식회사)/);
+  const tenant = corpMatch ? corpMatch[1] : (tenantMatch ? tenantMatch[1] : '');
+
+  // Determine the type based on purpose
+  let type = '전세권설정'; // default
+  if (purpose) {
+    if (purpose.includes('임차권등기')) {
+      type = '임차권등기';
+    } else if (purpose.includes('임차권설정')) {
+      type = '임차권설정';
+    }
+  }
 
   return {
     rank,
@@ -539,7 +553,8 @@ function parseJeonseFromRow(
     endDate: '',
     status: isCancelled ? 'cancelled' : 'active',
     cancellationDate: null,
-  };
+    type,
+  } as JeonseInfo;
 }
 
 // --- Utility functions ---
