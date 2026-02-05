@@ -370,29 +370,69 @@ function extractBasicInfo(cells: string[], fullText: string, result: ExcelDeungg
     }
   }
 
-  // Extract building year from 접수 (reception date) in 표제부 section
-  // The first registration date typically indicates construction/completion year
-  for (const cell of cells) {
-    // Look for year patterns in reception dates (접수)
-    const yearMatch = cell.match(/(\d{4})년\s*\d{1,2}월\s*\d{1,2}일/);
-    if (yearMatch && !result.buildingYear) {
-      const year = parseInt(yearMatch[1]);
-      // Only accept years in reasonable range (1970-current year)
-      if (year >= 1970 && year <= new Date().getFullYear()) {
-        result.buildingYear = year;
-        break;
+  // Extract building year from 표제부 section
+  // The building year is found in the FIRST 접수 (registration) entry in 표제부 section
+  // We need to find the earliest registration date, not recent transactions
+
+  // First, find the 표제부 section boundaries (before 갑구)
+  let headerSectionStart = 0;
+  let headerSectionEnd = cells.length;
+
+  for (let i = 0; i < cells.length; i++) {
+    const cell = cells[i];
+    // 표제부 starts after the document header
+    if (cell.includes('[표 제 부]') || cell.includes('표제부') || cell.includes('전유부분의 건물의 표시')) {
+      headerSectionStart = i;
+    }
+    // 표제부 ends when 갑구 starts
+    if ((cell.includes('갑') && cell.includes('구') && !cell.includes('을')) || cell.includes('[갑 구]')) {
+      headerSectionEnd = i;
+      break;
+    }
+  }
+
+  // Within 표제부, find all dates and take the EARLIEST (oldest) one
+  // This is the original registration/completion year of the building
+  let earliestYear = Infinity;
+  const foundYears: number[] = [];
+
+  console.log(`[ExcelParser] Searching for buildingYear in 표제부 section: cells ${headerSectionStart}-${headerSectionEnd}`);
+
+  for (let i = headerSectionStart; i < headerSectionEnd; i++) {
+    const cell = cells[i];
+    // Look for date patterns (YYYY년 MM월 DD일)
+    const dateMatches = cell.match(/(\d{4})년\s*\d{1,2}월\s*\d{1,2}일/g);
+    if (dateMatches) {
+      for (const dateMatch of dateMatches) {
+        const yearMatch = dateMatch.match(/(\d{4})년/);
+        if (yearMatch) {
+          const year = parseInt(yearMatch[1]);
+          // Only accept years in reasonable range and find the EARLIEST
+          if (year >= 1900 && year <= new Date().getFullYear()) {
+            foundYears.push(year);
+            if (year < earliestYear) {
+              earliestYear = year;
+            }
+          }
+        }
       }
     }
   }
 
-  // Fallback: try to find year in registration entries
+  console.log(`[ExcelParser] Found years in 표제부: ${foundYears.join(', ')} -> earliest: ${earliestYear === Infinity ? 'none' : earliestYear}`);
+
+  if (earliestYear !== Infinity) {
+    result.buildingYear = earliestYear;
+  }
+
+  // Fallback: try to find explicit construction year patterns
   if (!result.buildingYear) {
     for (const cell of cells) {
-      // Look for standalone year patterns
-      const yearMatch = cell.match(/(?:접수|등기일|신축|준공).*?(\d{4})년/);
+      // Look for explicit building year patterns
+      const yearMatch = cell.match(/(?:신축|준공|건축)[^\d]*(\d{4})년/);
       if (yearMatch) {
         const year = parseInt(yearMatch[1]);
-        if (year >= 1970 && year <= new Date().getFullYear()) {
+        if (year >= 1900 && year <= new Date().getFullYear()) {
           result.buildingYear = year;
           break;
         }
