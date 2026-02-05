@@ -419,7 +419,8 @@ async function fetchViaApick(
     };
   }
 
-  console.log(`[RegistryLookup] Attempting APick lookup for: ${address}`);
+  console.log(`[RegistryLookup] Attempting APick lookup for: "${address}" (length: ${address.length})`);
+  console.log(`[RegistryLookup] APick API key configured: ${!!process.env.APICK_API_KEY}`);
 
   const apickAPI = new ApickAPI();
 

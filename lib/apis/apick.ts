@@ -81,9 +81,9 @@ export class ApickAPI {
 
     try {
       // Sanitize address: keep only allowed characters
-      // Apick API only allows: Korean, numbers, alphabet, hyphens (-), underscores (_)
-      // Remove spaces, parentheses, and other special characters
-      const sanitizedAddress = address.replace(/[^가-힣a-zA-Z0-9\-_]/g, '');
+      // Apick API allows: Korean, numbers, alphabet, hyphens (-), spaces
+      // Remove parentheses and other special characters, but keep spaces for address parsing
+      const sanitizedAddress = address.replace(/[^가-힣a-zA-Z0-9\-\s]/g, '').trim();
       console.log(`[Apick] Requesting registry for: ${address} -> sanitized: ${sanitizedAddress}`);
 
       // Use URLSearchParams for form-urlencoded data (works in Node.js)
@@ -108,8 +108,8 @@ export class ApickAPI {
       const data = response.data;
       console.log(`[Apick] Request response:`, JSON.stringify(data, null, 2));
 
-      // Check for error message in response
-      const errorMessage = data.data?.error;
+      // Check for error message in response (can be in data.error or result.error)
+      const errorMessage = data.data?.error || data.result?.error;
       if (errorMessage) {
         console.error(`[Apick] API error: ${errorMessage}`);
         return { success: false, error: errorMessage };
@@ -124,7 +124,9 @@ export class ApickAPI {
         // Apick returns success=0 when address is not found
         return { success: false, error: data.data.error || '검색 결과가 없습니다 (주소를 확인해주세요)' };
       } else {
-        return { success: false, error: 'Request failed' };
+        // Log unexpected response for debugging
+        console.error(`[Apick] Unexpected response structure:`, JSON.stringify(data, null, 2));
+        return { success: false, error: `Request failed: ${JSON.stringify(data)}` };
       }
     } catch (error: any) {
       console.error('[Apick] Request error:', error.message);
