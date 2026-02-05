@@ -182,11 +182,14 @@ export function parseDeunggibuExcel(buffer: Buffer): ExcelDeunggibuData {
   result.totalEstimatedPrincipal = Math.round(result.totalMortgageAmount * 0.83);
   result.totalJeonseAmount = result.activeJeonseRights.reduce((sum, j) => sum + j.amount, 0);
 
-  // Set flags
+  // Set flags from active liens
   result.hasAuction = result.activeLiens.some(l => l.type.includes('경매'));
   result.hasSeizure = result.activeLiens.some(l => l.type === '압류');
   result.hasProvisionalSeizure = result.activeLiens.some(l => l.type === '가압류');
   result.hasProvisionalDisposition = result.activeLiens.some(l => l.type === '가처분');
+
+  // Also detect flags from 주요 등기사항 요약 (summary section) - this is authoritative
+  detectFlagsFromSummary(allCells, result);
 
   console.log('[ExcelParser] Parsing complete:', {
     address: result.address,
@@ -694,61 +697,162 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
 }
 
 /**
- * Parse liens (압류, 가압류, 가처분, 경매) from 을구
+ * Parse liens (압류, 가압류, 가처분, 경매) from both 갑구 and 을구
+ * Note: Liens can appear in 갑구 (ownership section) as well as 을구
  */
 function parseLiens(cells: string[], result: ExcelDeunggibuData): void {
-  let inEulSection = false;
+  let inRelevantSection = false;
+  const processedIndices = new Set<number>();
 
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
 
-    if (cell.includes('을') && cell.includes('구')) {
-      inEulSection = true;
+    // Start tracking from 갑구 or 을구 sections
+    if ((cell.includes('갑') && cell.includes('구')) ||
+        (cell.includes('을') && cell.includes('구'))) {
+      inRelevantSection = true;
       continue;
     }
 
+    // Stop at summary section
     if (cell.includes('주요 등기사항 요약')) {
       break;
     }
 
-    if (!inEulSection) continue;
+    if (!inRelevantSection) continue;
+    if (processedIndices.has(i)) continue;
 
-    // Detect lien types
+    // Check if this entry is cancelled (말소)
+    // Look for 말소 in nearby cells or check if the cell itself indicates cancellation
+    let isCancelled = false;
+    for (let j = Math.max(0, i - 2); j <= Math.min(cells.length - 1, i + 3); j++) {
+      if (cells[j].includes('말소')) {
+        isCancelled = true;
+        break;
+      }
+    }
+
+    // Detect lien types using includes() for flexible matching
     let lienType = '';
-    if (cell.includes('경매개시결정')) {
+
+    // Order matters: check 가압류 before 압류 to avoid false matches
+    if (cell.includes('경매') || cell.includes('임의경매') || cell.includes('강제경매')) {
       lienType = '경매';
-    } else if (cell === '가압류' || cell.includes('가압류결정')) {
+    } else if (cell.includes('가압류')) {
       lienType = '가압류';
-    } else if (cell === '압류' && !cell.includes('가압류')) {
-      lienType = '압류';
-    } else if (cell === '가처분' || cell.includes('가처분결정')) {
+    } else if (cell.includes('가처분')) {
       lienType = '가처분';
+    } else if (cell.includes('압류') && !cell.includes('가압류')) {
+      // Make sure it's 압류 and not 가압류
+      lienType = '압류';
     }
 
     if (lienType) {
+      processedIndices.add(i);
+
       const lien: LienInfo = {
         type: lienType,
         registrationDate: '',
         creditor: '',
         amount: null,
         caseNumber: '',
-        status: 'active',
+        status: isCancelled ? 'cancelled' : 'active',
         cancellationDate: null,
       };
 
       // Look for date nearby
-      for (let j = i - 3; j < i + 5 && j < cells.length; j++) {
+      for (let j = i - 5; j < i + 8 && j < cells.length; j++) {
         if (j < 0) continue;
-        const dateMatch = cells[j].match(/^(\d{4}년\d{1,2}월\d{1,2}일)$/);
-        if (dateMatch) {
+        const dateMatch = cells[j].match(/(\d{4}년\s*\d{1,2}월\s*\d{1,2}일)/);
+        if (dateMatch && !lien.registrationDate) {
           lien.registrationDate = dateMatch[1];
+        }
+      }
+
+      // Look for case number (사건번호) nearby
+      for (let j = i - 3; j < i + 8 && j < cells.length; j++) {
+        if (j < 0) continue;
+        const caseMatch = cells[j].match(/(\d{4}타[채기]\d+)/);
+        if (caseMatch) {
+          lien.caseNumber = caseMatch[1];
           break;
         }
       }
 
+      // Look for creditor/applicant nearby
+      for (let j = i; j < i + 10 && j < cells.length; j++) {
+        if (cells[j].includes('채권자') || cells[j].includes('권리자') || cells[j].includes('신청인')) {
+          // Next cell might have the name
+          if (j + 1 < cells.length && cells[j + 1].match(/^[가-힣]+$/)) {
+            lien.creditor = cells[j + 1];
+            break;
+          }
+        }
+      }
+
       result.liens.push(lien);
+
+      console.log(`[ExcelParser] Found lien: ${lienType}, cancelled: ${isCancelled}, date: ${lien.registrationDate}`);
     }
   }
+}
+
+/**
+ * Detect legal issue flags from 주요 등기사항 요약 (summary) section
+ * This is authoritative and supplements liens array detection
+ */
+function detectFlagsFromSummary(cells: string[], result: ExcelDeunggibuData): void {
+  let inSummarySection = false;
+
+  for (const cell of cells) {
+    if (cell.includes('주요 등기사항 요약') || cell.includes('주요등기사항요약')) {
+      inSummarySection = true;
+      continue;
+    }
+
+    if (inSummarySection) {
+      // Detect flags from summary text
+      // Check for 가압류 first (before 압류 to avoid false match)
+      if (cell.includes('가압류') && !cell.includes('없음')) {
+        result.hasProvisionalSeizure = true;
+        console.log('[ExcelParser] Summary detected: 가압류');
+      }
+      // Check 압류 only if not part of 가압류
+      if (cell.includes('압류') && !cell.includes('가압류') && !cell.includes('없음')) {
+        result.hasSeizure = true;
+        console.log('[ExcelParser] Summary detected: 압류');
+      }
+      if (cell.includes('가처분') && !cell.includes('없음')) {
+        result.hasProvisionalDisposition = true;
+        console.log('[ExcelParser] Summary detected: 가처분');
+      }
+      if ((cell.includes('경매') || cell.includes('임의경매') || cell.includes('강제경매')) && !cell.includes('없음')) {
+        result.hasAuction = true;
+        console.log('[ExcelParser] Summary detected: 경매');
+      }
+
+      // Also check for explicit "있음" indicators
+      if (cell.includes('압류') && cell.includes('있음') && !cell.includes('가압류')) {
+        result.hasSeizure = true;
+      }
+      if (cell.includes('가압류') && cell.includes('있음')) {
+        result.hasProvisionalSeizure = true;
+      }
+      if (cell.includes('가처분') && cell.includes('있음')) {
+        result.hasProvisionalDisposition = true;
+      }
+      if (cell.includes('경매') && cell.includes('있음')) {
+        result.hasAuction = true;
+      }
+    }
+  }
+
+  console.log('[ExcelParser] Final flags after summary check:', {
+    hasAuction: result.hasAuction,
+    hasSeizure: result.hasSeizure,
+    hasProvisionalSeizure: result.hasProvisionalSeizure,
+    hasProvisionalDisposition: result.hasProvisionalDisposition,
+  });
 }
 
 /**
