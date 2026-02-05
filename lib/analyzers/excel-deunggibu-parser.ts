@@ -669,10 +669,13 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
   if (currentMortgage && currentMortgage.maxAmount) {
     result.mortgages.push(currentMortgage as MortgageInfo);
   }
+
+  console.log(`[ExcelParser] Found ${result.mortgages.length} mortgages:`,
+    result.mortgages.map(m => `rank=${m.rank} date=${m.registrationDate} amount=${m.maxAmount} status=${m.status}`));
 }
 
 /**
- * Parse jeonse rights (전세권) from 을구
+ * Parse jeonse rights (전세권) and lease rights (임차권) from 을구
  */
 function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
   let inEulSection = false;
@@ -680,11 +683,25 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
   let jeonseRank = 0;
   const cancelledJeonse = new Set<number>();
 
-  // First pass: find cancelled jeonse
-  for (const cell of cells) {
-    const cancelMatch = cell.match(/(\d+)번전세권.*말소/);
+  // First pass: find cancelled jeonse/lease rights
+  // Support: 전세권, 임차권
+  for (let i = 0; i < cells.length; i++) {
+    const cell = cells[i];
+    // Pattern: "1번전세권말소" or "1번임차권말소"
+    const cancelMatch = cell.match(/(\d+)번(?:전세권|임차권).*말소/);
     if (cancelMatch) {
       cancelledJeonse.add(parseInt(cancelMatch[1]));
+      continue;
+    }
+    // Split pattern: "1번전세권설정등" followed by "기말소"
+    const partialMatch = cell.match(/(\d+)번(?:전세권|임차권)설정등$/);
+    if (partialMatch) {
+      for (let j = i + 1; j < Math.min(i + 5, cells.length); j++) {
+        if (cells[j].includes('말소') || cells[j] === '기말소') {
+          cancelledJeonse.add(parseInt(partialMatch[1]));
+          break;
+        }
+      }
     }
   }
 
@@ -702,9 +719,24 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
 
     if (!inEulSection) continue;
 
-    // Detect jeonse entry
-    if (cell === '전세권설정') {
-      if (currentJeonse && currentJeonse.amount) {
+    // Detect jeonse/lease entry - support multiple types:
+    // 전세권설정 = Jeonse right
+    // 임차권등기 = Lease right registration (court-ordered)
+    // 임차권설정 = Lease right establishment
+    // 주택임차권 = Housing lease right
+    let entryType = '';
+    if (cell === '전세권설정' || cell.includes('전세권설정')) {
+      entryType = '전세권설정';
+    } else if (cell === '임차권등기' || cell.includes('임차권등기')) {
+      entryType = '임차권등기';
+    } else if (cell === '임차권설정' || cell.includes('임차권설정')) {
+      entryType = '임차권설정';
+    } else if (cell === '주택임차권' || cell.includes('주택임차권')) {
+      entryType = '주택임차권';
+    }
+
+    if (entryType) {
+      if (currentJeonse && (currentJeonse.amount || currentJeonse.type)) {
         result.jeonseRights.push(currentJeonse as JeonseInfo);
       }
 
@@ -718,22 +750,53 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
         endDate: '',
         status: cancelledJeonse.has(jeonseRank) ? 'cancelled' : 'active',
         cancellationDate: null,
+        type: entryType,
       };
       continue;
     }
 
     if (!currentJeonse) continue;
 
-    // Extract amount
-    const amountMatch = cell.match(/전세금\s*금?([\d,]+)원/);
+    // Extract registration date
+    const dateMatch = cell.match(/^(\d{4}년\d{1,2}월\d{1,2}일)$/);
+    if (dateMatch && !currentJeonse.registrationDate) {
+      currentJeonse.registrationDate = dateMatch[1];
+      continue;
+    }
+
+    // Extract amount - support multiple patterns:
+    // 전세금 (jeonse deposit), 보증금 (security deposit), 임차보증금 (lease deposit)
+    const amountMatch = cell.match(/(?:전세금|보증금|임차보증금)\s*금?([\d,]+)원/);
     if (amountMatch) {
       currentJeonse.amount = parseInt(amountMatch[1].replace(/,/g, ''));
+      continue;
+    }
+
+    // Extract tenant - support 전세권자, 임차인, 임차권자
+    if (cell === '전세권자' || cell === '임차인' || cell === '임차권자') {
+      for (let j = i + 1; j < Math.min(i + 5, cells.length); j++) {
+        if (cells[j].match(/^[가-힣]{2,4}(?:\*+)?$/)) {
+          currentJeonse.tenant = cells[j];
+          break;
+        }
+      }
+      continue;
+    }
+
+    // Extract lease period (존속기간)
+    const periodMatch = cell.match(/존속기간\s*(\d{4}년\d{1,2}월\d{1,2}일)부터\s*(\d{4}년\d{1,2}월\d{1,2}일)까지/);
+    if (periodMatch) {
+      currentJeonse.startDate = periodMatch[1];
+      currentJeonse.endDate = periodMatch[2];
     }
   }
 
-  if (currentJeonse && currentJeonse.amount) {
+  if (currentJeonse && (currentJeonse.amount || currentJeonse.type)) {
     result.jeonseRights.push(currentJeonse as JeonseInfo);
   }
+
+  console.log(`[ExcelParser] Found ${result.jeonseRights.length} jeonse/lease rights:`,
+    result.jeonseRights.map(j => `${j.type || '전세권'} rank=${j.rank} amount=${j.amount} status=${j.status}`));
 }
 
 /**
