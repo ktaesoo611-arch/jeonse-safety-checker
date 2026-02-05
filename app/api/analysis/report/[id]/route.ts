@@ -214,7 +214,7 @@ export async function GET(
         .order('created_at', { ascending: false });
 
       // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
-      const wolseDeunggibuDoc = wolseDocuments?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef');
+      const wolseDeunggibuDoc = wolseDocuments?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef' || d.document_type === 'deunggibu-apick');
       const wolseParsedData = wolseDeunggibuDoc?.parsed_data || null;
 
       // Fetch tiered expected rent data directly from wolse_price_data
@@ -429,7 +429,7 @@ export async function GET(
         .order('created_at', { ascending: false });
 
       // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
-      const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef');
+      const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef' || d.document_type === 'deunggibu-apick');
       const parsedData = deunggibuDoc?.parsed_data || null;
 
       // Extract buildingNumber and unit from parsed data
@@ -740,7 +740,7 @@ export async function GET(
 
     // Find parsed 등기부등본 data
     // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
-    const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef');
+    const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef' || d.document_type === 'deunggibu-apick');
     const parsedData = deunggibuDoc?.parsed_data || null;
 
     // Extract buildingNumber and unit from parsed data (fallback path)

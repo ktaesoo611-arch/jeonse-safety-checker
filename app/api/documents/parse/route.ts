@@ -1076,10 +1076,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if already parsed (skip for CODEF documents that need risk analysis)
-    // CODEF documents have parsed_data from the lookup step but still need
+    // Check if already parsed (skip for CODEF/APick documents that need risk analysis)
+    // CODEF and APick documents have parsed_data from the lookup step but still need
     // valuation + risk analysis to be performed
-    const isCodefNeedingAnalysis = document.document_type === 'deunggibu-codef';
+    const isCodefNeedingAnalysis = document.document_type === 'deunggibu-codef' || document.document_type === 'deunggibu-apick';
     if (document.parsed_data && !isCodefNeedingAnalysis) {
       return NextResponse.json(
         {
@@ -1113,11 +1113,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Download document from storage (skip for CODEF documents with no file)
+    // Download document from storage (skip for CODEF/APick documents with pre-parsed data)
     let buffer: Buffer | null = null;
-    const isCodefDocument = document.document_type === 'deunggibu-codef' && !document.file_path;
+    const hasPreParsedData = (document.document_type === 'deunggibu-codef' || document.document_type === 'deunggibu-apick') && document.parsed_data;
 
-    if (!isCodefDocument) {
+    if (!hasPreParsedData) {
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('documents')
         .download(document.file_path);
@@ -1138,7 +1138,7 @@ export async function POST(request: NextRequest) {
     let parsedData: any = null;
 
     // Parse based on document type
-    if (document.document_type === 'deunggibu' || document.document_type === 'deunggibu-codef') {
+    if (document.document_type === 'deunggibu' || document.document_type === 'deunggibu-codef' || document.document_type === 'deunggibu-apick') {
       // Get analysis data for context
       const { data: analysis } = await supabase
         .from('analysis_results')
@@ -1156,15 +1156,15 @@ export async function POST(request: NextRequest) {
       const proposedJeonse = analysis.proposed_jeonse;
       const address = analysis.properties?.address || '';
 
-      // Determine if we have CODEF pre-parsed data
-      const isCodef = document.document_type === 'deunggibu-codef' && document.parsed_data;
-      const preParsedData = isCodef ? document.parsed_data : undefined;
+      // Determine if we have CODEF or APick pre-parsed data
+      const hasPreParsed = (document.document_type === 'deunggibu-codef' || document.document_type === 'deunggibu-apick') && document.parsed_data;
+      const preParsedData = hasPreParsed ? document.parsed_data : undefined;
 
       // Perform real parsing and analysis
       // Note: performRealAnalysis() handles all database updates internally,
       // including saving parsed_data to uploaded_documents and risk analysis to analysis_results
       const result = await performRealAnalysis(
-        isCodef ? null : buffer, // No buffer needed for CODEF
+        hasPreParsed ? null : buffer, // No buffer needed for pre-parsed documents
         document.analysis_id,
         proposedJeonse,
         address,
