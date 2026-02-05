@@ -20,17 +20,20 @@ const APICK_BASE_URL = 'https://apick.app/rest';
 export const DEFAULT_DOWNLOAD_FORMAT: 'pdf' | 'excel' = 'pdf';
 
 export interface ApickRegistryRequestResponse {
-  data: {
+  data?: {
     ic_id?: number;
     success: 0 | 1 | 3; // 1=success, 0=failed, 3=timeout
     error?: string;     // Error message when success=0
     type?: string;      // Document type
     result?: number;    // Result code
   };
+  result?: {            // Error responses use this structure
+    error?: string;
+  };
   api: {
     success: boolean;
-    cost: number;
-    ms: number;
+    cost?: number;
+    ms?: number;
     pl_id?: number;
   };
 }
