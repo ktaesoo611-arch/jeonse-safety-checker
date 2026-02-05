@@ -192,10 +192,15 @@ export function parseDeunggibuExcel(buffer: Buffer): ExcelDeunggibuData {
     address: result.address,
     buildingName: result.buildingName,
     area: result.area,
+    buildingYear: result.buildingYear,
     currentOwner: result.currentOwner?.name,
     mortgages: result.mortgages.length,
     activeMortgages: result.activeMortgages.length,
     totalMortgage: result.totalMortgageAmount,
+    liens: result.liens.length,
+    activeLiens: result.activeLiens.length,
+    hasAuction: result.hasAuction,
+    hasSeizure: result.hasSeizure,
   });
 
   return result;
@@ -294,6 +299,36 @@ function extractBasicInfo(cells: string[], fullText: string, result: ExcelDeungg
     if (uniqueMatch) {
       result.uniqueNumber = uniqueMatch[1];
       break;
+    }
+  }
+
+  // Extract building year from 접수 (reception date) in 표제부 section
+  // The first registration date typically indicates construction/completion year
+  for (const cell of cells) {
+    // Look for year patterns in reception dates (접수)
+    const yearMatch = cell.match(/(\d{4})년\s*\d{1,2}월\s*\d{1,2}일/);
+    if (yearMatch && !result.buildingYear) {
+      const year = parseInt(yearMatch[1]);
+      // Only accept years in reasonable range (1970-current year)
+      if (year >= 1970 && year <= new Date().getFullYear()) {
+        result.buildingYear = year;
+        break;
+      }
+    }
+  }
+
+  // Fallback: try to find year in registration entries
+  if (!result.buildingYear) {
+    for (const cell of cells) {
+      // Look for standalone year patterns
+      const yearMatch = cell.match(/(?:접수|등기일|신축|준공).*?(\d{4})년/);
+      if (yearMatch) {
+        const year = parseInt(yearMatch[1]);
+        if (year >= 1970 && year <= new Date().getFullYear()) {
+          result.buildingYear = year;
+          break;
+        }
+      }
     }
   }
 }
