@@ -463,7 +463,7 @@ async function fetchViaApick(
     // Continue anyway - we have the parsed data
   }
 
-  // Store document record in database
+  // Store document record in database (matching CODEF structure)
   const { data: insertData, error: insertError } = await supabase
     .from('uploaded_documents')
     .insert({
@@ -477,6 +477,8 @@ async function fetchViaApick(
         apickCost: registryResult.cost,
         extractedAt: new Date().toISOString(),
       },
+      // Store parsed data as ocr_text for LLM fallback parsing (like CODEF's rawResponse)
+      ocr_text: JSON.stringify(parsedData, null, 2),
       created_at: new Date().toISOString(),
     })
     .select()
