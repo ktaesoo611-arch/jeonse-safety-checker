@@ -261,14 +261,79 @@ function extractBasicInfo(cells: string[], fullText: string, result: ExcelDeungg
     }
   }
 
-  // Extract area (전용면적)
-  for (const cell of cells) {
-    // Look for area in 전유부분 section
-    const areaMatch = cell.match(/(\d+(?:\.\d+)?)\s*㎡/);
-    if (areaMatch && parseFloat(areaMatch[1]) < 500) {  // Likely unit area, not floor area
-      const area = parseFloat(areaMatch[1]);
-      if (area > 10 && area < 300 && result.area === 0) {
-        result.area = area;
+  // Extract area (전용면적) - must find the EXCLUSIVE unit area, not building/land area
+  // Priority: 1) 전용면적 labeled, 2) 전유부분 section, 3) area after unit number
+
+  // First pass: Look for explicitly labeled 전용면적
+  for (let i = 0; i < cells.length; i++) {
+    const cell = cells[i];
+    // Pattern: "전용면적 84.99㎡" or "전용면적: 84.99㎡"
+    const exclusiveMatch = cell.match(/전용면적[:\s]*(\d+(?:\.\d+)?)\s*㎡/);
+    if (exclusiveMatch) {
+      result.area = parseFloat(exclusiveMatch[1]);
+      break;
+    }
+    // Pattern: Cell says "전용면적" and next cell has area
+    if (cell.includes('전용면적') && i + 1 < cells.length) {
+      const nextCell = cells[i + 1];
+      const areaMatch = nextCell.match(/(\d+(?:\.\d+)?)\s*㎡/);
+      if (areaMatch) {
+        result.area = parseFloat(areaMatch[1]);
+        break;
+      }
+    }
+  }
+
+  // Second pass: Look for area in 전유부분 context (unit building section)
+  if (result.area === 0) {
+    let inJeonyuSection = false;
+    for (const cell of cells) {
+      if (cell.includes('전유부분') || cell.includes('건물의표시')) {
+        inJeonyuSection = true;
+      }
+      if (cell.includes('대지권') || cell.includes('토지의표시') || cell.includes('갑구') || cell.includes('을구')) {
+        inJeonyuSection = false;
+      }
+      if (inJeonyuSection) {
+        const areaMatch = cell.match(/(\d+(?:\.\d+)?)\s*㎡/);
+        if (areaMatch) {
+          const area = parseFloat(areaMatch[1]);
+          // Unit areas are typically 10-300㎡
+          if (area > 10 && area < 300) {
+            result.area = area;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Third pass: Fallback - find area near unit number pattern (층/호)
+  if (result.area === 0) {
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      // Look for cells containing both unit info and area
+      if (cell.match(/제?\d+층.*제?\d+호/) || cell.match(/제?\d+호/)) {
+        const areaMatch = cell.match(/(\d+(?:\.\d+)?)\s*㎡/);
+        if (areaMatch) {
+          const area = parseFloat(areaMatch[1]);
+          if (area > 10 && area < 300) {
+            result.area = area;
+            break;
+          }
+        }
+        // Check next few cells for area
+        for (let j = i + 1; j < Math.min(i + 5, cells.length); j++) {
+          const nextMatch = cells[j].match(/(\d+(?:\.\d+)?)\s*㎡/);
+          if (nextMatch) {
+            const area = parseFloat(nextMatch[1]);
+            if (area > 10 && area < 300) {
+              result.area = area;
+              break;
+            }
+          }
+        }
+        if (result.area > 0) break;
       }
     }
   }
