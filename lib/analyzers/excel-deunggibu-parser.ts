@@ -565,27 +565,33 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
 
-    // Pattern 1: Full text in one cell
+    // Pattern 1: Full text in one cell - "1번근저당권말소" or "1번근저당권설정등기말소"
     const cancelMatch = cell.match(/(\d+)번근저당권.*말소/);
     if (cancelMatch) {
       cancelledMortgages.add(parseInt(cancelMatch[1]));
+      console.log(`[ExcelParser] Detected cancelled mortgage #${cancelMatch[1]} (pattern 1: ${cell})`);
       continue;
     }
 
     // Pattern 2: Split across cells - "1번근저당권설정등" followed by "기말소"
-    const partialMatch = cell.match(/(\d+)번근저당권설정등$/);
+    const partialMatch = cell.match(/(\d+)번근저당권/);
     if (partialMatch) {
-      // Look ahead for "기말소" or just "말소"
+      // Look ahead for "말소" or "기말소"
       for (let j = i + 1; j < Math.min(i + 5, cells.length); j++) {
         if (cells[j].includes('말소') || cells[j] === '기말소') {
           cancelledMortgages.add(parseInt(partialMatch[1]));
+          console.log(`[ExcelParser] Detected cancelled mortgage #${partialMatch[1]} (pattern 2: ${cell} + ${cells[j]})`);
           break;
         }
       }
     }
   }
 
+  console.log(`[ExcelParser] Cancelled mortgages: ${Array.from(cancelledMortgages).join(', ') || 'none'}`);
+
   // Second pass: parse mortgages
+  let inCancellationEntry = false;  // Track if we're inside a cancellation entry
+
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
 
@@ -602,8 +608,16 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
 
     if (!inEulSection) continue;
 
-    // Detect new mortgage entry
-    if (cell === '근저당권설정') {
+    // Skip cancellation entries (말소) - these have their own dates we don't want
+    if (cell.includes('근저당권말소') || cell.includes('말소')) {
+      inCancellationEntry = true;
+      continue;
+    }
+
+    // Detect new mortgage entry (설정 = establishment, not 말소 = cancellation)
+    if (cell === '근저당권설정' || (cell.includes('근저당권설정') && !cell.includes('말소'))) {
+      inCancellationEntry = false;  // New entry, reset cancellation flag
+
       // Save previous mortgage if exists
       if (currentMortgage && currentMortgage.maxAmount) {
         result.mortgages.push(currentMortgage as MortgageInfo);
@@ -620,15 +634,18 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
         status: cancelledMortgages.has(mortgageRank) ? 'cancelled' : 'active',
         cancellationDate: null,
       };
+      console.log(`[ExcelParser] Found mortgage entry #${mortgageRank}, cancelled=${cancelledMortgages.has(mortgageRank)}`);
       continue;
     }
 
     if (!currentMortgage) continue;
+    if (inCancellationEntry) continue;  // Don't extract data from cancellation entries
 
-    // Extract registration date
-    const dateMatch = cell.match(/^(\d{4}년\d{1,2}월\d{1,2}일)$/);
+    // Extract registration date - flexible pattern with optional spaces
+    const dateMatch = cell.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
     if (dateMatch && !currentMortgage.registrationDate) {
-      currentMortgage.registrationDate = dateMatch[1];
+      currentMortgage.registrationDate = `${dateMatch[1]}년${dateMatch[2]}월${dateMatch[3]}일`;
+      console.log(`[ExcelParser] Mortgage #${currentMortgage.rank} date: ${currentMortgage.registrationDate}`);
       continue;
     }
 
