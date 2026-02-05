@@ -598,40 +598,53 @@ export default function MarketPositionSection({
         )}
 
         {/* Recent Transactions */}
-        {wolseData.recentTransactions && wolseData.recentTransactions.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
-            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
-              <span className="text-xl sm:text-2xl">📊</span>
-              Recent Transactions ({wolseData.recentTransactions.length} contracts)
-            </h3>
-            <div className="overflow-x-auto -mx-4 sm:mx-0">
-              <table className="w-full text-sm sm:text-base min-w-[450px]">
-                <thead>
-                  <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Date</th>
-                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Area</th>
-                    <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Floor</th>
-                    <th className="text-right py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Deposit</th>
-                    <th className="text-right py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Monthly</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {wolseData.recentTransactions.slice(0, 10).map((tx, index) => (
-                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 sm:py-4 px-3 text-gray-600">
-                        {tx.year}.{tx.month.toString().padStart(2, '0')}.{tx.day.toString().padStart(2, '0')}
-                      </td>
-                      <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.exclusiveArea.toFixed(1)}㎡</td>
-                      <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.floor}F</td>
-                      <td className="py-3 sm:py-4 px-3 text-right font-medium text-gray-900">{formatAmount(tx.deposit)}</td>
-                      <td className="py-3 sm:py-4 px-3 text-right font-medium text-gray-900">{formatAmount(tx.monthlyRent)}</td>
+        {(() => {
+          // Use filtered transactions for multifamily with tiered data (same as scatter chart)
+          // This excludes basement floors and filters by building age
+          const displayTransactions = isUsingTieredData && wolseData.filteredTransactions && wolseData.filteredTransactions.length > 0
+            ? wolseData.filteredTransactions
+            : wolseData.recentTransactions;
+
+          if (!displayTransactions || displayTransactions.length === 0) return null;
+
+          return (
+            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+              <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
+                <span className="text-xl sm:text-2xl">📊</span>
+                {isUsingTieredData && wolseData.filteredTransactions ? 'Comparable Transactions' : 'Recent Transactions'} ({displayTransactions.length} contracts)
+                {isUsingTieredData && wolseData.filteredTransactions && (
+                  <span className="text-xs font-normal text-amber-600">(filtered by floor &amp; age)</span>
+                )}
+              </h3>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="w-full text-sm sm:text-base min-w-[450px]">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Date</th>
+                      <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Area</th>
+                      <th className="text-left py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Floor</th>
+                      <th className="text-right py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Deposit</th>
+                      <th className="text-right py-3 sm:py-4 px-3 text-xs sm:text-sm font-semibold text-gray-500 uppercase">Monthly</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {displayTransactions.slice(0, 10).map((tx, index) => (
+                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 sm:py-4 px-3 text-gray-600">
+                          {tx.year}.{tx.month.toString().padStart(2, '0')}.{tx.day.toString().padStart(2, '0')}
+                        </td>
+                        <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.exclusiveArea.toFixed(1)}㎡</td>
+                        <td className="py-3 sm:py-4 px-3 text-gray-600">{tx.floor}F</td>
+                        <td className="py-3 sm:py-4 px-3 text-right font-medium text-gray-900">{formatAmount(tx.deposit)}</td>
+                        <td className="py-3 sm:py-4 px-3 text-right font-medium text-gray-900">{formatAmount(tx.monthlyRent)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     );
   }
