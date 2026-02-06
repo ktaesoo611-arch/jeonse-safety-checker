@@ -53,7 +53,8 @@ async function fetchPropertyValuation(
   area: number,
   floor?: number,
   buildingType: BuildingType = 'apartment', // Default for backwards compatibility
-  jibunAddress?: string // Optional lot-based address (지번주소) for accurate dong extraction
+  jibunAddress?: string, // Optional lot-based address (지번주소) for accurate dong extraction
+  buildingYear?: number // Building year for age-weighted trend calculation
 ): Promise<ValuationResult | null> {
   try {
     console.log('🏠 Fetching property valuation using PropertyValuationEngine...');
@@ -61,6 +62,7 @@ async function fetchPropertyValuation(
     console.log('   JibunAddress:', jibunAddress || '(not provided)');
     console.log('   Building:', buildingName);
     console.log('   Building Type:', buildingType);
+    console.log('   Building Year:', buildingYear || '(not provided)');
     console.log('   Area:', area);
 
     // Parse address to extract city, district, dong — supports all 16 시도 nationwide
@@ -193,7 +195,8 @@ async function fetchPropertyValuation(
       buildingNumber: '',
       floor: floor || 5, // Default to mid-floor if not specified
       unit: '',
-      exclusiveArea: area || 0
+      exclusiveArea: area || 0,
+      buildingYear, // For age-weighted trend calculation (not age filter)
     };
 
     // Check if we have required fields
@@ -502,6 +505,7 @@ async function performRealAnalysis(
     console.log(`   User address (addressForValuation): "${addressForValuation}"`);
     console.log(`   Registry address (jibunAddress): "${jibunAddressForValuation}"`);
     console.log(`   Building type: ${detectedBuildingType}`);
+    console.log(`   Building year (for trend): ${deunggibuData.buildingYear || 'not extracted'}`);
 
     const molitValuation = await fetchPropertyValuation(
       addressForValuation,
@@ -509,7 +513,8 @@ async function performRealAnalysis(
       deunggibuData.area,
       undefined, // floor
       detectedBuildingType,
-      jibunAddressForValuation // Pass jibunAddress for accurate dong extraction in multifamily
+      jibunAddressForValuation, // Pass jibunAddress for accurate dong extraction in multifamily
+      deunggibuData.buildingYear // Pass building year for age-weighted trend calculation
     );
 
     // If MOLIT data is available, use it; otherwise fall back to estimation

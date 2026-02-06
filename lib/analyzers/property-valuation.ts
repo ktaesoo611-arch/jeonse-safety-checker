@@ -229,25 +229,29 @@ export class PropertyValuationEngine {
     let transactionsForTrend: MolitTransaction[] = recentTransactions;
 
     if (buildingType === 'multifamily') {
-      // ===== MULTIFAMILY: Tiered hierarchy with floor/age filtering =====
+      // ===== MULTIFAMILY: Tiered hierarchy with floor filtering (NO age filter) =====
       // No base value calculation, no floor adjustment
       // Final values come directly from tier estimates
+      //
+      // IMPORTANT: Age filter is intentionally DISABLED for valuation.
+      // - More transactions = better tier distribution and statistical reliability
+      // - Building year is still used for age-weighted trend regression (see calculateTrend)
+      // - Tiered hierarchy already accounts for quality differences via price percentiles
 
       const tieredResult = this.calculateTieredHierarchyValue(
         recentTransactions,
         property.exclusiveArea,
-        property.buildingYear
+        undefined // Intentionally skip age filter for valuation - use more transactions
       );
       tierEstimates = tieredResult.estimates;
       tierPercentiles = tieredResult.thresholds;
       tierGuidance = TIERED_CONFIG.GUIDANCE;
 
-      // Store filtered transactions for trend calculation (more accurate for multifamily)
-      // This ensures trend is calculated from the same data used for valuation
+      // Use floor-filtered transactions for trend (building year used for weighting, not filtering)
       transactionsForTrend = tieredResult.filteredTransactions.length > 0
         ? tieredResult.filteredTransactions
         : recentTransactions;
-      console.log(`📈 Using ${transactionsForTrend.length} ${tieredResult.filteredTransactions.length > 0 ? 'filtered' : 'original'} transactions for trend calculation`);
+      console.log(`📈 Using ${transactionsForTrend.length} floor-filtered transactions for age-weighted trend calculation`);
 
       // Use tier values directly as final output
       const budgetTier = tierEstimates.find(t => t.tier === 'budget');
@@ -384,7 +388,8 @@ export class PropertyValuationEngine {
 
     // Calculate trend (with R-squared for confidence)
     // Use transactionsForTrend which may be filtered for multifamily/dong-tiered
-    const trend = this.calculateTrend(transactionsForTrend);
+    // Pass buildingYear for age-weighted regression (improves accuracy without reducing transaction count)
+    const trend = this.calculateTrend(transactionsForTrend, property.buildingYear);
 
     // Determine confidence (using R-squared + data quality)
     const confidence = this.determineConfidence(transactionsForTrend, trend.rSquared);
@@ -883,105 +888,160 @@ export class PropertyValuationEngine {
   }
 
   /**
-   * Calculate market trend using linear regression for statistical reliability
+   * Calculate market trend using monthly-aggregated regression
    *
-   * This method uses linear regression to detect real trends vs random noise:
-   * - Calculates best-fit line through transaction data
-   * - Uses R-squared to measure trend reliability (0-1)
-   * - Annualizes percentage change for comparability
-   * - Dynamic thresholds based on statistical confidence
+   * For 연립다세대 markets, individual transaction prices have high variance (2-3x within same month)
+   * due to heterogeneous building quality/age. This makes transaction-level R² extremely low (<5%).
    *
+   * Solution: Aggregate to monthly averages first, then run regression.
+   * - Reduces within-month noise from property heterogeneity
+   * - Produces meaningful R² values (typically 5-30% vs <5% for raw data)
+   * - More reliable trend detection
+   *
+   * When targetBuildingYear is provided, applies age-based weighting to transactions
+   * BEFORE aggregating to monthly averages.
+   *
+   * @param transactions - Transactions to analyze for trend
+   * @param targetBuildingYear - Optional building year for age-weighted aggregation
    * @returns direction ('rising' | 'stable' | 'falling'), percentage change, and R-squared confidence
    */
-  private calculateTrend(transactions: MolitTransaction[]): {
+  private calculateTrend(
+    transactions: MolitTransaction[],
+    targetBuildingYear?: number
+  ): {
     direction: 'rising' | 'stable' | 'falling';
     percentage: number;
     rSquared: number;
   } {
     if (transactions.length < 3) {
-      // Need at least 3 data points for meaningful regression
       return { direction: 'stable', percentage: 0, rSquared: 0 };
     }
 
-    // Sort by date
-    const sorted = [...transactions].sort((a, b) => {
-      const dateA = new Date(a.year, a.month - 1, a.day);
-      const dateB = new Date(b.year, b.month - 1, b.day);
-      return dateA.getTime() - dateB.getTime();
+    // Constants for age-based weighting
+    const AGE_WEIGHT_HALFLIFE = 10;
+    const MIN_AGE_WEIGHT = 0.2;
+
+    // Step 1: Calculate age-based weight for each transaction
+    const weightedTransactions = transactions.map(t => {
+      let weight = 1.0;
+      if (targetBuildingYear && t.buildingYear) {
+        const yearDiff = Math.abs(t.buildingYear - targetBuildingYear);
+        weight = Math.max(MIN_AGE_WEIGHT, Math.exp(-yearDiff / AGE_WEIGHT_HALFLIFE));
+      } else if (targetBuildingYear && !t.buildingYear) {
+        weight = 0.5;
+      }
+      // Use unit price (per ㎡) for fair comparison across different sizes
+      const unitPrice = t.transactionAmount / t.exclusiveArea;
+      return { ...t, weight, unitPrice };
     });
 
-    // Convert to time series (days since first transaction, price)
-    const firstDate = new Date(sorted[0].year, sorted[0].month - 1, sorted[0].day);
-    const dataPoints = sorted.map(t => {
-      const date = new Date(t.year, t.month - 1, t.day);
-      const daysSinceFirst = (date.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24);
-      return { x: daysSinceFirst, y: t.transactionAmount };
+    // Step 2: Aggregate to monthly weighted averages
+    const monthlyData: Record<string, { totalWeightedPrice: number; totalWeight: number; count: number }> = {};
+
+    weightedTransactions.forEach(t => {
+      const monthKey = `${t.year}-${String(t.month).padStart(2, '0')}`;
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { totalWeightedPrice: 0, totalWeight: 0, count: 0 };
+      }
+      monthlyData[monthKey].totalWeightedPrice += t.unitPrice * t.weight;
+      monthlyData[monthKey].totalWeight += t.weight;
+      monthlyData[monthKey].count++;
     });
 
-    // Calculate linear regression: y = mx + b
-    // Using least squares method to find best-fit line
-    const n = dataPoints.length;
-    const sumX = dataPoints.reduce((sum, p) => sum + p.x, 0);
-    const sumY = dataPoints.reduce((sum, p) => sum + p.y, 0);
-    const sumXY = dataPoints.reduce((sum, p) => sum + p.x * p.y, 0);
-    const sumX2 = dataPoints.reduce((sum, p) => sum + p.x * p.x, 0);
-    const sumY2 = dataPoints.reduce((sum, p) => sum + p.y * p.y, 0);
+    // Convert to sorted array of monthly averages
+    const sortedMonths = Object.keys(monthlyData).sort();
+    if (sortedMonths.length < 3) {
+      return { direction: 'stable', percentage: 0, rSquared: 0 };
+    }
 
-    // Slope (m) = rate of price change per day
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const monthlyPoints = sortedMonths.map((month, index) => {
+      const data = monthlyData[month];
+      const avgPrice = data.totalWeightedPrice / data.totalWeight;
+      return {
+        x: index, // Month index (0, 1, 2, ...)
+        y: avgPrice,
+        month,
+        count: data.count,
+      };
+    });
+
+    // Step 3: Linear regression on monthly averages
+    const n = monthlyPoints.length;
+    const sumX = monthlyPoints.reduce((sum, p) => sum + p.x, 0);
+    const sumY = monthlyPoints.reduce((sum, p) => sum + p.y, 0);
+    const sumXY = monthlyPoints.reduce((sum, p) => sum + p.x * p.y, 0);
+    const sumX2 = monthlyPoints.reduce((sum, p) => sum + p.x * p.x, 0);
+
+    const denominator = n * sumX2 - sumX * sumX;
+    if (Math.abs(denominator) < 1e-10) {
+      return { direction: 'stable', percentage: 0, rSquared: 0 };
+    }
+
+    const slope = (n * sumXY - sumX * sumY) / denominator;
     const intercept = (sumY - slope * sumX) / n;
 
-    // Calculate R-squared (goodness of fit) - measures how well trend line fits data
-    // R² = 1 means perfect fit, R² = 0 means no trend
+    // Calculate R-squared
     const yMean = sumY / n;
-    const ssTotal = dataPoints.reduce((sum, p) => sum + Math.pow(p.y - yMean, 2), 0);
-    const ssResidual = dataPoints.reduce((sum, p) => {
+    const ssTotal = monthlyPoints.reduce((sum, p) => sum + Math.pow(p.y - yMean, 2), 0);
+    const ssResidual = monthlyPoints.reduce((sum, p) => {
       const predicted = slope * p.x + intercept;
       return sum + Math.pow(p.y - predicted, 2);
     }, 0);
-    const rSquared = Math.max(0, Math.min(1, 1 - (ssResidual / ssTotal)));
+    const rSquared = ssTotal > 0 ? Math.max(0, Math.min(1, 1 - ssResidual / ssTotal)) : 0;
 
     // Calculate annualized percentage change
-    const firstPrice = sorted[0].transactionAmount;
-    const lastPrice = sorted[sorted.length - 1].transactionAmount;
-    const timeSpanDays = dataPoints[dataPoints.length - 1].x;
-    const timeSpanYears = Math.max(0.1, timeSpanDays / 365); // Avoid division by zero
+    // slope is change per month, annualize by multiplying by 12
+    const annualizedChange = intercept > 0 ? (slope * 12 / intercept) * 100 : 0;
 
-    // Annualized percentage change (normalized to 1 year)
-    const rawChange = ((lastPrice - firstPrice) / firstPrice) * 100;
-    const annualizedChange = rawChange / timeSpanYears;
-
-    // Determine direction with dynamic thresholds based on R-squared confidence
-    // Higher R² = more reliable trend = can use smaller threshold
-    // Lower R² = noisy data = need larger change to confirm trend
+    // Determine direction with adjusted thresholds for monthly data
+    // R² thresholds are lower because monthly aggregation improves reliability
     let threshold: number;
-    if (rSquared > 0.7) {
-      threshold = 2; // Strong trend, use 2% threshold
-    } else if (rSquared > 0.4) {
-      threshold = 3; // Moderate trend, use 3% threshold
+    let minR2: number;
+    if (rSquared > 0.5) {
+      threshold = 3;  // Strong trend
+      minR2 = 0.05;
+    } else if (rSquared > 0.2) {
+      threshold = 5;  // Moderate trend
+      minR2 = 0.05;
     } else {
-      threshold = 5; // Weak trend, use 5% threshold (conservative)
+      threshold = 8;  // Weak signal, need larger change
+      minR2 = 0.03;
     }
 
     let direction: 'rising' | 'stable' | 'falling';
-    if (annualizedChange > threshold && rSquared > 0.3) {
-      // Rising trend with sufficient confidence
+    if (annualizedChange > threshold && rSquared > minR2) {
       direction = 'rising';
-    } else if (annualizedChange < -threshold && rSquared > 0.3) {
-      // Falling trend with sufficient confidence
+    } else if (annualizedChange < -threshold && rSquared > minR2) {
       direction = 'falling';
     } else {
-      // Either change is small OR R² is too low (noisy data)
       direction = 'stable';
     }
 
-    console.log('📊 Market trend analysis (Linear Regression):');
-    console.log(`   - Data points: ${n}`);
-    console.log(`   - Time span: ${timeSpanDays.toFixed(0)} days (${timeSpanYears.toFixed(2)} years)`);
-    console.log(`   - Raw change: ${rawChange.toFixed(1)}%`);
+    // Logging
+    const totalTxns = transactions.length;
+    if (targetBuildingYear) {
+      const highWeightCount = weightedTransactions.filter(t => t.weight > 0.7).length;
+      const medWeightCount = weightedTransactions.filter(t => t.weight > 0.4 && t.weight <= 0.7).length;
+      const lowWeightCount = weightedTransactions.filter(t => t.weight <= 0.4).length;
+
+      console.log('📊 Market trend analysis (Monthly-Aggregated, Age-Weighted):');
+      console.log(`   - Target building year: ${targetBuildingYear}`);
+      console.log(`   - Transactions: ${totalTxns} → ${n} monthly averages`);
+      console.log(`   - Age weight distribution: high=${highWeightCount}, med=${medWeightCount}, low=${lowWeightCount}`);
+    } else {
+      console.log('📊 Market trend analysis (Monthly-Aggregated):');
+      console.log(`   - Transactions: ${totalTxns} → ${n} monthly averages`);
+    }
+
+    // Calculate time span for logging
+    const timeSpanMonths = n - 1;
+    const monthlyChange = slope / intercept * 100;
+
+    console.log(`   - Time span: ${timeSpanMonths} months`);
+    console.log(`   - Monthly change: ${monthlyChange.toFixed(2)}%`);
     console.log(`   - Annualized change: ${annualizedChange.toFixed(1)}%`);
     console.log(`   - R-squared (trend reliability): ${(rSquared * 100).toFixed(1)}%`);
-    console.log(`   - Threshold: ±${threshold}%`);
+    console.log(`   - Threshold: ±${threshold}% (min R²: ${(minR2 * 100).toFixed(0)}%)`);
     console.log(`   - Direction: ${direction}`);
 
     return {
