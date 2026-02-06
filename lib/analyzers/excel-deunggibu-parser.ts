@@ -774,10 +774,12 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
     // 임차권등기 = Lease right registration (court-ordered)
     // 임차권설정 = Lease right establishment
     // 주택임차권 = Housing lease right
+    // NOTE: "임차권등기명령" is a COURT ORDER annotation, not a new lease - exclude it!
     let entryType = '';
     if (cell === '전세권설정' || cell.includes('전세권설정')) {
       entryType = '전세권설정';
-    } else if (cell === '임차권등기' || cell.includes('임차권등기')) {
+    } else if ((cell === '임차권등기' || cell.includes('임차권등기')) && !cell.includes('임차권등기명령')) {
+      // Exclude 임차권등기명령 (court order annotation) - it's not a new lease entry
       entryType = '임차권등기';
     } else if (cell === '임차권설정' || cell.includes('임차권설정')) {
       entryType = '임차권설정';
@@ -816,14 +818,15 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
 
     // Extract amount - support multiple patterns:
     // 전세금 (jeonse deposit), 보증금 (security deposit), 임차보증금 (lease deposit), 임대차보증금 (lease deposit)
-    const amountMatch = cell.match(/(?:전세금|보증금|임차보증금|임대차보증금)\s*금?([\d,]+)원/);
+    // Note: Handle space after 금 (e.g., "임차보증금  금 100,000,000원")
+    const amountMatch = cell.match(/(?:전세금|보증금|임차보증금|임대차보증금)\s*금?\s*([\d,]+)원/);
     if (amountMatch) {
       currentJeonse.amount = parseInt(amountMatch[1].replace(/,/g, ''));
       continue;
     }
 
-    // Pattern 2: Amount label and value in same cell but with "금" prefix: "금100,000,000원"
-    const amountOnlyMatch = cell.match(/^금([\d,]+)원$/);
+    // Pattern 2: Amount label and value in same cell but with "금" prefix: "금100,000,000원" or "금 100,000,000원"
+    const amountOnlyMatch = cell.match(/^금\s*([\d,]+)원$/);
     if (amountOnlyMatch && currentJeonse.amount === 0) {
       currentJeonse.amount = parseInt(amountOnlyMatch[1].replace(/,/g, ''));
       continue;
@@ -833,7 +836,7 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
     if ((cell === '보증금' || cell === '임대차보증금' || cell === '임차보증금' || cell === '전세금') && currentJeonse.amount === 0) {
       // Look ahead for amount
       for (let j = i + 1; j < Math.min(i + 3, cells.length); j++) {
-        const nextAmountMatch = cells[j].match(/금?([\d,]+)원/);
+        const nextAmountMatch = cells[j].match(/금?\s*([\d,]+)원/);
         if (nextAmountMatch) {
           currentJeonse.amount = parseInt(nextAmountMatch[1].replace(/,/g, ''));
           break;
