@@ -585,6 +585,28 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
         }
       }
     }
+
+    // Pattern 3: Just "근저당권말소" without number - look backward for the rank
+    if (cell === '근저당권말소' || (cell.includes('근저당권') && cell.includes('말소') && !cell.match(/\d+번/))) {
+      // Look backward for "N번" pattern
+      for (let j = i - 1; j >= Math.max(0, i - 10); j--) {
+        const rankMatch = cells[j].match(/^(\d+)$/);  // Just a number
+        if (rankMatch) {
+          cancelledMortgages.add(parseInt(rankMatch[1]));
+          console.log(`[ExcelParser] Detected cancelled mortgage #${rankMatch[1]} (pattern 3: rank ${cells[j]} + ${cell})`);
+          break;
+        }
+        // Or "순위번호" followed by number
+        if (cells[j] === '순위번호' && j + 1 < i) {
+          const nextRankMatch = cells[j + 1].match(/^(\d+)$/);
+          if (nextRankMatch) {
+            cancelledMortgages.add(parseInt(nextRankMatch[1]));
+            console.log(`[ExcelParser] Detected cancelled mortgage #${nextRankMatch[1]} (pattern 3b: ${cell})`);
+            break;
+          }
+        }
+      }
+    }
   }
 
   console.log(`[ExcelParser] Cancelled mortgages: ${Array.from(cancelledMortgages).join(', ') || 'none'}`);
@@ -609,13 +631,24 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
     if (!inEulSection) continue;
 
     // Skip cancellation entries (말소) - these have their own dates we don't want
-    if (cell.includes('근저당권말소') || cell.includes('말소')) {
+    // Also check for "말소" appearing anywhere which indicates start of cancellation record
+    if (cell.includes('근저당권말소') || cell === '말소' ||
+        (cell.includes('말소') && !cell.includes('설정'))) {
       inCancellationEntry = true;
+      // Save current mortgage before entering cancellation section
+      if (currentMortgage && currentMortgage.maxAmount) {
+        result.mortgages.push(currentMortgage as MortgageInfo);
+        currentMortgage = null;
+      }
       continue;
     }
 
     // Detect new mortgage entry (설정 = establishment, not 말소 = cancellation)
-    if (cell === '근저당권설정' || (cell.includes('근저당권설정') && !cell.includes('말소'))) {
+    // Must be exact "근저당권설정" or contain it without "말소"
+    const isMortgageSetup = cell === '근저당권설정' ||
+                            (cell.includes('근저당권설정') && !cell.includes('말소'));
+
+    if (isMortgageSetup) {
       inCancellationEntry = false;  // New entry, reset cancellation flag
 
       // Save previous mortgage if exists
@@ -782,10 +815,30 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
     }
 
     // Extract amount - support multiple patterns:
-    // 전세금 (jeonse deposit), 보증금 (security deposit), 임차보증금 (lease deposit)
-    const amountMatch = cell.match(/(?:전세금|보증금|임차보증금)\s*금?([\d,]+)원/);
+    // 전세금 (jeonse deposit), 보증금 (security deposit), 임차보증금 (lease deposit), 임대차보증금 (lease deposit)
+    const amountMatch = cell.match(/(?:전세금|보증금|임차보증금|임대차보증금)\s*금?([\d,]+)원/);
     if (amountMatch) {
       currentJeonse.amount = parseInt(amountMatch[1].replace(/,/g, ''));
+      continue;
+    }
+
+    // Pattern 2: Amount label and value in same cell but with "금" prefix: "금100,000,000원"
+    const amountOnlyMatch = cell.match(/^금([\d,]+)원$/);
+    if (amountOnlyMatch && currentJeonse.amount === 0) {
+      currentJeonse.amount = parseInt(amountOnlyMatch[1].replace(/,/g, ''));
+      continue;
+    }
+
+    // Pattern 3: Label in one cell ("보증금", "임대차보증금", etc.) and amount in next cell
+    if ((cell === '보증금' || cell === '임대차보증금' || cell === '임차보증금' || cell === '전세금') && currentJeonse.amount === 0) {
+      // Look ahead for amount
+      for (let j = i + 1; j < Math.min(i + 3, cells.length); j++) {
+        const nextAmountMatch = cells[j].match(/금?([\d,]+)원/);
+        if (nextAmountMatch) {
+          currentJeonse.amount = parseInt(nextAmountMatch[1].replace(/,/g, ''));
+          break;
+        }
+      }
       continue;
     }
 
