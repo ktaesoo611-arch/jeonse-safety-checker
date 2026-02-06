@@ -573,14 +573,24 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
       continue;
     }
 
-    // Pattern 2: Split across cells - "1번근저당권설정등" followed by "기말소"
-    const partialMatch = cell.match(/(\d+)번근저당권/);
+    // Pattern 2: "N번근저당권설정등" - this pattern itself indicates a cancellation entry
+    // The "등" suffix means it's a cancellation record for mortgage #N
+    // May or may not be followed by "기말소" (page breaks can separate them)
+    const cancellationEntryMatch = cell.match(/(\d+)번근저당권설정등/);
+    if (cancellationEntryMatch) {
+      cancelledMortgages.add(parseInt(cancellationEntryMatch[1]));
+      console.log(`[ExcelParser] Detected cancelled mortgage #${cancellationEntryMatch[1]} (pattern 2: ${cell})`);
+      continue;
+    }
+
+    // Pattern 2b: Split across cells - "N번근저당권" followed by "기말소" within 5 cells
+    const partialMatch = cell.match(/(\d+)번근저당권(?!설정등)/);  // Exclude pattern 2 matches
     if (partialMatch) {
       // Look ahead for "말소" or "기말소"
       for (let j = i + 1; j < Math.min(i + 5, cells.length); j++) {
         if (cells[j].includes('말소') || cells[j] === '기말소') {
           cancelledMortgages.add(parseInt(partialMatch[1]));
-          console.log(`[ExcelParser] Detected cancelled mortgage #${partialMatch[1]} (pattern 2: ${cell} + ${cells[j]})`);
+          console.log(`[ExcelParser] Detected cancelled mortgage #${partialMatch[1]} (pattern 2b: ${cell} + ${cells[j]})`);
           break;
         }
       }
