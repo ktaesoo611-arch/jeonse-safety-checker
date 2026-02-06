@@ -225,6 +225,8 @@ export class PropertyValuationEngine {
     let tierGuidance: TierGuidance | undefined;
     let tierPercentiles: PercentileThresholds | undefined;
     let valuationMethod: 'building' | 'dong-tiered' | undefined;
+    // For multifamily/dong-tiered, use filtered transactions for more accurate trend
+    let transactionsForTrend: MolitTransaction[] = recentTransactions;
 
     if (buildingType === 'multifamily') {
       // ===== MULTIFAMILY: Tiered hierarchy with floor/age filtering =====
@@ -239,6 +241,13 @@ export class PropertyValuationEngine {
       tierEstimates = tieredResult.estimates;
       tierPercentiles = tieredResult.thresholds;
       tierGuidance = TIERED_CONFIG.GUIDANCE;
+
+      // Store filtered transactions for trend calculation (more accurate for multifamily)
+      // This ensures trend is calculated from the same data used for valuation
+      transactionsForTrend = tieredResult.filteredTransactions.length > 0
+        ? tieredResult.filteredTransactions
+        : recentTransactions;
+      console.log(`📈 Using ${transactionsForTrend.length} ${tieredResult.filteredTransactions.length > 0 ? 'filtered' : 'original'} transactions for trend calculation`);
 
       // Use tier values directly as final output
       const budgetTier = tierEstimates.find(t => t.tier === 'budget');
@@ -324,6 +333,12 @@ export class PropertyValuationEngine {
         tierPercentiles = tieredResult.thresholds;
         tierGuidance = TIERED_CONFIG.GUIDANCE;
 
+        // Store filtered transactions for trend calculation
+        transactionsForTrend = tieredResult.filteredTransactions.length > 0
+          ? tieredResult.filteredTransactions
+          : dongTransactions;
+        console.log(`📈 Using ${transactionsForTrend.length} ${tieredResult.filteredTransactions.length > 0 ? 'filtered' : 'original'} transactions for trend calculation (officetel dong-level)`);
+
         const budgetTier = tierEstimates.find(t => t.tier === 'budget');
         const standardTier = tierEstimates.find(t => t.tier === 'standard');
         const midTier = tierEstimates.find(t => t.tier === 'mid');
@@ -368,10 +383,11 @@ export class PropertyValuationEngine {
     }
 
     // Calculate trend (with R-squared for confidence)
-    const trend = this.calculateTrend(recentTransactions);
+    // Use transactionsForTrend which may be filtered for multifamily/dong-tiered
+    const trend = this.calculateTrend(transactionsForTrend);
 
     // Determine confidence (using R-squared + data quality)
-    const confidence = this.determineConfidence(recentTransactions, trend.rSquared);
+    const confidence = this.determineConfidence(transactionsForTrend, trend.rSquared);
 
     // Cache results
     await this.cacheResults(property, recentTransactions);
@@ -693,8 +709,8 @@ export class PropertyValuationEngine {
     transactions: MolitTransaction[],
     targetArea: number,
     targetBuildingYear: number | undefined
-  ): { estimates: TierEstimate[]; thresholds: PercentileThresholds } {
-    if (transactions.length === 0) return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 } };
+  ): { estimates: TierEstimate[]; thresholds: PercentileThresholds; filteredTransactions: MolitTransaction[] } {
+    if (transactions.length === 0) return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 }, filteredTransactions: [] };
 
     const now = new Date();
     const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium'];
@@ -719,7 +735,7 @@ export class PropertyValuationEngine {
     // If still no transactions after filtering, return empty
     if (filtered.length === 0) {
       console.log('   ❌ No transactions remaining after filtering');
-      return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 } };
+      return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 }, filteredTransactions: [] };
     }
 
     // Step 3: Calculate percentile thresholds from FILTERED transactions
@@ -809,7 +825,7 @@ export class PropertyValuationEngine {
       console.log(`     - Estimated Value: ${(estimatedValue / 100000000).toFixed(2)}억원`);
     }
 
-    return { estimates: tierEstimates, thresholds };
+    return { estimates: tierEstimates, thresholds, filteredTransactions: filtered };
   }
 
   /**
