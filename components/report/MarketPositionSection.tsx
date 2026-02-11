@@ -954,8 +954,8 @@ export default function MarketPositionSection({
           );
         })()}
 
-        {/* Potential Savings */}
-        {displayDifference > 0 && (
+        {/* Potential Savings - Only show when we have valid analysis data */}
+        {hasAnalysis && displayDifference > 0 && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-6 mb-6 border border-amber-200 hover:shadow-lg transition-all duration-200">
             <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-4 flex items-center gap-2">
               <span className="text-xl sm:text-2xl">💰</span>

@@ -1,6 +1,7 @@
 import { MolitAPI, getDistrictCode } from '../apis/molit';
 import { supabaseAdmin } from '../supabase';
 import { PropertyDetails, ValuationResult, MolitTransaction, BuildingType, QualityTier, TierEstimate, TierGuidance, PercentileThresholds } from '../types';
+import { getAdjacentDongs } from '../data/adjacent-dongs';
 
 /**
  * Valuation Configuration
@@ -218,6 +219,26 @@ export class PropertyValuationEngine {
         12 // Last 12 months
       );
       console.log(`📊 Jeonse transaction data: ${jeonseTransactions.length} txns`);
+
+      // For multifamily: cascade to adjacent dongs → district if insufficient jeonse data
+      if (buildingType === 'multifamily' && jeonseTransactions.length < 4) {
+        const adjacentDongs = getAdjacentDongs(property.district, property.dong);
+        if (adjacentDongs.length > 0) {
+          console.log(`⚠️ Multifamily jeonse: Only ${jeonseTransactions.length} dong-level. Expanding to adjacent dongs: [${adjacentDongs.join(', ')}]`);
+          jeonseTransactions = await this.molitAPI.getRecentMultifamilyJeonseByDongs(
+            lawdCd, [property.dong, ...adjacentDongs], property.exclusiveArea, 12
+          );
+          console.log(`   → After adjacent dong expansion: ${jeonseTransactions.length} jeonse transactions`);
+        }
+
+        if (jeonseTransactions.length < 4) {
+          console.log(`⚠️ Multifamily jeonse: Still only ${jeonseTransactions.length}. Expanding to district-wide...`);
+          jeonseTransactions = await this.molitAPI.getRecentMultifamilyJeonseByDongs(
+            lawdCd, [], property.exclusiveArea, 12
+          );
+          console.log(`   → After district expansion: ${jeonseTransactions.length} jeonse transactions`);
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch jeonse transactions:', error);
       // Continue without jeonse data
@@ -359,11 +380,34 @@ export class PropertyValuationEngine {
         const dongTransactions = await this.molitAPI.getRecentOfficetelByDong(
           lawdCd, property.dong, property.exclusiveArea, 12
         );
-        const dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDong(
-          lawdCd, property.dong, property.exclusiveArea, 12
+        // Fetch jeonse with cascading geographic expansion: dong → adjacent dongs → district
+        let dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDongs(
+          lawdCd, [property.dong], property.exclusiveArea, 12
         );
+        console.log(`📊 Officetel jeonse (dong-level): ${dongJeonseTransactions.length} transactions`);
 
-        // Merge dong-level jeonse if we got any
+        // Level 2: Expand to adjacent dongs if insufficient
+        if (dongJeonseTransactions.length < 4) {
+          const adjacentDongs = getAdjacentDongs(property.district, property.dong);
+          if (adjacentDongs.length > 0) {
+            console.log(`⚠️ Officetel jeonse: Only ${dongJeonseTransactions.length} dong-level. Expanding to adjacent dongs: [${adjacentDongs.join(', ')}]`);
+            dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDongs(
+              lawdCd, [property.dong, ...adjacentDongs], property.exclusiveArea, 12
+            );
+            console.log(`   → After adjacent dong expansion: ${dongJeonseTransactions.length} jeonse transactions`);
+          }
+        }
+
+        // Level 3: Expand to district-wide if still insufficient
+        if (dongJeonseTransactions.length < 4) {
+          console.log(`⚠️ Officetel jeonse: Still only ${dongJeonseTransactions.length}. Expanding to district-wide...`);
+          dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDongs(
+            lawdCd, [], property.exclusiveArea, 12
+          );
+          console.log(`   → After district expansion: ${dongJeonseTransactions.length} jeonse transactions`);
+        }
+
+        // Merge expanded jeonse data
         if (dongJeonseTransactions.length > 0) {
           jeonseTransactions = dongJeonseTransactions;
         }

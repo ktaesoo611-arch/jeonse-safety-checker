@@ -958,6 +958,135 @@ export class MolitAPI {
     });
   }
 
+  /**
+   * Get recent officetel jeonse transactions across multiple dongs
+   * @param dongs - Array of dong names to include. Empty array = district-wide (no dong filter)
+   */
+  async getRecentOfficetelJeonseByDongs(
+    lawdCd: string,
+    dongs: string[],
+    area: number | undefined,
+    monthsBack: number = 12,
+    areaFilterPercent: number = 15
+  ): Promise<MolitTransaction[]> {
+    const areaTolerance = area !== undefined ? area * (areaFilterPercent / 100) : undefined;
+    const dongList = dongs.length > 0 ? dongs.join(', ') : '(district-wide)';
+
+    console.log(`\n🔍 MOLIT 오피스텔 Jeonse Query (${dongs.length > 0 ? 'Multi-Dong' : 'District-Wide'}):`);
+    console.log(`   lawdCd: "${lawdCd}", dongs: ${dongs.length > 0 ? `[${dongList}]` : dongList}`);
+    console.log(`   area: ${area}㎡, areaFilter: ±${areaFilterPercent}%`);
+    console.log(`   monthsBack: ${monthsBack}`);
+
+    const transactions: MolitTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        const monthData = await this.getOfficetelJeonseTransactions(lawdCd, yearMonth);
+
+        const filtered = monthData.filter(t => {
+          // If dongs specified, filter by dong; otherwise district-wide
+          if (dongs.length > 0) {
+            const dongMatches = dongs.some(dong =>
+              t.legalDong === dong ||
+              (t.legalDong && t.legalDong.includes(dong)) ||
+              (t.legalDong && dong.includes(t.legalDong))
+            );
+            if (!dongMatches) return false;
+          }
+
+          if (area !== undefined && areaTolerance !== undefined) {
+            return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+          }
+          return true;
+        });
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch 오피스텔 jeonse data for ${yearMonth}:`, error);
+      }
+    }
+
+    console.log(`   ✓ Total: ${transactions.length} jeonse transactions`);
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  /**
+   * Get recent multifamily jeonse transactions across multiple dongs
+   * @param dongs - Array of dong names to include. Empty array = district-wide (no dong filter)
+   */
+  async getRecentMultifamilyJeonseByDongs(
+    lawdCd: string,
+    dongs: string[],
+    area: number | undefined,
+    monthsBack: number = 12,
+    areaFilterPercent: number = 15
+  ): Promise<MolitTransaction[]> {
+    const areaTolerance = area !== undefined ? area * (areaFilterPercent / 100) : undefined;
+    const dongList = dongs.length > 0 ? dongs.join(', ') : '(district-wide)';
+
+    console.log(`\n🔍 MOLIT 연립/다세대 Jeonse Query (${dongs.length > 0 ? 'Multi-Dong' : 'District-Wide'}):`);
+    console.log(`   lawdCd: "${lawdCd}", dongs: ${dongs.length > 0 ? `[${dongList}]` : dongList}`);
+    console.log(`   area: ${area}㎡, areaFilter: ±${areaFilterPercent}%`);
+    console.log(`   monthsBack: ${monthsBack}`);
+
+    const transactions: MolitTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        const monthData = await this.getMultifamilyJeonseTransactions(lawdCd, yearMonth);
+
+        const filtered = monthData.filter(t => {
+          if (dongs.length > 0) {
+            const dongMatches = dongs.some(dong =>
+              t.legalDong === dong ||
+              (t.legalDong && t.legalDong.includes(dong)) ||
+              (t.legalDong && dong.includes(t.legalDong))
+            );
+            if (!dongMatches) return false;
+          }
+
+          if (area !== undefined && areaTolerance !== undefined) {
+            return Math.abs(t.exclusiveArea - area) <= areaTolerance;
+          }
+          return true;
+        });
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch 연립/다세대 jeonse data for ${yearMonth}:`, error);
+      }
+    }
+
+    console.log(`   ✓ Total: ${transactions.length} jeonse transactions`);
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
   // ==========================================
   // Unified Methods (routes by building type)
   // ==========================================
