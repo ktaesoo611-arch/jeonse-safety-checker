@@ -233,7 +233,8 @@ export class WolsePriceAnalyzer {
         marketData.transactions,
         quote.deposit,
         exclusiveArea,
-        undefined // Intentionally skip age filter - more transactions = better tier distribution
+        undefined, // Skip age filter - more transactions = better tier distribution
+        targetBuildingYear // Age adjustment (depreciation normalization) still applied
       );
       tieredExpectedRent = tieredResult.tieredExpectedRent;
       filteredTransactions = tieredResult.filteredTransactions;
@@ -907,7 +908,8 @@ export class WolsePriceAnalyzer {
     transactions: WolseTransaction[],
     userDeposit: number,
     targetArea: number,
-    targetBuildingYear: number | undefined
+    targetBuildingYear: number | undefined,
+    targetBuildingYearForAdjustment?: number | undefined
   ): { tieredExpectedRent: TieredExpectedRent[]; filteredTransactions: WolseTransaction[] } {
     if (transactions.length === 0) return { tieredExpectedRent: [], filteredTransactions: [] };
 
@@ -986,9 +988,11 @@ export class WolsePriceAnalyzer {
         const recencyWeight = Math.exp(-t.daysAgo / MULTIFAMILY_WOLSE_CONFIG.RECENCY_HALFLIFE_DAYS);
 
         // Age adjustment: adjust comparable's jeonse to target building year
+        // Uses targetBuildingYearForAdjustment (separate from filtering parameter)
         let ageAdjustment = 1.0;
-        if (targetBuildingYear && t.buildingYear) {
-          const yearDiff = targetBuildingYear - t.buildingYear;
+        const adjustmentYear = targetBuildingYearForAdjustment ?? targetBuildingYear;
+        if (adjustmentYear && t.buildingYear) {
+          const yearDiff = adjustmentYear - t.buildingYear;
           // If target is newer, increase jeonse value
           // If target is older, decrease jeonse value
           ageAdjustment = 1 + (yearDiff * depreciation);

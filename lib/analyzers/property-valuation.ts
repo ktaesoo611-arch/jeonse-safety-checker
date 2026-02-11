@@ -282,7 +282,8 @@ export class PropertyValuationEngine {
       const tieredResult = this.calculateTieredHierarchyValue(
         recentTransactions,
         property.exclusiveArea,
-        undefined // Intentionally skip age filter for valuation - use more transactions
+        undefined, // Skip age filter for valuation - more transactions = better tier distribution
+        property.buildingYear // Age adjustment (depreciation normalization) still applied
       );
       tierEstimates = tieredResult.estimates;
       tierPercentiles = tieredResult.thresholds;
@@ -376,7 +377,8 @@ export class PropertyValuationEngine {
         const tieredResult = this.calculateTieredHierarchyValue(
           dongTransactions,
           property.exclusiveArea,
-          undefined // Intentionally skip age filter - same rationale as multifamily
+          undefined, // Skip age filter - same rationale as multifamily
+          property.buildingYear // Age adjustment (depreciation normalization) still applied
         );
         tierEstimates = tieredResult.estimates;
         tierPercentiles = tieredResult.thresholds;
@@ -762,7 +764,8 @@ export class PropertyValuationEngine {
   private calculateTieredHierarchyValue(
     transactions: MolitTransaction[],
     targetArea: number,
-    targetBuildingYear: number | undefined
+    targetBuildingYear: number | undefined,
+    targetBuildingYearForAdjustment?: number | undefined
   ): { estimates: TierEstimate[]; thresholds: PercentileThresholds; filteredTransactions: MolitTransaction[] } {
     if (transactions.length === 0) return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 }, filteredTransactions: [] };
 
@@ -834,9 +837,11 @@ export class PropertyValuationEngine {
         const recencyWeight = Math.exp(-t.daysAgo / TIERED_CONFIG.RECENCY_HALFLIFE_DAYS);
 
         // Age adjustment: adjust comparable's unit price to target building year
+        // Uses targetBuildingYearForAdjustment (separate from filtering parameter)
         let ageAdjustment = 1.0;
-        if (targetBuildingYear && t.buildingYear) {
-          const yearDiff = targetBuildingYear - t.buildingYear;
+        const adjustmentYear = targetBuildingYearForAdjustment ?? targetBuildingYear;
+        if (adjustmentYear && t.buildingYear) {
+          const yearDiff = adjustmentYear - t.buildingYear;
           // If target is newer (positive yearDiff), increase value
           // If target is older (negative yearDiff), decrease value
           ageAdjustment = 1 + (yearDiff * depreciation);
