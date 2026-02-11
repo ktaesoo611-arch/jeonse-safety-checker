@@ -199,7 +199,7 @@ export class PropertyValuationEngine {
 
     // Fetch 12 months of data for better statistical reliability
     // 12 months provides: more data points, full seasonal coverage, better R² values
-    const recentTransactions = await this.molitAPI.getRecentTransactionsByType(
+    let recentTransactions = await this.molitAPI.getRecentTransactionsByType(
       buildingType,
       lawdCd,
       identifier,
@@ -244,7 +244,30 @@ export class PropertyValuationEngine {
       // Continue without jeonse data
     }
 
-    if (recentTransactions.length === 0) {
+    // For multifamily: cascade sale transactions if insufficient (dong → adjacent dongs → district)
+    if (buildingType === 'multifamily' && recentTransactions.length < 4) {
+      console.log(`⚠️ Multifamily sale: Only ${recentTransactions.length} dong-level. Starting cascade expansion...`);
+      const adjacentDongsForSale = getAdjacentDongs(property.district, property.dong);
+      if (adjacentDongsForSale.length > 0) {
+        console.log(`   Expanding to adjacent dongs: [${adjacentDongsForSale.join(', ')}]`);
+        recentTransactions = await this.molitAPI.getRecentMultifamilyByDongs(
+          lawdCd, [property.dong, ...adjacentDongsForSale], property.exclusiveArea, 12
+        );
+        console.log(`   → After adjacent dong expansion: ${recentTransactions.length} sale transactions`);
+      }
+
+      if (recentTransactions.length < 4) {
+        console.log(`⚠️ Multifamily sale: Still only ${recentTransactions.length}. Expanding to district-wide...`);
+        recentTransactions = await this.molitAPI.getRecentMultifamilyByDongs(
+          lawdCd, [], property.exclusiveArea, 12
+        );
+        console.log(`   → After district expansion: ${recentTransactions.length} sale transactions`);
+      }
+    }
+
+    // For officetel: don't early-return when building-level sales are 0
+    // — the officetel block below will try dong-level cascade expansion
+    if (recentTransactions.length === 0 && buildingType !== 'officetel') {
       // No sale transactions, but we may have jeonse transactions
       // Return a minimal valuation with just jeonse data
       if (jeonseTransactions.length > 0) {
@@ -372,14 +395,37 @@ export class PropertyValuationEngine {
         valueHigh = 0;
 
       } else {
-        // Insufficient building-level data → dong-level tiered fallback
-        console.log(`📊 Officetel: Building data insufficient (${recentTransactions.length} txns). Falling back to dong-level tiered.`);
+        // Insufficient building-level data → dong-level tiered fallback with cascade
+        console.log(`📊 Officetel: Building data insufficient (${recentTransactions.length} txns). Falling back to dong-level tiered with cascade.`);
         valuationMethod = 'dong-tiered';
 
-        // Fetch dong-level data using officetel endpoints
-        const dongTransactions = await this.molitAPI.getRecentOfficetelByDong(
-          lawdCd, property.dong, property.exclusiveArea, 12
+        // Fetch dong-level sale data with cascading expansion: dong → adjacent dongs → district
+        // Level 1: Dong-level
+        let dongTransactions = await this.molitAPI.getRecentOfficetelByDongs(
+          lawdCd, [property.dong], property.exclusiveArea, 12
         );
+        console.log(`📊 Officetel sale (dong-level): ${dongTransactions.length} transactions`);
+
+        // Level 2: Expand to adjacent dongs if insufficient
+        if (dongTransactions.length < 4) {
+          const adjacentDongsForSale = getAdjacentDongs(property.district, property.dong);
+          if (adjacentDongsForSale.length > 0) {
+            console.log(`⚠️ Officetel sale: Only ${dongTransactions.length} dong-level. Expanding to adjacent dongs: [${adjacentDongsForSale.join(', ')}]`);
+            dongTransactions = await this.molitAPI.getRecentOfficetelByDongs(
+              lawdCd, [property.dong, ...adjacentDongsForSale], property.exclusiveArea, 12
+            );
+            console.log(`   → After adjacent dong expansion: ${dongTransactions.length} sale transactions`);
+          }
+        }
+
+        // Level 3: Expand to district-wide if still insufficient
+        if (dongTransactions.length < 4) {
+          console.log(`⚠️ Officetel sale: Still only ${dongTransactions.length}. Expanding to district-wide...`);
+          dongTransactions = await this.molitAPI.getRecentOfficetelByDongs(
+            lawdCd, [], property.exclusiveArea, 12
+          );
+          console.log(`   → After district expansion: ${dongTransactions.length} sale transactions`);
+        }
         // Fetch jeonse with cascading geographic expansion: dong → adjacent dongs → district
         let dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDongs(
           lawdCd, [property.dong], property.exclusiveArea, 12

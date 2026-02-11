@@ -886,6 +886,122 @@ export class MolitAPI {
   }
 
   /**
+   * Get recent officetel SALE transactions across multiple dongs
+   * @param dongs - Array of dong names. Empty array = district-wide (no dong filter)
+   */
+  async getRecentOfficetelByDongs(
+    lawdCd: string,
+    dongs: string[],
+    area: number | undefined,
+    monthsBack: number = 12
+  ): Promise<MolitTransaction[]> {
+    const dongList = dongs.length > 0 ? dongs.join(', ') : '(district-wide)';
+
+    console.log(`\n🔍 MOLIT 오피스텔 Sales Query (${dongs.length > 0 ? 'Multi-Dong' : 'District-Wide'}):`);
+    console.log(`   lawdCd: "${lawdCd}", dongs: ${dongs.length > 0 ? `[${dongList}]` : dongList}`);
+    console.log(`   area: ${area}㎡ (not used for filtering — tier calc normalizes via unit price)`);
+    console.log(`   monthsBack: ${monthsBack}`);
+
+    const transactions: MolitTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        const monthData = await this.getOfficetelTransactions(lawdCd, yearMonth);
+
+        const filtered = monthData.filter(t => {
+          if (dongs.length > 0) {
+            const dongMatches = dongs.some(dong =>
+              t.legalDong === dong ||
+              (t.legalDong && t.legalDong.includes(dong)) ||
+              (t.legalDong && dong.includes(t.legalDong))
+            );
+            return dongMatches;
+          }
+          return true;
+        });
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch 오피스텔 sales data for ${yearMonth}:`, error);
+      }
+    }
+
+    console.log(`   ✓ Total: ${transactions.length} transactions`);
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  /**
+   * Get recent multifamily SALE transactions across multiple dongs
+   * @param dongs - Array of dong names. Empty array = district-wide (no dong filter)
+   */
+  async getRecentMultifamilyByDongs(
+    lawdCd: string,
+    dongs: string[],
+    area: number | undefined,
+    monthsBack: number = 12
+  ): Promise<MolitTransaction[]> {
+    const dongList = dongs.length > 0 ? dongs.join(', ') : '(district-wide)';
+
+    console.log(`\n🔍 MOLIT 연립/다세대 Sales Query (${dongs.length > 0 ? 'Multi-Dong' : 'District-Wide'}):`);
+    console.log(`   lawdCd: "${lawdCd}", dongs: ${dongs.length > 0 ? `[${dongList}]` : dongList}`);
+    console.log(`   area: ${area}㎡ (not used for filtering — tier calc normalizes via unit price)`);
+    console.log(`   monthsBack: ${monthsBack}`);
+
+    const transactions: MolitTransaction[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < monthsBack; i++) {
+      const targetDate = new Date(today);
+      targetDate.setMonth(today.getMonth() - i);
+
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth() + 1;
+      const yearMonth = `${year}${month.toString().padStart(2, '0')}`;
+
+      try {
+        const monthData = await this.getMultifamilyTransactions(lawdCd, yearMonth);
+
+        const filtered = monthData.filter(t => {
+          if (dongs.length > 0) {
+            const dongMatches = dongs.some(dong =>
+              t.legalDong === dong ||
+              (t.legalDong && t.legalDong.includes(dong)) ||
+              (t.legalDong && dong.includes(t.legalDong))
+            );
+            return dongMatches;
+          }
+          return true;
+        });
+
+        transactions.push(...filtered);
+      } catch (error) {
+        console.error(`Failed to fetch 연립/다세대 sales data for ${yearMonth}:`, error);
+      }
+    }
+
+    console.log(`   ✓ Total: ${transactions.length} transactions`);
+
+    return transactions.sort((a, b) => {
+      const dateA = new Date(a.year, a.month - 1, a.day);
+      const dateB = new Date(b.year, b.month - 1, b.day);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  /**
    * Get recent JEONSE transactions for 오피스텔 by dong (dong-level fallback)
    * @param areaFilterPercent - Percentage-based area filter. Default 15%.
    */
