@@ -323,28 +323,31 @@ export class PropertyValuationEngine {
       const MIN_BUILDING_TXNS = 5;
 
       if (recentTransactions.length >= MIN_BUILDING_TXNS) {
-        // Sufficient building-level data → apartment-style valuation
+        // Sufficient building-level data → Theil-Sen regression (same as apartments)
         console.log(`📊 Officetel: Using building-level valuation (${recentTransactions.length} txns)`);
         valuationMethod = 'building';
 
-        baseValue = this.calculateTripleWeightedValue(
-          recentTransactions,
-          property.exclusiveArea,
-          property.buildingYear,
-          'apartment' // Use apartment-style single-weight (building data is consistent)
-        );
+        const now2 = new Date();
+        const regressionData = recentTransactions.map(t => {
+          const txDate = new Date(t.year, t.month - 1, t.day);
+          const daysAgo = (now2.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24);
+          return { daysAgo, value: t.transactionAmount };
+        });
 
-        // Apply floor adjustment (officetel is typically high-rise like apartments)
-        const totalFloors = this.getTotalFloorsFromTransactions(recentTransactions);
-        const floorAdjustedValue = this.applyFloorAdjustment(
-          baseValue,
-          property.floor,
-          totalFloors
-        );
+        const regression = theilSenTimeRegression(regressionData);
+        baseValue = regression.intercept;
 
-        valueLow = Math.floor(floorAdjustedValue * 0.95);
-        valueMid = Math.floor(floorAdjustedValue);
-        valueHigh = Math.floor(floorAdjustedValue * 1.05);
+        const dailyChange = regression.slope;
+        const annualChangePercent = baseValue > 0 ? (-dailyChange * 365 / baseValue) * 100 : 0;
+        console.log(`\n📊 Officetel Theil-Sen Regression:`);
+        console.log(`   Transactions: ${recentTransactions.length}`);
+        console.log(`   Predicted value (today): ₩${(baseValue / 100000000).toFixed(2)}억`);
+        console.log(`   Slope: ${(dailyChange / 10000).toFixed(1)}만원/day`);
+        console.log(`   Implied annual change: ${annualChangePercent.toFixed(1)}%`);
+
+        valueLow = 0;
+        valueMid = Math.floor(baseValue);
+        valueHigh = 0;
 
       } else {
         // Insufficient building-level data → dong-level tiered fallback
@@ -368,11 +371,12 @@ export class PropertyValuationEngine {
           throw new Error('No recent transaction data found for this officetel property (dong-level fallback)');
         }
 
-        // Use tiered hierarchy (same as multifamily)
+        // Use tiered hierarchy (same as multifamily - no age filter)
+        // More transactions = better tier distribution and statistical reliability
         const tieredResult = this.calculateTieredHierarchyValue(
           dongTransactions,
           property.exclusiveArea,
-          property.buildingYear
+          undefined // Intentionally skip age filter - same rationale as multifamily
         );
         tierEstimates = tieredResult.estimates;
         tierPercentiles = tieredResult.thresholds;
