@@ -5,7 +5,7 @@ import { PropertyDetails, ValuationResult, MolitTransaction, BuildingType, Quali
 /**
  * Valuation Configuration
  *
- * For apartments: Uses recency-weighted average (building-level data is consistent)
+ * For apartments: Uses Theil-Sen regression to predict expected value at today's date
  * For 연립다세대: Uses tiered hierarchy with floor/age filtering
  */
 const VALUATION_CONFIG = {
@@ -126,6 +126,47 @@ function calculatePercentile(sortedValues: number[], percentile: number): number
 
   if (lower === upper) return sortedValues[lower];
   return sortedValues[lower] * (1 - fraction) + sortedValues[upper] * fraction;
+}
+
+/**
+ * Theil-Sen Regression for time trend
+ * Returns slope (원/day) and intercept (value at daysAgo=0, i.e., today)
+ *
+ * Theil-Sen is robust to outliers - uses median of all pairwise slopes.
+ * Used for apartment Est. Value: predicts expected value at today's date.
+ */
+function theilSenTimeRegression(data: { daysAgo: number; value: number }[]): {
+  slope: number;
+  intercept: number;
+} {
+  const n = data.length;
+  if (n < 2) return { slope: 0, intercept: data[0]?.value || 0 };
+
+  // Calculate all pairwise slopes
+  const slopes: number[] = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const dx = data[i].daysAgo - data[j].daysAgo;
+      if (Math.abs(dx) > 7) { // At least 1 week difference
+        const dy = data[i].value - data[j].value;
+        slopes.push(dy / dx);
+      }
+    }
+  }
+
+  if (slopes.length === 0) {
+    return { slope: 0, intercept: data.reduce((s, d) => s + d.value, 0) / n };
+  }
+
+  slopes.sort((a, b) => a - b);
+  const slope = slopes[Math.floor(slopes.length / 2)];
+
+  // Intercept at daysAgo = 0 (today)
+  const intercepts = data.map(d => d.value - slope * d.daysAgo);
+  intercepts.sort((a, b) => a - b);
+  const intercept = intercepts[Math.floor(intercepts.length / 2)];
+
+  return { slope, intercept };
 }
 
 
@@ -361,29 +402,33 @@ export class PropertyValuationEngine {
       }
 
     } else {
-      // ===== APARTMENTS: Traditional recency-weighted approach =====
-      // Uses base value calculation + floor adjustment
+      // ===== APARTMENTS: Theil-Sen regression approach =====
+      // Predicts expected value at today's date using robust regression
+      // Theil-Sen uses median of pairwise slopes → resilient to outlier transactions
       valuationMethod = 'building';
 
-      baseValue = this.calculateTripleWeightedValue(
-        recentTransactions,
-        property.exclusiveArea,
-        property.buildingYear,
-        buildingType
-      );
+      const now2 = new Date();
+      const regressionData = recentTransactions.map(t => {
+        const txDate = new Date(t.year, t.month - 1, t.day);
+        const daysAgo = (now2.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24);
+        return { daysAgo, value: t.transactionAmount };
+      });
 
-      // Apply floor premium/discount for apartments
-      const totalFloors = this.getTotalFloorsFromTransactions(recentTransactions);
-      const floorAdjustedValue = this.applyFloorAdjustment(
-        baseValue,
-        property.floor,
-        totalFloors
-      );
+      const regression = theilSenTimeRegression(regressionData);
+      baseValue = regression.intercept; // Predicted value at daysAgo=0 (today)
 
-      // Traditional ±5% range for apartments
-      valueLow = Math.floor(floorAdjustedValue * 0.95);
-      valueMid = Math.floor(floorAdjustedValue);
-      valueHigh = Math.floor(floorAdjustedValue * 1.05);
+      // Log regression details
+      const dailyChange = regression.slope;
+      const annualChangePercent = baseValue > 0 ? (-dailyChange * 365 / baseValue) * 100 : 0;
+      console.log(`\n📊 Apartment Theil-Sen Regression:`);
+      console.log(`   Transactions: ${recentTransactions.length}`);
+      console.log(`   Predicted value (today): ₩${(baseValue / 100000000).toFixed(2)}억`);
+      console.log(`   Slope: ${(dailyChange / 10000).toFixed(1)}만원/day`);
+      console.log(`   Implied annual change: ${annualChangePercent.toFixed(1)}%`);
+
+      valueLow = 0;
+      valueMid = Math.floor(baseValue);
+      valueHigh = 0;
     }
 
     // Calculate trend (with R-squared for confidence)
