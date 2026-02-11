@@ -371,6 +371,7 @@ export interface TieredExpectedJeonse {
   unitJeonse: number;           // Weighted unit jeonse (₩/㎡) for this tier
   transactionCount: number;
   effectiveSampleSize: number;
+  depreciationRate: number;     // Annual depreciation rate used for age adjustment
 }
 
 // Tiered Expected Rent for 연립/다세대

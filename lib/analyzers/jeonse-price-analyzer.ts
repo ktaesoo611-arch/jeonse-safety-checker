@@ -1,5 +1,15 @@
 import { MolitTransaction, QualityTier, TieredExpectedJeonse } from '../types';
 
+// Depreciation rates by tier (same as property-valuation and wolse-price-analyzer)
+const JEONSE_TIERED_CONFIG = {
+  DEPRECIATION: {
+    budget: 0.02,    // 2%/yr
+    standard: 0.015, // 1.5%/yr
+    mid: 0.01,       // 1%/yr
+    premium: 0.005,  // 0.5%/yr
+  } as Record<QualityTier, number>,
+};
+
 /**
  * Jeonse Price Analysis Result
  */
@@ -385,7 +395,8 @@ export class JeonsePriceAnalyzer {
    */
   analyzeTiered(
     transactions: MolitTransaction[],
-    userArea?: number
+    userArea?: number,
+    targetBuildingYear?: number
   ): { tieredExpectedJeonse: TieredExpectedJeonse[]; percentileThresholds: { p25: number; p50: number; p75: number } } | null {
     // Step 1: Filter by area if provided
     let filtered = transactions;
@@ -458,18 +469,34 @@ export class JeonsePriceAnalyzer {
         tierTxns.map(t => ({ daysAgo: t.daysAgo, value: t.transactionAmount }))
       );
 
-      // Calculate recency-weighted unit jeonse
+      // Calculate recency-weighted unit jeonse with age adjustment
       const HALFLIFE_DAYS = 90;
+      const depreciation = JEONSE_TIERED_CONFIG.DEPRECIATION[tier];
+
+      let totalWeightedUnitJeonse = 0;
+      let totalWeight = 0;
+
+      tierTxns.forEach(t => {
+        const recencyWeight = Math.exp(-t.daysAgo / HALFLIFE_DAYS);
+
+        // Age adjustment: normalize comparable's jeonse to target building year
+        let ageAdjustment = 1.0;
+        if (targetBuildingYear && t.buildingYear) {
+          const yearDiff = targetBuildingYear - t.buildingYear;
+          ageAdjustment = 1 + (yearDiff * depreciation);
+        }
+
+        totalWeightedUnitJeonse += t.unitJeonse * ageAdjustment * recencyWeight;
+        totalWeight += recencyWeight;
+      });
+
+      const weightedUnitJeonse = totalWeightedUnitJeonse / totalWeight;
+
+      // Calculate effective sample size
       const weights = tierTxns.map(t => Math.exp(-t.daysAgo / HALFLIFE_DAYS));
       const sumW = weights.reduce((a, b) => a + b, 0);
       const sumW2 = weights.reduce((a, b) => a + b * b, 0);
       const effectiveSampleSize = (sumW * sumW) / sumW2;
-
-      let totalWeightedUnitJeonse = 0;
-      tierTxns.forEach((t, i) => {
-        totalWeightedUnitJeonse += t.unitJeonse * weights[i];
-      });
-      const weightedUnitJeonse = totalWeightedUnitJeonse / sumW;
 
       tieredExpectedJeonse.push({
         tier,
@@ -478,6 +505,7 @@ export class JeonsePriceAnalyzer {
         unitJeonse: Math.round(weightedUnitJeonse),
         transactionCount: tierTxns.length,
         effectiveSampleSize: Math.round(effectiveSampleSize * 10) / 10,
+        depreciationRate: depreciation,
       });
 
       console.log(`   ${tierLabels[tier]}: expected=${formatWon(regression.intercept)}, unitJeonse=${(weightedUnitJeonse/10000).toFixed(0)}만/㎡, n=${tierTxns.length}, effN=${effectiveSampleSize.toFixed(1)}`);

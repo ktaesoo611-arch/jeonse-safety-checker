@@ -496,7 +496,8 @@ export async function GET(
         // Run tiered analysis for dong-tiered valuations
         const valuationMethod = newSchemaResult.valuation_data?.valuationMethod || riskAnalysis.valuation?.valuationMethod;
         if (valuationMethod === 'dong-tiered' && allJeonseTransactions.length >= 4) {
-          const tieredResult = analyzer.analyzeTiered(allJeonseTransactions, userArea);
+          const targetBuildingYear = riskAnalysis.deunggibu?.buildingYear;
+          const tieredResult = analyzer.analyzeTiered(allJeonseTransactions, userArea, targetBuildingYear);
           if (tieredResult) {
             tieredExpectedJeonse = tieredResult.tieredExpectedJeonse;
             console.log(`📊 Tiered jeonse analysis (new schema): ${tieredExpectedJeonse.length} tiers computed`);
@@ -807,7 +808,8 @@ export async function GET(
       // Run tiered analysis for dong-tiered valuations
       const valuationMethodFallback = riskAnalysis.valuation?.valuationMethod;
       if (valuationMethodFallback === 'dong-tiered' && allJeonseTransactionsFallback.length >= 4) {
-        const tieredResult = analyzer.analyzeTiered(allJeonseTransactionsFallback, userArea);
+        const targetBuildingYearFallback = riskAnalysis.deunggibu?.buildingYear;
+        const tieredResult = analyzer.analyzeTiered(allJeonseTransactionsFallback, userArea, targetBuildingYearFallback);
         if (tieredResult) {
           tieredExpectedJeonseFallback = tieredResult.tieredExpectedJeonse;
           console.log(`📊 Tiered jeonse analysis (fallback): ${tieredExpectedJeonseFallback.length} tiers computed`);
