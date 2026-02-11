@@ -233,7 +233,7 @@ export class WolsePriceAnalyzer {
         marketData.transactions,
         quote.deposit,
         exclusiveArea,
-        targetBuildingYear
+        undefined // Intentionally skip age filter - more transactions = better tier distribution
       );
       tieredExpectedRent = tieredResult.tieredExpectedRent;
       filteredTransactions = tieredResult.filteredTransactions;
@@ -895,7 +895,7 @@ export class WolsePriceAnalyzer {
    * Calculate tiered expected rent for multifamily properties
    *
    * Flow:
-   * 1. Filter transactions (floor > 0, building age ±10 years)
+   * 1. Filter transactions (renewals, floor > 0; age filter disabled for more data)
    * 2. Calculate implied jeonse for each transaction
    * 3. Classify into 4 tiers by unit implied jeonse percentiles
    * 4. For each tier: recency-weighted jeonse + age adjustment
