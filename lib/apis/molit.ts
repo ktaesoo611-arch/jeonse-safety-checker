@@ -917,8 +917,10 @@ export class MolitAPI {
         const monthData = await this.getOfficetelTransactions(lawdCd, yearMonth);
 
         const filtered = monthData.filter(t => {
-          if (dongs.length > 0) {
-            const dongMatches = dongs.some(dong =>
+          // Filter out empty/whitespace dong strings to prevent matching everything
+          const validDongs = dongs.filter(d => d.trim() !== '');
+          if (validDongs.length > 0) {
+            const dongMatches = validDongs.some(dong =>
               t.legalDong === dong ||
               (t.legalDong && t.legalDong.includes(dong)) ||
               (t.legalDong && dong.includes(t.legalDong))
@@ -975,8 +977,10 @@ export class MolitAPI {
         const monthData = await this.getMultifamilyTransactions(lawdCd, yearMonth);
 
         const filtered = monthData.filter(t => {
-          if (dongs.length > 0) {
-            const dongMatches = dongs.some(dong =>
+          // Filter out empty/whitespace dong strings to prevent matching everything
+          const validDongs = dongs.filter(d => d.trim() !== '');
+          if (validDongs.length > 0) {
+            const dongMatches = validDongs.some(dong =>
               t.legalDong === dong ||
               (t.legalDong && t.legalDong.includes(dong)) ||
               (t.legalDong && dong.includes(t.legalDong))
@@ -1108,9 +1112,10 @@ export class MolitAPI {
         const monthData = await this.getOfficetelJeonseTransactions(lawdCd, yearMonth);
 
         const filtered = monthData.filter(t => {
-          // If dongs specified, filter by dong; otherwise district-wide
-          if (dongs.length > 0) {
-            const dongMatches = dongs.some(dong =>
+          // Filter out empty/whitespace dong strings to prevent matching everything
+          const validDongs = dongs.filter(d => d.trim() !== '');
+          if (validDongs.length > 0) {
+            const dongMatches = validDongs.some(dong =>
               t.legalDong === dong ||
               (t.legalDong && t.legalDong.includes(dong)) ||
               (t.legalDong && dong.includes(t.legalDong))
@@ -1173,8 +1178,10 @@ export class MolitAPI {
         const monthData = await this.getMultifamilyJeonseTransactions(lawdCd, yearMonth);
 
         const filtered = monthData.filter(t => {
-          if (dongs.length > 0) {
-            const dongMatches = dongs.some(dong =>
+          // Filter out empty/whitespace dong strings to prevent matching everything
+          const validDongs = dongs.filter(d => d.trim() !== '');
+          if (validDongs.length > 0) {
+            const dongMatches = validDongs.some(dong =>
               t.legalDong === dong ||
               (t.legalDong && t.legalDong.includes(dong)) ||
               (t.legalDong && dong.includes(t.legalDong))

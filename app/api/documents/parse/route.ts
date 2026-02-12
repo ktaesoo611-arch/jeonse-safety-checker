@@ -162,9 +162,10 @@ async function fetchPropertyValuation(
       return null;
     }
 
-    // For multifamily properties, we MUST have the correct legal dong (법정동)
     // If the main address is a road name address (도로명주소), extract dong from jibunAddress
-    if (buildingType === 'multifamily') {
+    // This applies to ALL building types — officetel, multifamily, etc.
+    // Without the correct dong, cascade falls back to district-wide (too broad)
+    {
       const addressIsRoadName = isRoadNameAddress(address);
 
       if (addressIsRoadName && jibunAddress) {
@@ -176,10 +177,10 @@ async function fetchPropertyValuation(
         } else {
           console.warn(`   ⚠️ Could not extract dong from jibunAddress: "${jibunAddress}"`);
         }
-      } else if (addressIsRoadName && !jibunAddress) {
+      } else if (addressIsRoadName && !dong && !jibunAddress) {
         console.warn(`   ⚠️ Road name address without jibunAddress - dong filtering may not work correctly`);
         console.warn(`      Address "${address}" appears to be a road name address.`);
-        console.warn(`      For accurate 연립/다세대 valuation, please provide jibunAddress.`);
+        console.warn(`      For accurate valuation, please provide jibunAddress.`);
       }
     }
 
