@@ -164,9 +164,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
         floor: body.floor,
       }, propertyType, body.analysisId);
     } else {
-      // Use APick: Build combined address from structured params if needed
-      let combinedAddress = body.address || '';
-      if (!combinedAddress && hasStructuredAddress) {
+      // Use APick: Always build combined address from structured params when available
+      // This avoids sending raw unitNumber text (e.g., "동관동 732호") which APick can't parse
+      let combinedAddress = '';
+      if (hasStructuredAddress) {
         combinedAddress = [
           body.addr_sido,
           body.addr_sigungu,
@@ -176,6 +177,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
           body.dong && `${body.dong}동`,
           body.ho && `${body.ho}호`,
         ].filter(Boolean).join(' ');
+      } else if (body.address) {
+        combinedAddress = body.address;
       }
       console.log(`[RegistryLookup] Using APick API with address: ${combinedAddress}`);
       result = await fetchViaApick(combinedAddress, propertyType, body.analysisId);

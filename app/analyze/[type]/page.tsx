@@ -213,15 +213,17 @@ export default function SimplifiedAnalysisPage() {
       console.log(`Analysis created: ${analysisId}`);
 
       // Parse dong/ho/floor from unit number
-      // Supports: "101동 1001호", "제2층 제1호", "2층 1호", "101동 3층 501호"
+      // Supports numeric: "101동 1001호", "제2층 제1호", "2층 1호", "101동 3층 501호"
+      // Supports named: "동관동 732호", "A동 501호", "나동 301호"
       let dongNum = '';
       let hoNum = '';
       let floorNum = '';
       if (unitNumber) {
-        const dongMatch = unitNumber.match(/(\d+)\s*동/);
+        // Match building wing (동): supports "101동", "동관동", "A동", "나동"
+        const dongMatch = unitNumber.match(/([가-힣a-zA-Z\d]+)\s*동/);
+        if (dongMatch) dongNum = dongMatch[1];
         const hoMatch = unitNumber.match(/(\d+)\s*호/);
         const floorMatch = unitNumber.match(/(\d+)\s*층/);
-        if (dongMatch) dongNum = dongMatch[1];
         if (hoMatch) hoNum = hoMatch[1];
         if (floorMatch) floorNum = floorMatch[1];
       }
@@ -244,7 +246,7 @@ export default function SimplifiedAnalysisPage() {
         lotNumber: addressData.lotNumber || null,
         roadName: addressData.roadName || null,
         roadBuildingNumber: addressData.roadBuildingNumber || null,
-        dong: dongNum || null,  // 동 number (e.g., "101")
+        dong: dongNum || null,  // 동 identifier (e.g., "101", "동관", "A")
         ho: hoNum || null,      // 호 number (e.g., "1001")
         floor: floorNum || null, // 층 number (e.g., "2")
       }));
