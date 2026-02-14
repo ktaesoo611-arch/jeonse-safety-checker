@@ -276,6 +276,8 @@ export default function SimplifiedAnalysisPage() {
           addr_dong: addressData.bname,
           addr_lotNumber: addressData.lotNumber || undefined,
           buildingName: addressData.buildingName || undefined,
+          addr_roadName: addressData.roadName || undefined,
+          addr_roadBuildingNumber: addressData.roadBuildingNumber || undefined,
           dong: dongNum || undefined,
           ho: hoNum || undefined,
           floor: floorNum || undefined,

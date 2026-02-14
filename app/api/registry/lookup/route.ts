@@ -86,8 +86,10 @@ interface RegistryLookupRequest {
   addr_sigungu?: string;     // 시군구
   addr_dong?: string;        // 읍면동
   addr_lotNumber?: string;   // 지번 (e.g., "123-45")
+  addr_roadName?: string;    // 도로명 (e.g., "마곡중앙5로")
+  addr_roadBuildingNumber?: string; // 도로명 건물번호 (e.g., "6")
   buildingName?: string;     // 건물명칭
-  dong?: string;             // 동 (e.g., "101")
+  dong?: string;             // 동 (e.g., "101", "동관")
   ho?: string;               // 호 (e.g., "1001")
   floor?: string;            // 층 (e.g., "2")
   // Other params
@@ -164,11 +166,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
         floor: body.floor,
       }, propertyType, body.analysisId);
     } else {
-      // Use APick: Build combined address from structured params
-      // Try multiple address formats since APick's address matching can be picky
+      // Use APick: Try multiple address formats since APick's matching can be picky
+      // APick docs example: "디지털로 121 에이스가산타워 801호" (road address format)
       const addressVariants: string[] = [];
       if (hasStructuredAddress) {
-        // Variant 1: Full structured address (sido + sigungu + dong + lot + building + dong/ho)
+        // Variant 1: Road address format (matches APick's documented example)
+        if (body.addr_roadName && body.addr_roadBuildingNumber) {
+          addressVariants.push(
+            [
+              body.addr_roadName,
+              body.addr_roadBuildingNumber,
+              body.buildingName,
+              body.dong && `${body.dong}동`,
+              body.ho && `${body.ho}호`,
+            ].filter(Boolean).join(' ')
+          );
+        }
+        // Variant 2: Full jibun address (sido + sigungu + dong + lot + building + dong/ho)
         addressVariants.push(
           [
             body.addr_sido,
@@ -180,7 +194,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
             body.ho && `${body.ho}호`,
           ].filter(Boolean).join(' ')
         );
-        // Variant 2: Building name + dong/ho only (matches APick's documented format)
+        // Variant 3: Building name + dong/ho only
         if (body.buildingName) {
           addressVariants.push(
             [
