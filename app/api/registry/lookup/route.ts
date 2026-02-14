@@ -168,6 +168,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
     } else {
       // Use APick: Try multiple address formats since APick's matching can be picky
       // APick docs example: "디지털로 121 에이스가산타워 801호" (road address format)
+      // For dong: only append "동" suffix for numeric dongs (e.g., "101" → "101동")
+      // Named dongs like "동관" already include the concept (registry uses "동관" not "동관동")
+      const dongStr = body.dong
+        ? (/^\d+$/.test(body.dong) ? `${body.dong}동` : body.dong)
+        : '';
       const addressVariants: string[] = [];
       if (hasStructuredAddress) {
         // Variant 1: Road address format (matches APick's documented example)
@@ -177,7 +182,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
               body.addr_roadName,
               body.addr_roadBuildingNumber,
               body.buildingName,
-              body.dong && `${body.dong}동`,
+              dongStr,
               body.ho && `${body.ho}호`,
             ].filter(Boolean).join(' ')
           );
@@ -190,7 +195,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
             body.addr_dong,
             body.addr_lotNumber,
             body.buildingName,
-            body.dong && `${body.dong}동`,
+            dongStr,
             body.ho && `${body.ho}호`,
           ].filter(Boolean).join(' ')
         );
@@ -199,7 +204,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
           addressVariants.push(
             [
               body.buildingName,
-              body.dong && `${body.dong}동`,
+              dongStr,
               body.ho && `${body.ho}호`,
             ].filter(Boolean).join(' ')
           );
