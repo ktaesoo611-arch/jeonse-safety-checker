@@ -215,6 +215,7 @@ export default function SimplifiedAnalysisPage() {
       // Parse dong/ho/floor from unit number
       // Supports numeric: "101동 1001호", "제2층 제1호", "2층 1호", "101동 3층 501호"
       // Supports named: "동관동 732호", "A동 501호", "나동 301호"
+      // Supports without suffixes: "동관동 732", "101동 501"
       let dongNum = '';
       let hoNum = '';
       let floorNum = '';
@@ -224,7 +225,14 @@ export default function SimplifiedAnalysisPage() {
         if (dongMatch) dongNum = dongMatch[1];
         const hoMatch = unitNumber.match(/(\d+)\s*호/);
         const floorMatch = unitNumber.match(/(\d+)\s*층/);
-        if (hoMatch) hoNum = hoMatch[1];
+        if (hoMatch) {
+          hoNum = hoMatch[1];
+        } else {
+          // Support bare number as ho (e.g., "동관동 732", "101동 501", "732")
+          // Match trailing number not already part of dong/floor
+          const bareNumMatch = unitNumber.match(/(?:^|동|층)\s*(\d+)\s*$/);
+          if (bareNumMatch) hoNum = bareNumMatch[1];
+        }
         if (floorMatch) floorNum = floorMatch[1];
       }
 
