@@ -164,24 +164,50 @@ export async function POST(request: NextRequest): Promise<NextResponse<RegistryL
         floor: body.floor,
       }, propertyType, body.analysisId);
     } else {
-      // Use APick: Always build combined address from structured params when available
-      // This avoids sending raw unitNumber text (e.g., "동관동 732호") which APick can't parse
-      let combinedAddress = '';
+      // Use APick: Build combined address from structured params
+      // Try multiple address formats since APick's address matching can be picky
+      const addressVariants: string[] = [];
       if (hasStructuredAddress) {
-        combinedAddress = [
-          body.addr_sido,
-          body.addr_sigungu,
-          body.addr_dong,
-          body.addr_lotNumber,
-          body.buildingName,
-          body.dong && `${body.dong}동`,
-          body.ho && `${body.ho}호`,
-        ].filter(Boolean).join(' ');
+        // Variant 1: Full structured address (sido + sigungu + dong + lot + building + dong/ho)
+        addressVariants.push(
+          [
+            body.addr_sido,
+            body.addr_sigungu,
+            body.addr_dong,
+            body.addr_lotNumber,
+            body.buildingName,
+            body.dong && `${body.dong}동`,
+            body.ho && `${body.ho}호`,
+          ].filter(Boolean).join(' ')
+        );
+        // Variant 2: Building name + dong/ho only (matches APick's documented format)
+        if (body.buildingName) {
+          addressVariants.push(
+            [
+              body.buildingName,
+              body.dong && `${body.dong}동`,
+              body.ho && `${body.ho}호`,
+            ].filter(Boolean).join(' ')
+          );
+        }
       } else if (body.address) {
-        combinedAddress = body.address;
+        addressVariants.push(body.address);
       }
-      console.log(`[RegistryLookup] Using APick API with address: ${combinedAddress}`);
-      result = await fetchViaApick(combinedAddress, propertyType, body.analysisId);
+
+      // Try each address variant until one succeeds
+      for (let i = 0; i < addressVariants.length; i++) {
+        const addr = addressVariants[i];
+        console.log(`[RegistryLookup] Using APick API with address (variant ${i + 1}/${addressVariants.length}): ${addr}`);
+        result = await fetchViaApick(addr, propertyType, body.analysisId);
+        if (result.success) break;
+        if (i < addressVariants.length - 1) {
+          console.log(`[RegistryLookup] APick variant ${i + 1} failed, trying next variant...`);
+        }
+      }
+      // @ts-expect-error result is always assigned if addressVariants is non-empty
+      if (!result) {
+        result = { success: false, error: 'No address variants available' };
+      }
     }
 
     // If lookup failed, mark analysis as failed with error message
