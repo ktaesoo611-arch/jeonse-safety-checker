@@ -15,12 +15,14 @@ export interface BuildingInfo {
   buildingType: BuildingType;
   buildingTypeName: string; // Original Korean name (아파트, 연립주택, 다세대주택, etc.)
   mainPurpsCd: string; // Building purpose code
+  etcPurps?: string; // 기타용도 (e.g., "오피스텔(주거용)")
   totalFloorArea?: number; // 연면적
   groundFloorCount?: number; // 지상 층수
   undergroundFloorCount?: number; // 지하 층수
   useAprDay?: string; // 사용승인일
   newOldRegstrGbCd?: string; // 신규/기존 구분
   isResidentialOfficetel?: boolean; // true if 주거용 오피스텔, false if 업무용, undefined if not officetel
+  detectionSource?: 'exposInfo' | 'titleInfo'; // Which API was used for detection
 }
 
 export interface BuildingRegistryResponse {
@@ -344,7 +346,9 @@ export class BuildingRegistryAPI {
 
   /**
    * Get building information including building type
-   * Uses 건축물대장 표제부 (title section) which contains building classification
+   * Two-phase detection:
+   * - Phase 1: getBrExposPubuseAreaInfo (전유공용면적) — unit-level mainPurpsCd is precise
+   * - Phase 2: getBrTitleInfo (표제부) — fallback for buildings without 전유 units (단독/다가구)
    *
    * @param sigunguCd - 시군구코드 (district code, e.g., "11680" for 강남구)
    * @param bjdongCd - 법정동코드 (legal dong code, e.g., "10300" for 역삼동)
@@ -366,146 +370,31 @@ export class BuildingRegistryAPI {
     }
 
     try {
-      // Convert MOLIT dong code to Building Registry dong code
       const registryDongCode = convertToRegistryDongCode(sigunguCd, bjdongCd);
+      const formattedBun = bun.padStart(4, '0');
+      const formattedJi = (ji || '0').padStart(4, '0');
 
-      // Debug: log API request parameters
-      const apiParams = {
-        sigunguCd: sigunguCd,
-        bjdongCd: registryDongCode,
-        bun: bun.padStart(4, '0'),
-        ji: (ji || '0').padStart(4, '0'),
-      };
-      console.log(`[BuildingRegistry] API Request params:`, apiParams);
-
-      // Use getBrTitleInfo for 표제부 (title section) which has building type
-      const response = await axios.get(
-        `${this.baseUrl}/getBrTitleInfo`,
-        {
-          params: {
-            serviceKey: this.apiKey,
-            sigunguCd: sigunguCd,
-            bjdongCd: registryDongCode,
-            bun: bun.padStart(4, '0'), // API expects 4-digit format
-            ji: (ji || '0').padStart(4, '0'), // API expects 4-digit format
-            numOfRows: 10,
-            pageNo: 1,
-            _type: 'json'
-          },
-          timeout: 10000
-        }
-      );
-
-      const result = response.data;
-
-      // Debug: log raw response structure
-      console.log(`[BuildingRegistry] Raw response for ${sigunguCd}-${registryDongCode}-${bun}-${ji}:`, {
-        hasResponse: !!result.response,
-        hasBody: !!result.response?.body,
-        hasItems: !!result.response?.body?.items,
-        itemsType: typeof result.response?.body?.items,
-        itemsValue: result.response?.body?.items,
-        totalCount: result.response?.body?.totalCount,
+      console.log(`[BuildingRegistry] API Request params:`, {
+        sigunguCd, bjdongCd: registryDongCode, bun: formattedBun, ji: formattedJi,
       });
 
-      // Handle API response quirks: items can be empty string, null, or object/array
-      const itemsWrapper = result.response?.body?.items;
-      const items = itemsWrapper && typeof itemsWrapper === 'object' ? itemsWrapper.item : null;
-
-      if (!items || (Array.isArray(items) && items.length === 0)) {
-        console.log(`[BuildingRegistry] No building found for ${sigunguCd}-${bjdongCd}-${bun}-${ji}`);
-        return {
-          success: false,
-          error: 'Building not found'
-        };
+      // Phase 1: Try getBrExposPubuseAreaInfo (전유공용면적) — precise unit-level type
+      const exposResult = await this.fetchExposPubuseAreaInfo(sigunguCd, registryDongCode, formattedBun, formattedJi);
+      if (exposResult) {
+        console.log(`[BuildingRegistry] Phase 1 (exposInfo) success: ${exposResult.buildingTypeName} (${exposResult.mainPurpsCd}) → ${exposResult.buildingType}`);
+        return { success: true, data: exposResult };
       }
 
-      // Normalize to array
-      const itemArray = Array.isArray(items) ? items : [items];
+      console.log(`[BuildingRegistry] Phase 1 (exposInfo) returned no data, falling back to titleInfo`);
 
-      // For complexes, API may return multiple buildings (동)
-      // We need to analyze all buildings to determine the correct type
-      // Priority: 아파트 > 연립주택/다세대주택 > 공동주택 > others
-      let maxFloorCount = 0;
-      let totalFloorAreaSum = 0;
-      let primaryBuildingType = '';
-      let selectedItem = itemArray[0];
-
-      // Track all building types found for better classification
-      const foundTypes = new Set<string>();
-
-      for (const item of itemArray) {
-        const floors = item.grndFlrCnt ? parseInt(item.grndFlrCnt) : 0;
-        const area = item.totArea ? parseFloat(item.totArea) : 0;
-        const typeName = item.mainPurpsCdNm?.trim() || '';
-
-        totalFloorAreaSum += area;
-        if (typeName) foundTypes.add(typeName);
-
-        // Track the building with highest floor count
-        if (floors > maxFloorCount) {
-          maxFloorCount = floors;
-          selectedItem = item;
-        }
-
-        // Explicit building types take priority (highest to lowest)
-        // 1. 아파트 - highest priority
-        // 2. 연립주택/다세대주택 - explicit multifamily types
-        // 3. Other types
-        if (typeName === '아파트') {
-          primaryBuildingType = '아파트';
-        } else if (typeName === '연립주택' || typeName === '다세대주택' || typeName === '다가구주택') {
-          // Only set if we haven't found 아파트
-          if (primaryBuildingType !== '아파트') {
-            primaryBuildingType = typeName;
-          }
-        } else if (!primaryBuildingType && typeName) {
-          primaryBuildingType = typeName;
-        }
+      // Phase 2: Fallback to getBrTitleInfo (표제부) — for 단독/다가구 without 전유 units
+      const titleResult = await this.fetchTitleInfo(sigunguCd, bjdongCd, registryDongCode, formattedBun, formattedJi);
+      if (titleResult) {
+        return { success: true, data: titleResult };
       }
 
-      // Log all found types for debugging
-      console.log(`[BuildingRegistry] Found building types on lot: [${Array.from(foundTypes).join(', ')}]`);
-
-      const mainPurpsCdNm = primaryBuildingType || selectedItem.mainPurpsCdNm?.trim() || '';
-      const etcPurps = selectedItem.etcPurps?.trim() || ''; // 기타용도 - may contain specific type like "오피스텔(주거용)"
-      // Use max floor count across all buildings for classification
-      const groundFloors = maxFloorCount || (selectedItem.grndFlrCnt ? parseInt(selectedItem.grndFlrCnt) : 0);
-      const buildingType = this.mapBuildingType(mainPurpsCdNm, groundFloors, totalFloorAreaSum, etcPurps);
-
-      console.log(`[BuildingRegistry] Mapping: mainPurpsCdNm="${mainPurpsCdNm}", etcPurps="${etcPurps}", floors=${groundFloors}`);
-
-      console.log(`[BuildingRegistry] Found ${itemArray.length} building(s): ${mainPurpsCdNm}, maxFloors=${maxFloorCount}, totalArea=${totalFloorAreaSum.toFixed(0)}㎡ → ${buildingType}`);
-
-      // For officetel, determine if residential (주거용) based on etcPurps
-      // Examples: "오피스텔(주거용)" → residential, "오피스텔" without qualifier → default to residential
-      // "업무시설" → commercial
-      let isResidentialOfficetel: boolean | undefined;
-      if (buildingType === 'officetel') {
-        if (etcPurps.includes('주거용')) {
-          isResidentialOfficetel = true;
-        } else if (mainPurpsCdNm === '업무시설' && !etcPurps.includes('주거')) {
-          isResidentialOfficetel = false;
-        } else {
-          // Default to true — most officetel jeonse queries are for residential units
-          isResidentialOfficetel = true;
-        }
-        console.log(`[BuildingRegistry] Officetel residential classification: ${isResidentialOfficetel} (etcPurps="${etcPurps}")`);
-      }
-
-      return {
-        success: true,
-        data: {
-          buildingType,
-          buildingTypeName: mainPurpsCdNm,
-          mainPurpsCd: selectedItem.mainPurpsCd || '',
-          totalFloorArea: totalFloorAreaSum || undefined,
-          groundFloorCount: maxFloorCount || undefined,
-          undergroundFloorCount: selectedItem.ugrndFlrCnt ? parseInt(selectedItem.ugrndFlrCnt) : undefined,
-          useAprDay: selectedItem.useAprDay || undefined,
-          isResidentialOfficetel
-        }
-      };
+      console.log(`[BuildingRegistry] No building found for ${sigunguCd}-${bjdongCd}-${bun}-${ji}`);
+      return { success: false, error: 'Building not found' };
     } catch (error: any) {
       console.error('[BuildingRegistry] API Error:', error.message);
       return {
@@ -513,6 +402,222 @@ export class BuildingRegistryAPI {
         error: error.message || 'Failed to fetch building info'
       };
     }
+  }
+
+  /**
+   * Phase 1: Fetch unit-level building info from 전유공용면적 API
+   * Returns precise mainPurpsCd (e.g., 02001=아파트, 02002=연립, 02003=다세대, 14202=오피스텔)
+   */
+  private async fetchExposPubuseAreaInfo(
+    sigunguCd: string,
+    registryDongCode: string,
+    bun: string,
+    ji: string
+  ): Promise<BuildingInfo | null> {
+    const response = await axios.get(
+      `${this.baseUrl}/getBrExposPubuseAreaInfo`,
+      {
+        params: {
+          serviceKey: this.apiKey,
+          sigunguCd,
+          bjdongCd: registryDongCode,
+          bun,
+          ji,
+          numOfRows: 100,
+          pageNo: 1,
+          _type: 'json'
+        },
+        timeout: 10000
+      }
+    );
+
+    const result = response.data;
+    const itemsWrapper = result.response?.body?.items;
+    const items = itemsWrapper && typeof itemsWrapper === 'object' ? itemsWrapper.item : null;
+
+    if (!items || (Array.isArray(items) && items.length === 0)) {
+      return null;
+    }
+
+    const itemArray = Array.isArray(items) ? items : [items];
+
+    // Filter for 전유 (exclusive-use) items only — 공용 items don't have meaningful mainPurpsCd
+    const exclusiveItems = itemArray.filter((item: any) => item.exposPubuseGbCdNm === '전유');
+    if (exclusiveItems.length === 0) {
+      return null;
+    }
+
+    // Find the most common mainPurpsCd among 전유 items
+    const codeCounts = new Map<string, { count: number; name: string }>();
+    for (const item of exclusiveItems) {
+      const code = item.mainPurpsCd?.trim() || '';
+      const name = item.mainPurpsCdNm?.trim() || '';
+      if (code) {
+        const existing = codeCounts.get(code);
+        codeCounts.set(code, { count: (existing?.count || 0) + 1, name: name || existing?.name || '' });
+      }
+    }
+
+    if (codeCounts.size === 0) {
+      return null;
+    }
+
+    // Pick the most frequent code
+    let bestCode = '';
+    let bestName = '';
+    let bestCount = 0;
+    for (const [code, { count, name }] of codeCounts) {
+      if (count > bestCount) {
+        bestCode = code;
+        bestName = name;
+        bestCount = count;
+      }
+    }
+
+    console.log(`[BuildingRegistry] ExposInfo: ${exclusiveItems.length} 전유 items, mainPurpsCd="${bestCode}" (${bestName}), codes found: [${Array.from(codeCounts.entries()).map(([c, v]) => `${c}:${v.name}(${v.count})`).join(', ')}]`);
+
+    const buildingType = this.mapExposMainPurpsCd(bestCode, bestName);
+    const etcPurps = exclusiveItems[0].etcPurps?.trim() || '';
+
+    // Determine officetel residential status
+    let isResidentialOfficetel: boolean | undefined;
+    if (buildingType === 'officetel') {
+      if (etcPurps.includes('주거용')) {
+        isResidentialOfficetel = true;
+      } else if (bestName === '업무시설' && !etcPurps.includes('주거')) {
+        isResidentialOfficetel = false;
+      } else {
+        isResidentialOfficetel = true;
+      }
+      console.log(`[BuildingRegistry] Officetel residential classification: ${isResidentialOfficetel} (etcPurps="${etcPurps}")`);
+    }
+
+    return {
+      buildingType,
+      buildingTypeName: bestName,
+      mainPurpsCd: bestCode,
+      etcPurps: etcPurps || undefined,
+      // exposInfo doesn't have floor count or total area
+      groundFloorCount: undefined,
+      totalFloorArea: undefined,
+      undergroundFloorCount: undefined,
+      useAprDay: exclusiveItems[0].useAprDay || undefined,
+      isResidentialOfficetel,
+      detectionSource: 'exposInfo',
+    };
+  }
+
+  /**
+   * Phase 2 (fallback): Fetch building info from 표제부 API
+   * Used for buildings without 전유 units (단독주택, 다가구주택, etc.)
+   */
+  private async fetchTitleInfo(
+    sigunguCd: string,
+    bjdongCd: string,
+    registryDongCode: string,
+    bun: string,
+    ji: string
+  ): Promise<BuildingInfo | null> {
+    const response = await axios.get(
+      `${this.baseUrl}/getBrTitleInfo`,
+      {
+        params: {
+          serviceKey: this.apiKey,
+          sigunguCd,
+          bjdongCd: registryDongCode,
+          bun,
+          ji,
+          numOfRows: 10,
+          pageNo: 1,
+          _type: 'json'
+        },
+        timeout: 10000
+      }
+    );
+
+    const result = response.data;
+
+    console.log(`[BuildingRegistry] TitleInfo raw response for ${sigunguCd}-${registryDongCode}-${bun}-${ji}:`, {
+      hasResponse: !!result.response,
+      hasBody: !!result.response?.body,
+      hasItems: !!result.response?.body?.items,
+      totalCount: result.response?.body?.totalCount,
+    });
+
+    const itemsWrapper = result.response?.body?.items;
+    const items = itemsWrapper && typeof itemsWrapper === 'object' ? itemsWrapper.item : null;
+
+    if (!items || (Array.isArray(items) && items.length === 0)) {
+      return null;
+    }
+
+    const itemArray = Array.isArray(items) ? items : [items];
+
+    // Analyze all buildings on the lot to determine the correct type
+    let maxFloorCount = 0;
+    let totalFloorAreaSum = 0;
+    let primaryBuildingType = '';
+    let selectedItem = itemArray[0];
+    const foundTypes = new Set<string>();
+
+    for (const item of itemArray) {
+      const floors = item.grndFlrCnt ? parseInt(item.grndFlrCnt) : 0;
+      const area = item.totArea ? parseFloat(item.totArea) : 0;
+      const typeName = item.mainPurpsCdNm?.trim() || '';
+
+      totalFloorAreaSum += area;
+      if (typeName) foundTypes.add(typeName);
+
+      if (floors > maxFloorCount) {
+        maxFloorCount = floors;
+        selectedItem = item;
+      }
+
+      if (typeName === '아파트') {
+        primaryBuildingType = '아파트';
+      } else if (typeName === '연립주택' || typeName === '다세대주택' || typeName === '다가구주택') {
+        if (primaryBuildingType !== '아파트') {
+          primaryBuildingType = typeName;
+        }
+      } else if (!primaryBuildingType && typeName) {
+        primaryBuildingType = typeName;
+      }
+    }
+
+    console.log(`[BuildingRegistry] TitleInfo found types on lot: [${Array.from(foundTypes).join(', ')}]`);
+
+    const mainPurpsCdNm = primaryBuildingType || selectedItem.mainPurpsCdNm?.trim() || '';
+    const etcPurps = selectedItem.etcPurps?.trim() || '';
+    const groundFloors = maxFloorCount || (selectedItem.grndFlrCnt ? parseInt(selectedItem.grndFlrCnt) : 0);
+    const buildingType = this.mapBuildingType(mainPurpsCdNm, groundFloors, totalFloorAreaSum, etcPurps);
+
+    console.log(`[BuildingRegistry] TitleInfo mapping: mainPurpsCdNm="${mainPurpsCdNm}", etcPurps="${etcPurps}", floors=${groundFloors}`);
+    console.log(`[BuildingRegistry] TitleInfo found ${itemArray.length} building(s): ${mainPurpsCdNm}, maxFloors=${maxFloorCount}, totalArea=${totalFloorAreaSum.toFixed(0)}㎡ → ${buildingType}`);
+
+    let isResidentialOfficetel: boolean | undefined;
+    if (buildingType === 'officetel') {
+      if (etcPurps.includes('주거용')) {
+        isResidentialOfficetel = true;
+      } else if (mainPurpsCdNm === '업무시설' && !etcPurps.includes('주거')) {
+        isResidentialOfficetel = false;
+      } else {
+        isResidentialOfficetel = true;
+      }
+      console.log(`[BuildingRegistry] Officetel residential classification: ${isResidentialOfficetel} (etcPurps="${etcPurps}")`);
+    }
+
+    return {
+      buildingType,
+      buildingTypeName: mainPurpsCdNm,
+      mainPurpsCd: selectedItem.mainPurpsCd || '',
+      etcPurps: etcPurps || undefined,
+      totalFloorArea: totalFloorAreaSum || undefined,
+      groundFloorCount: maxFloorCount || undefined,
+      undergroundFloorCount: selectedItem.ugrndFlrCnt ? parseInt(selectedItem.ugrndFlrCnt) : undefined,
+      useAprDay: selectedItem.useAprDay || undefined,
+      isResidentialOfficetel,
+      detectionSource: 'titleInfo',
+    };
   }
 
   /**
@@ -527,6 +632,26 @@ export class BuildingRegistryAPI {
   ): Promise<BuildingType> {
     const result = await this.getBuildingInfo(sigunguCd, bjdongCd, bun, ji);
     return result.data?.buildingType || 'unknown';
+  }
+
+  /**
+   * Map mainPurpsCd from 전유공용면적 API to BuildingType
+   * These codes directly correspond to MOLIT 실거래가 API endpoint categories
+   */
+  private mapExposMainPurpsCd(code: string, name: string): BuildingType {
+    switch (code) {
+      case '02001': return 'apartment';    // 아파트
+      case '02002': return 'multifamily';  // 연립주택
+      case '02003': return 'multifamily';  // 다세대주택
+      case '14202': return 'officetel';    // 오피스텔
+      default:
+        // Fallback to name-based matching
+        if (name.includes('아파트')) return 'apartment';
+        if (name.includes('연립') || name.includes('다세대') || name.includes('다가구')) return 'multifamily';
+        if (name.includes('오피스텔')) return 'officetel';
+        console.log(`[BuildingRegistry] Unknown exposInfo mainPurpsCd: "${code}" (${name}), defaulting to unknown`);
+        return 'unknown';
+    }
   }
 
   /**
