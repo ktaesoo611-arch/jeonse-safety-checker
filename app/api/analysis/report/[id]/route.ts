@@ -215,7 +215,43 @@ export async function GET(
 
       // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
       const wolseDeunggibuDoc = wolseDocuments?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef' || d.document_type === 'deunggibu-apick');
-      const wolseParsedData = wolseDeunggibuDoc?.parsed_data || null;
+      let wolseParsedData = wolseDeunggibuDoc?.parsed_data || null;
+
+      // For APick documents, re-parse Excel from storage to apply latest parser fixes
+      // This ensures cancellation detection bug fixes are applied to existing analyses
+      let freshMetricsOverride: { totalDebt: number; ltv: number; availableEquity: number } | null = null;
+      if (wolseDeunggibuDoc?.document_type === 'deunggibu-apick' && wolseDeunggibuDoc?.file_path && wolseParsedData) {
+        try {
+          const { data: apickFileData } = await supabase.storage
+            .from('documents')
+            .download(wolseDeunggibuDoc.file_path);
+          if (apickFileData) {
+            const { parseDeunggibuExcel } = await import('@/lib/analyzers/excel-deunggibu-parser');
+            const reParsed = parseDeunggibuExcel(Buffer.from(await apickFileData.arrayBuffer()));
+            const cachedActiveCount = wolseParsedData.activeMortgages?.length ?? 0;
+            const freshActiveCount = reParsed.activeMortgages.length;
+            if (cachedActiveCount !== freshActiveCount) {
+              console.log(`[Report] APick re-parse: activeMortgages changed ${cachedActiveCount} -> ${freshActiveCount}`);
+              wolseParsedData = { ...reParsed, apickIcId: wolseParsedData.apickIcId, apickCost: wolseParsedData.apickCost };
+              // Recalculate debt metrics from fresh data
+              const freshMortgageDebt = reParsed.activeMortgages.reduce((s: number, m: any) => s + Math.round(m.maxAmount * 0.83), 0);
+              const freshJeonseDebt = (reParsed.activeJeonseRights || []).reduce((s: number, j: any) => s + j.amount, 0);
+              const freshTotalDebt = freshMortgageDebt + freshJeonseDebt;
+              const estimatedValue = safetyData?.deunggibu_data?.valuation?.valueMid || 0;
+              const proposedJeonse = wolseResult.user_deposit || 0;
+              const freshLtv = estimatedValue > 0 ? (freshTotalDebt + proposedJeonse) / estimatedValue : 0;
+              freshMetricsOverride = {
+                totalDebt: freshTotalDebt,
+                ltv: freshLtv,
+                availableEquity: estimatedValue - freshTotalDebt - proposedJeonse,
+              };
+              console.log(`[Report] Fresh metrics: totalDebt=${freshTotalDebt}, ltv=${(freshLtv * 100).toFixed(1)}%`);
+            }
+          }
+        } catch (e) {
+          console.warn('[Report] Failed to re-parse APick Excel:', e);
+        }
+      }
 
       // Fetch tiered expected rent data directly from wolse_price_data
       // (not included in wolse_price_full view which predates these columns)
@@ -330,10 +366,10 @@ export async function GET(
             buildingScore: riskAnalysis.scores?.buildingScore || riskAnalysis.buildingScore || 0,
           },
           metrics: {
-            ltv: riskAnalysis.ltv || (riskAnalysis.ltvRatio ? riskAnalysis.ltvRatio * 100 : 0),
+            ltv: freshMetricsOverride?.ltv ?? (riskAnalysis.ltv || (riskAnalysis.ltvRatio ? riskAnalysis.ltvRatio * 100 : 0)),
             ltvRange: riskAnalysis.ltvRange || null,
-            totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
-            availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
+            totalDebt: freshMetricsOverride?.totalDebt ?? (riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0),
+            availableEquity: freshMetricsOverride?.availableEquity ?? (riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0),
             debtCount: filterActiveDebtRanking(riskAnalysis.debtRanking || [], wolseParsedData || riskAnalysis.deunggibu).length,
           },
           risks: filterActiveRisks(riskAnalysis.risks || [], wolseParsedData || riskAnalysis.deunggibu),
@@ -430,7 +466,41 @@ export async function GET(
 
       // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
       const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef' || d.document_type === 'deunggibu-apick');
-      const parsedData = deunggibuDoc?.parsed_data || null;
+      let parsedData = deunggibuDoc?.parsed_data || null;
+
+      // For APick documents, re-parse Excel from storage to apply latest parser fixes
+      let freshMetricsOverride2: { totalDebt: number; ltv: number; availableEquity: number } | null = null;
+      if (deunggibuDoc?.document_type === 'deunggibu-apick' && deunggibuDoc?.file_path && parsedData) {
+        try {
+          const { data: apickFileData } = await supabase.storage
+            .from('documents')
+            .download(deunggibuDoc.file_path);
+          if (apickFileData) {
+            const { parseDeunggibuExcel } = await import('@/lib/analyzers/excel-deunggibu-parser');
+            const reParsed = parseDeunggibuExcel(Buffer.from(await apickFileData.arrayBuffer()));
+            const cachedActiveCount = parsedData.activeMortgages?.length ?? 0;
+            const freshActiveCount = reParsed.activeMortgages.length;
+            if (cachedActiveCount !== freshActiveCount) {
+              console.log(`[Report/Path2] APick re-parse: activeMortgages changed ${cachedActiveCount} -> ${freshActiveCount}`);
+              parsedData = { ...reParsed, apickIcId: parsedData.apickIcId, apickCost: parsedData.apickCost };
+              // Recalculate debt metrics from fresh data
+              const freshMortgageDebt = reParsed.activeMortgages.reduce((s: number, m: any) => s + Math.round(m.maxAmount * 0.83), 0);
+              const freshJeonseDebt = (reParsed.activeJeonseRights || []).reduce((s: number, j: any) => s + j.amount, 0);
+              const freshTotalDebt = freshMortgageDebt + freshJeonseDebt;
+              const estimatedValue = newSchemaResult.valuation_data?.valueMid || 0;
+              const proposedJeonse = newSchemaResult.proposed_jeonse || 0;
+              const freshLtv = estimatedValue > 0 ? (freshTotalDebt + proposedJeonse) / estimatedValue : 0;
+              freshMetricsOverride2 = {
+                totalDebt: freshTotalDebt,
+                ltv: freshLtv,
+                availableEquity: estimatedValue - freshTotalDebt - proposedJeonse,
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('[Report/Path2] Failed to re-parse APick Excel:', e);
+        }
+      }
 
       // Extract buildingNumber and unit from parsed data
       // CODEF parser stores combined in 'unitNumber' (e.g., "1105동 1층 104호")
@@ -589,10 +659,10 @@ export async function GET(
             buildingScore: newSchemaResult.building_score || riskAnalysis.scores?.buildingScore || 0,
           },
           metrics: {
-            ltv: newSchemaResult.ltv_ratio || riskAnalysis.ltv || 0,
+            ltv: freshMetricsOverride2?.ltv ?? (newSchemaResult.ltv_ratio || riskAnalysis.ltv || 0),
             ltvRange: riskAnalysis.ltvRange || null, // LTV range across tiers for display
-            totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
-            availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
+            totalDebt: freshMetricsOverride2?.totalDebt ?? (riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0),
+            availableEquity: freshMetricsOverride2?.availableEquity ?? (riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0),
             debtCount: filterActiveDebtRanking(riskAnalysis.debtRanking || [], parsedData || riskAnalysis.deunggibu).length,
           },
           risks: filterActiveRisks(newSchemaResult.risks || riskAnalysis.risks || [], parsedData || riskAnalysis.deunggibu),
@@ -742,7 +812,36 @@ export async function GET(
     // Find parsed 등기부등본 data
     // Look for both 'deunggibu' (APick) and 'deunggibu-codef' (CODEF) documents
     const deunggibuDoc = documents?.find((d: any) => d.document_type === 'deunggibu' || d.document_type === 'deunggibu-codef' || d.document_type === 'deunggibu-apick');
-    const parsedData = deunggibuDoc?.parsed_data || null;
+    let parsedData = deunggibuDoc?.parsed_data || null;
+
+    // For APick documents, re-parse Excel from storage to apply latest parser fixes
+    let freshMetricsOverride3: { totalDebt: number; ltv: number; availableEquity: number } | null = null;
+    if (deunggibuDoc?.document_type === 'deunggibu-apick' && deunggibuDoc?.file_path && parsedData) {
+      try {
+        const { data: apickFileData } = await supabase.storage
+          .from('documents')
+          .download(deunggibuDoc.file_path);
+        if (apickFileData) {
+          const { parseDeunggibuExcel } = await import('@/lib/analyzers/excel-deunggibu-parser');
+          const reParsed = parseDeunggibuExcel(Buffer.from(await apickFileData.arrayBuffer()));
+          const cachedActiveCount = parsedData.activeMortgages?.length ?? 0;
+          const freshActiveCount = reParsed.activeMortgages.length;
+          if (cachedActiveCount !== freshActiveCount) {
+            console.log(`[Report/Path3] APick re-parse: activeMortgages changed ${cachedActiveCount} -> ${freshActiveCount}`);
+            parsedData = { ...reParsed, apickIcId: parsedData.apickIcId, apickCost: parsedData.apickCost };
+            const freshMortgageDebt = reParsed.activeMortgages.reduce((s: number, m: any) => s + Math.round(m.maxAmount * 0.83), 0);
+            const freshJeonseDebt = (reParsed.activeJeonseRights || []).reduce((s: number, j: any) => s + j.amount, 0);
+            const freshTotalDebt = freshMortgageDebt + freshJeonseDebt;
+            const estimatedValue = analysis.deunggibu_data?.valuation?.valueMid || 0;
+            const proposedJeonse = analysis.proposed_jeonse || 0;
+            const freshLtv = estimatedValue > 0 ? (freshTotalDebt + proposedJeonse) / estimatedValue : 0;
+            freshMetricsOverride3 = { totalDebt: freshTotalDebt, ltv: freshLtv, availableEquity: estimatedValue - freshTotalDebt - proposedJeonse };
+          }
+        }
+      } catch (e) {
+        console.warn('[Report/Path3] Failed to re-parse APick Excel:', e);
+      }
+    }
 
     // Extract buildingNumber and unit from parsed data (fallback path)
     // CODEF parser stores combined in 'unitNumber' (e.g., "1105동 1층 104호")
@@ -923,10 +1022,10 @@ export async function GET(
 
         // Key Metrics
         metrics: {
-          ltv: riskAnalysis.ltv || (riskAnalysis.ltvRatio ? riskAnalysis.ltvRatio * 100 : 0),
+          ltv: freshMetricsOverride3?.ltv ?? (riskAnalysis.ltv || (riskAnalysis.ltvRatio ? riskAnalysis.ltvRatio * 100 : 0)),
           ltvRange: riskAnalysis.ltvRange || null, // LTV range across tiers for display
-          totalDebt: riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0,
-          availableEquity: riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0,
+          totalDebt: freshMetricsOverride3?.totalDebt ?? (riskAnalysis.totalDebt || riskAnalysis.breakdown?.totalDebt || 0),
+          availableEquity: freshMetricsOverride3?.availableEquity ?? (riskAnalysis.availableEquity || riskAnalysis.breakdown?.availableEquity || 0),
           debtCount: filterActiveDebtRanking(riskAnalysis.debtRanking || [], parsedData || riskAnalysis.deunggibu).length,
         },
 

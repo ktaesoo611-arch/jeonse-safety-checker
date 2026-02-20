@@ -1098,24 +1098,73 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For CODEF documents, check if analysis is already completed to avoid re-processing
+    // For CODEF/APick documents, check if analysis is already completed to avoid re-processing
+    // But for APick with stored Excel files, re-parse first to detect if data has changed
     if (isCodefNeedingAnalysis) {
-      const { data: existingAnalysis } = await supabase
-        .from('analysis_results')
-        .select('safety_score')
-        .eq('id', document.analysis_id)
-        .single();
+      let needsReanalysis = false;
 
-      if (existingAnalysis?.safety_score !== null && existingAnalysis?.safety_score !== undefined) {
-        return NextResponse.json(
-          {
-            documentId: document.id,
-            parsedData: document.parsed_data,
-            parsedAt: document.created_at,
-            message: 'Analysis already completed',
-          },
-          { status: 200 }
-        );
+      // For APick documents, re-parse Excel from storage to apply latest parser fixes
+      if (document.document_type === 'deunggibu-apick' && document.file_path && document.parsed_data) {
+        try {
+          console.log('[ParseRoute] Re-parsing APick Excel from storage to check for stale data...');
+          const { data: fileData } = await supabase.storage
+            .from('documents')
+            .download(document.file_path);
+
+          if (fileData) {
+            const arrayBuffer = await fileData.arrayBuffer();
+            const reParsed = parseDeunggibuExcel(Buffer.from(arrayBuffer));
+            const cachedActiveCount = document.parsed_data.activeMortgages?.length ?? 0;
+            const freshActiveCount = reParsed.activeMortgages.length;
+
+            if (cachedActiveCount !== freshActiveCount) {
+              console.log(`[ParseRoute] APick data changed: activeMortgages ${cachedActiveCount} -> ${freshActiveCount}, forcing re-analysis`);
+              needsReanalysis = true;
+              // Update the stored parsed_data with fresh parse
+              const freshParsedData = {
+                ...reParsed,
+                apickIcId: document.parsed_data.apickIcId,
+                apickCost: document.parsed_data.apickCost,
+                extractedAt: new Date().toISOString(),
+              };
+              await supabase
+                .from('uploaded_documents')
+                .update({ parsed_data: freshParsedData })
+                .eq('id', document.id);
+              // Clear safety_score to allow re-analysis
+              await supabase
+                .from('analysis_results')
+                .update({ safety_score: null, status: 'processing' })
+                .eq('id', document.analysis_id);
+              // Update local reference so downstream code uses fresh data
+              document.parsed_data = freshParsedData;
+            } else {
+              console.log(`[ParseRoute] APick data unchanged (activeMortgages: ${freshActiveCount}), using cached analysis`);
+            }
+          }
+        } catch (reparseError) {
+          console.warn('[ParseRoute] Failed to re-parse APick Excel:', reparseError);
+        }
+      }
+
+      if (!needsReanalysis) {
+        const { data: existingAnalysis } = await supabase
+          .from('analysis_results')
+          .select('safety_score')
+          .eq('id', document.analysis_id)
+          .single();
+
+        if (existingAnalysis?.safety_score !== null && existingAnalysis?.safety_score !== undefined) {
+          return NextResponse.json(
+            {
+              documentId: document.id,
+              parsedData: document.parsed_data,
+              parsedAt: document.created_at,
+              message: 'Analysis already completed',
+            },
+            { status: 200 }
+          );
+        }
       }
     }
 
@@ -1163,39 +1212,9 @@ export async function POST(request: NextRequest) {
       const address = analysis.properties?.address || '';
 
       // Determine if we have CODEF or APick pre-parsed data
+      // Note: For APick, parsed_data may have been refreshed by the re-parse check above
       const hasPreParsed = (document.document_type === 'deunggibu-codef' || document.document_type === 'deunggibu-apick') && document.parsed_data;
-      let preParsedData = hasPreParsed ? document.parsed_data : undefined;
-
-      // For APick documents with stored Excel files, re-parse from storage
-      // to ensure the latest parser code is always used (bug fixes, etc.)
-      if (document.document_type === 'deunggibu-apick' && document.file_path && preParsedData) {
-        try {
-          console.log('[ParseRoute] Re-parsing APick Excel from storage for latest parser fixes...');
-          const { data: fileData } = await supabase.storage
-            .from('documents')
-            .download(document.file_path);
-
-          if (fileData) {
-            const arrayBuffer = await fileData.arrayBuffer();
-            const excelBuffer = Buffer.from(arrayBuffer);
-            const reParsed = parseDeunggibuExcel(excelBuffer);
-            // Preserve APick metadata from original cached data
-            preParsedData = {
-              ...reParsed,
-              apickIcId: preParsedData.apickIcId,
-              apickCost: preParsedData.apickCost,
-              extractedAt: new Date().toISOString(),
-            };
-            console.log('[ParseRoute] APick re-parse complete:', {
-              mortgages: reParsed.mortgages.length,
-              activeMortgages: reParsed.activeMortgages.length,
-              cancelledCount: reParsed.mortgages.filter((m: any) => m.status === 'cancelled').length,
-            });
-          }
-        } catch (reparseError) {
-          console.warn('[ParseRoute] Failed to re-parse APick Excel, using cached data:', reparseError);
-        }
-      }
+      const preParsedData = hasPreParsed ? document.parsed_data : undefined;
 
       // Perform real parsing and analysis
       // Note: performRealAnalysis() handles all database updates internally,
