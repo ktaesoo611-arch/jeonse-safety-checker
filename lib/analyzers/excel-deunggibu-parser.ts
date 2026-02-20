@@ -566,20 +566,29 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
     const cell = cells[i];
 
     // Pattern 1: Full text in one cell - "1번근저당권말소" or "1번근저당권설정등기말소"
+    // Also handles multiple cancellations: "1번근저당권설정, 2번근저당권설정등기말소"
     const cancelMatch = cell.match(/(\d+)번근저당권.*말소/);
     if (cancelMatch) {
-      cancelledMortgages.add(parseInt(cancelMatch[1]));
-      console.log(`[ExcelParser] Detected cancelled mortgage #${cancelMatch[1]} (pattern 1: ${cell})`);
+      // Use matchAll to capture ALL N번 references (handles multi-mortgage cancellations)
+      const allRanks = [...cell.matchAll(/(\d+)번근저당권/g)];
+      for (const m of allRanks) {
+        cancelledMortgages.add(parseInt(m[1]));
+        console.log(`[ExcelParser] Detected cancelled mortgage #${m[1]} (pattern 1: ${cell})`);
+      }
       continue;
     }
 
     // Pattern 2: "N번근저당권설정등" - this pattern itself indicates a cancellation entry
     // The "등" suffix means it's a cancellation record for mortgage #N
     // May or may not be followed by "기말소" (page breaks can separate them)
+    // Also handles: "1번근저당권설정, 2번근저당권설정등"
     const cancellationEntryMatch = cell.match(/(\d+)번근저당권설정등/);
     if (cancellationEntryMatch) {
-      cancelledMortgages.add(parseInt(cancellationEntryMatch[1]));
-      console.log(`[ExcelParser] Detected cancelled mortgage #${cancellationEntryMatch[1]} (pattern 2: ${cell})`);
+      const allRanks = [...cell.matchAll(/(\d+)번근저당권/g)];
+      for (const m of allRanks) {
+        cancelledMortgages.add(parseInt(m[1]));
+        console.log(`[ExcelParser] Detected cancelled mortgage #${m[1]} (pattern 2: ${cell})`);
+      }
       continue;
     }
 

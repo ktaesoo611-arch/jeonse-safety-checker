@@ -341,8 +341,10 @@ function parseSectionB(section: CodefRegistrationSection, result: ExcelDeunggibu
     if (purpose.includes('말소')) {
       // Handle cancellation: mark the referenced entry as cancelled
       if (purpose.includes('근저당권')) {
-        const rankMatch = purpose.match(/(\d+)번/);
-        if (rankMatch) {
+        // Use matchAll to handle entries that cancel multiple mortgages at once
+        // e.g., "1번근저당권설정, 2번근저당권설정등기말소" cancels both #1 and #2
+        const rankMatches = [...purpose.matchAll(/(\d+)번/g)];
+        for (const rankMatch of rankMatches) {
           const cancelled = result.mortgages.find(m => m.rank === parseInt(rankMatch[1]));
           if (cancelled) {
             cancelled.status = 'cancelled';
@@ -351,8 +353,8 @@ function parseSectionB(section: CodefRegistrationSection, result: ExcelDeunggibu
         }
       }
       if (purpose.includes('전세권') || purpose.includes('임차권') || purpose.includes('주택임차권')) {
-        const rankMatch = purpose.match(/(\d+)번/);
-        if (rankMatch) {
+        const rankMatches = [...purpose.matchAll(/(\d+)번/g)];
+        for (const rankMatch of rankMatches) {
           const cancelled = result.jeonseRights.find(j => j.rank === parseInt(rankMatch[1]));
           if (cancelled) {
             cancelled.status = 'cancelled';
