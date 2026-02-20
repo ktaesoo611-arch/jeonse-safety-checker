@@ -239,8 +239,8 @@ export class WolsePriceAnalyzer {
       tieredExpectedRent = tieredResult.tieredExpectedRent;
       filteredTransactions = tieredResult.filteredTransactions;
 
-      // Find the selected tier's expected rent (default to 'standard')
-      const tierToUse = selectedTier || 'standard';
+      // Find the selected tier's expected rent (default to 'mid' — must match frontend default)
+      const tierToUse = selectedTier || 'mid';
       const selectedTierData = tieredExpectedRent.find(t => t.tier === tierToUse);
       if (selectedTierData) {
         selectedTierExpectedRent = selectedTierData.expectedRent;

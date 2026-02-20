@@ -232,6 +232,40 @@ export default function MarketPositionSection({
     // Check if using tiered data
     const isUsingTieredData = !!selectedTierData;
 
+    // Generate assessment text dynamically to stay in sync with badge values
+    const getDisplayAssessmentDetails = (): string | undefined => {
+      const formatWon = (amount: number) => {
+        if (Math.abs(amount) >= 10000) {
+          return `${(amount / 10000).toLocaleString()}만원`;
+        }
+        return `${amount.toLocaleString()}원`;
+      };
+
+      // Use pre-computed text only when NOT using tiered data
+      if (!isUsingTieredData) return wolseData.assessmentDetails ?? undefined;
+
+      const diff = displayRentDifference;
+      const pct = displayRentDifferencePercent;
+      const expected = displayExpectedRent;
+      const actual = wolseData.userMonthlyRent;
+
+      if (pct <= -10 || diff <= -150000) {
+        return `You're paying ${formatWon(Math.abs(diff))}/month less than the market expectation of ${formatWon(expected)}. However, prices below market often have reasons - verify the property condition, check the landlord's financial status via 등기부등본, and review contract terms carefully before signing.`;
+      }
+      if (pct > 15 && diff > 200000) {
+        return `You're paying ${formatWon(diff)}/month more than expected (${formatWon(expected)}). At ${pct.toFixed(0)}% above market, strong negotiation is recommended.`;
+      }
+      if (pct > 5 && diff > 100000) {
+        return `You're paying ${formatWon(diff)}/month more than the market expectation of ${formatWon(expected)}. This is ${pct.toFixed(0)}% above market. Room for negotiation.`;
+      }
+      if (diff <= 0) {
+        return `Your rent of ${formatWon(actual)} is at or below the market expectation of ${formatWon(expected)}. Focus on negotiating contract terms (lease length, repairs, deposit payment schedule) rather than price.`;
+      }
+      return `Your rent of ${formatWon(actual)} is close to the market expectation of ${formatWon(expected)} (+${formatWon(diff)}). Minor room for negotiation exists.`;
+    };
+
+    const displayAssessmentDetails = getDisplayAssessmentDetails();
+
     return (
       <div className="mb-12">
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
@@ -535,8 +569,8 @@ export default function MarketPositionSection({
                 </span>
               </div>
 
-              {wolseData.assessmentDetails && (
-                <p className="mt-4 text-gray-600 text-sm sm:text-base">{wolseData.assessmentDetails}</p>
+              {displayAssessmentDetails && (
+                <p className="mt-4 text-gray-600 text-sm sm:text-base">{displayAssessmentDetails}</p>
               )}
 
               {/* Warning for Good Deal / Fair Price */}
