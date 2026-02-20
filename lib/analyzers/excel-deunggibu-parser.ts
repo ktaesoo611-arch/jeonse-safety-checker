@@ -459,8 +459,8 @@ function parseOwnership(cells: string[], result: ExcelDeunggibuData): void {
       continue;
     }
 
-    // Exit 갑구 when 을구 starts
-    if (cell.includes('을') && cell.includes('구')) {
+    // Exit 갑구 when 을구 starts (require 【 bracket to avoid matching references like "을구 13번...")
+    if (/【\s*을\s+구\s*】/.test(cell)) {
       inGapSection = false;
       continue;
     }
@@ -589,6 +589,17 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
         cancelledMortgages.add(parseInt(m[1]));
         console.log(`[ExcelParser] Detected cancelled mortgage #${m[1]} (pattern 2: ${cell})`);
       }
+      // Also look backward for "N번근저당권설정," in prior cells (multi-mortgage cancellation split across cells)
+      // e.g., cell[179]="1번근저당권설정," ... cell[182]="2번근저당권설정등"
+      for (let j = i - 1; j >= Math.max(0, i - 8); j--) {
+        const priorRanks = [...cells[j].matchAll(/(\d+)번근저당권설정/g)];
+        if (priorRanks.length > 0) {
+          for (const m of priorRanks) {
+            cancelledMortgages.add(parseInt(m[1]));
+            console.log(`[ExcelParser] Detected cancelled mortgage #${m[1]} (pattern 2-backward: ${cells[j]})`);
+          }
+        }
+      }
       continue;
     }
 
@@ -636,8 +647,8 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
 
-    // Detect 을구 section
-    if (cell.includes('을') && cell.includes('구')) {
+    // Detect 을구 section (require 【 bracket to avoid matching references like "을구 13번...")
+    if (/【\s*을\s+구\s*】/.test(cell)) {
       inEulSection = true;
       continue;
     }
@@ -664,8 +675,11 @@ function parseMortgages(cells: string[], result: ExcelDeunggibuData): void {
 
     // Detect new mortgage entry (설정 = establishment, not 말소 = cancellation)
     // Must be exact "근저당권설정" or contain it without "말소"
-    const isMortgageSetup = cell === '근저당권설정' ||
-                            (cell.includes('근저당권설정') && !cell.includes('말소'));
+    // Exclude cancellation entry references like "1번근저당권설정," or "2번근저당권설정등기말소"
+    // (these have a number prefix indicating they reference another mortgage's cancellation)
+    const isMortgageSetup = (cell === '근저당권설정' ||
+                            (cell.includes('근저당권설정') && !cell.includes('말소'))) &&
+                            !cell.match(/\d+번근저당권/);
 
     if (isMortgageSetup) {
       inCancellationEntry = false;  // New entry, reset cancellation flag
@@ -777,7 +791,7 @@ function parseJeonse(cells: string[], result: ExcelDeunggibuData): void {
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
 
-    if (cell.includes('을') && cell.includes('구')) {
+    if (/【\s*을\s+구\s*】/.test(cell)) {
       inEulSection = true;
       continue;
     }
@@ -902,9 +916,8 @@ function parseLiens(cells: string[], result: ExcelDeunggibuData): void {
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
 
-    // Start tracking from 갑구 or 을구 sections
-    if ((cell.includes('갑') && cell.includes('구')) ||
-        (cell.includes('을') && cell.includes('구'))) {
+    // Start tracking from 갑구 or 을구 sections (require 【 bracket to avoid false matches)
+    if (/【\s*[갑을]\s+구\s*】/.test(cell)) {
       inRelevantSection = true;
       continue;
     }
