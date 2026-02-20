@@ -275,6 +275,94 @@ export default function ReportPage() {
     } : undefined,
   };
 
+  // Compute tier-aware negotiation options and rent difference
+  const wolseTieredExpectedRent = valuation?.tierEstimates?.length > 0
+    ? wolseAnalysis?.tieredExpectedRent : undefined;
+  const selectedWolseTier = wolseTieredExpectedRent?.find(
+    (t: any) => t.tier === selectedTier
+  );
+  const actionExpectedRent = selectedWolseTier?.expectedRent ?? wolseAnalysis?.expectedRent ?? 0;
+  const actionRentDifference = isWolse
+    ? (wolseAnalysis?.userMonthlyRent || 0) - actionExpectedRent
+    : undefined;
+
+  // Regenerate negotiation options when tier selection changes
+  const actionNegotiationOptions = (() => {
+    if (!isWolse) return undefined;
+    if (!selectedWolseTier) return wolseAnalysis?.negotiationOptions;
+
+    const userRent = wolseAnalysis?.userMonthlyRent || 0;
+    const userDeposit = wolseAnalysis?.userDeposit || 0;
+    const marketRate = wolseAnalysis?.marketRate || 0;
+    const contractCount = wolseAnalysis?.contractCount || 0;
+    const trend = wolseAnalysis?.trend;
+    const expectedRent = actionExpectedRent;
+    const rentDiff = userRent - expectedRent;
+    const rentDiffPercent = expectedRent > 0 ? (rentDiff / expectedRent) * 100 : 0;
+
+    const formatWon = (amount: number) => `${(amount / 10000).toLocaleString()}만원`;
+
+    if (rentDiffPercent <= 0) {
+      return [
+        {
+          name: 'Accept & Lock In',
+          rate: marketRate, deposit: userDeposit, monthlyRent: userRent,
+          monthlySavings: 0, yearlySavings: 0, recommended: true,
+          script: `I'd like to proceed with the ${formatWon(userDeposit)} deposit and ${formatWon(userRent)} monthly rent. Could we sign a 2-year lease to lock in this rate? I'm a reliable tenant looking for long-term stability.`,
+        },
+        {
+          name: 'Negotiate Terms',
+          rate: marketRate, deposit: userDeposit, monthlyRent: userRent,
+          monthlySavings: 0, yearlySavings: 0,
+          script: `I'm happy with the rent terms. Before signing, I'd like to discuss: (1) Could you handle any minor repairs before move-in? (2) Is the deposit payable in 2 installments? (3) Could we include the washing machine/AC in the contract?`,
+        },
+        {
+          name: 'Move-in Benefits',
+          rate: marketRate, deposit: userDeposit, monthlyRent: userRent,
+          monthlySavings: 0, yearlySavings: 0,
+          script: `The rent works for me. I'm ready to sign quickly. In exchange, would you consider: a few days of free rent for move-in preparation, or covering the first month's utility setup fees?`,
+        },
+      ];
+    }
+
+    const options: any[] = [];
+
+    if (rentDiff > 0) {
+      options.push({
+        name: 'Expected Rent',
+        rate: marketRate, deposit: userDeposit, monthlyRent: expectedRent,
+        monthlySavings: rentDiff, yearlySavings: rentDiff * 12, recommended: true,
+        script: `Based on ${contractCount} recent contracts in this building, the expected rent at my deposit of ${formatWon(userDeposit)} is ${formatWon(expectedRent)}. I'd like to adjust to this expected rent level.`,
+      });
+    }
+
+    const discountedRent = Math.round(expectedRent * 0.95);
+    const discountSavings = userRent - discountedRent;
+    if (discountSavings > rentDiff) {
+      options.push({
+        name: 'Negotiated Discount',
+        rate: marketRate * 0.95, deposit: userDeposit, monthlyRent: discountedRent,
+        monthlySavings: discountSavings, yearlySavings: discountSavings * 12,
+        script: `I've researched recent transactions and the expected rent is ${formatWon(expectedRent)}. Given current market conditions, I'm hoping for ${formatWon(discountedRent)} - a modest 5% discount. I'm a reliable tenant and ready to sign immediately.`,
+      });
+    }
+
+    if (trend?.direction === 'DECLINING' && trend?.percentage > 5) {
+      const aggressiveRent = Math.round(expectedRent * 0.9);
+      const aggressiveSavings = userRent - aggressiveRent;
+      if (aggressiveSavings > 0) {
+        options.push({
+          name: 'Trend-Based Discount',
+          rate: marketRate * 0.9, deposit: userDeposit, monthlyRent: aggressiveRent,
+          monthlySavings: aggressiveSavings, yearlySavings: aggressiveSavings * 12,
+          script: `Rents have declined ${trend.percentage.toFixed(0)}% over the past 6 months. Given this trend, I'm proposing ${formatWon(aggressiveRent)} - 10% below expected rent. I'm flexible on move-in date if this works for you.`,
+        });
+      }
+    }
+
+    return options.sort((a: any, b: any) => b.yearlySavings - a.yearlySavings);
+  })();
+
   const actionProps = {
     reportType: type as 'jeonse' | 'wolse',
     recommendations: reportData?.recommendations || {
@@ -282,8 +370,8 @@ export default function ReportPage() {
       recommended: [],
       optional: [],
     },
-    negotiationOptions: isWolse ? wolseAnalysis?.negotiationOptions : undefined,
-    rentDifference: isWolse ? wolseAnalysis?.rentDifference : undefined,
+    negotiationOptions: actionNegotiationOptions,
+    rentDifference: actionRentDifference,
     marketRate: isWolse ? wolseAnalysis?.marketRate : undefined,
     userRate: isWolse ? wolseAnalysis?.userRate : undefined,
   };

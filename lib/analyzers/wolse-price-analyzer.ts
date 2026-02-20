@@ -324,14 +324,28 @@ export class WolsePriceAnalyzer {
     const finalRentDifference = quote.monthlyRent - finalExpectedRent;
     const finalRentDifferencePercent = finalExpectedRent > 0 ? (finalRentDifference / finalExpectedRent) * 100 : 0;
 
-    // Regenerate assessment if using tiered expected rent
+    // Regenerate assessment and negotiation options if using tiered expected rent
     let finalAssessment = assessment;
+    let finalNegotiationOptions = negotiationOptions;
     if (selectedTierExpectedRent !== undefined) {
       finalAssessment = this.generateAssessmentFromRentComparison(
         finalExpectedRent,
         quote.monthlyRent,
         finalRentDifference,
         finalRentDifferencePercent
+      );
+      // Regenerate negotiation options with tiered expected rent
+      const tieredComparison: UserRentComparison = {
+        ...rentComparison,
+        expectedRent: finalExpectedRent,
+        actualRent: quote.monthlyRent,
+        rentDifference: finalRentDifference,
+        rentDifferencePercent: finalRentDifferencePercent,
+      };
+      finalNegotiationOptions = this.generateNegotiationOptionsFromComparison(
+        quote,
+        tieredComparison,
+        marketData
       );
     }
 
@@ -372,7 +386,7 @@ export class WolsePriceAnalyzer {
         percentage: jeonseTrend.percentage,
         advice: trendAdvice
       },
-      negotiationOptions,
+      negotiationOptions: finalNegotiationOptions,
       recentTransactions: marketData.transactions, // Include all transactions for 12-month chart
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
