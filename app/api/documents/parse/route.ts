@@ -1164,7 +1164,38 @@ export async function POST(request: NextRequest) {
 
       // Determine if we have CODEF or APick pre-parsed data
       const hasPreParsed = (document.document_type === 'deunggibu-codef' || document.document_type === 'deunggibu-apick') && document.parsed_data;
-      const preParsedData = hasPreParsed ? document.parsed_data : undefined;
+      let preParsedData = hasPreParsed ? document.parsed_data : undefined;
+
+      // For APick documents with stored Excel files, re-parse from storage
+      // to ensure the latest parser code is always used (bug fixes, etc.)
+      if (document.document_type === 'deunggibu-apick' && document.file_path && preParsedData) {
+        try {
+          console.log('[ParseRoute] Re-parsing APick Excel from storage for latest parser fixes...');
+          const { data: fileData } = await supabase.storage
+            .from('documents')
+            .download(document.file_path);
+
+          if (fileData) {
+            const arrayBuffer = await fileData.arrayBuffer();
+            const excelBuffer = Buffer.from(arrayBuffer);
+            const reParsed = parseDeunggibuExcel(excelBuffer);
+            // Preserve APick metadata from original cached data
+            preParsedData = {
+              ...reParsed,
+              apickIcId: preParsedData.apickIcId,
+              apickCost: preParsedData.apickCost,
+              extractedAt: new Date().toISOString(),
+            };
+            console.log('[ParseRoute] APick re-parse complete:', {
+              mortgages: reParsed.mortgages.length,
+              activeMortgages: reParsed.activeMortgages.length,
+              cancelledCount: reParsed.mortgages.filter((m: any) => m.status === 'cancelled').length,
+            });
+          }
+        } catch (reparseError) {
+          console.warn('[ParseRoute] Failed to re-parse APick Excel, using cached data:', reparseError);
+        }
+      }
 
       // Perform real parsing and analysis
       // Note: performRealAnalysis() handles all database updates internally,
@@ -1176,7 +1207,7 @@ export async function POST(request: NextRequest) {
         address,
         body.buildingType, // Pass user-selected building type
         document.mime_type, // Pass MIME type to detect Excel vs PDF format
-        preParsedData // Pre-parsed CODEF data (skips file parsing)
+        preParsedData // Pre-parsed data (re-parsed for APick, cached for CODEF)
       );
 
       // Don't overwrite the parsed_data - it was already saved inside performRealAnalysis
