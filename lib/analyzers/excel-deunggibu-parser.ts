@@ -243,24 +243,48 @@ function extractBasicInfo(cells: string[], fullText: string, result: ExcelDeungg
   }
 
   // Extract address from 도로명주소
+  // Cells from the Excel grid are flattened, so address parts and building descriptions
+  // from adjacent columns get interleaved. Filter carefully.
   for (let i = 0; i < cells.length; i++) {
     if (cells[i].includes('[도로명주소]') && i + 1 < cells.length) {
-      // Next cell with actual address pattern
-      for (let j = i + 1; j < Math.min(i + 5, cells.length); j++) {
-        if (cells[j].match(/[가-힣]+(?:시|도)\s+[가-힣]+(?:구|시|군)/)) {
-          result.address = cells[j].trim();
-          break;
+      let cityDistrict = '';
+      let roadName = '';
+      for (let j = i + 1; j < Math.min(i + 10, cells.length); j++) {
+        const c = cells[j].trim();
+        // Stop at section markers
+        if (c.includes('【') || c.includes('표시번호')) break;
+        // Skip building description cells (시설, 사무소, etc.)
+        if (c.match(/시설|사무소|소매점|판매|업무|숙박/)) continue;
+        // Match city + district: "서울특별시 강서구"
+        if (!cityDistrict && c.match(/[가-힣]+(?:특별시|광역시|도)\s+[가-힣]+(?:구|시|군)/)) {
+          cityDistrict = c;
+          // If this cell already contains the road name (e.g., "경기도 광명시 새터로 44-7"), skip roadName
+          if (c.match(/[가-힣]+(?:로|길)\s+\d+/)) {
+            roadName = ''; // Already included in cityDistrict
+            break;
+          }
         }
+        // Match road name in a separate cell: "마곡중앙로 111"
+        if (!roadName && cityDistrict && c.match(/[가-힣]+(?:로|길)\s+\d+/)) {
+          roadName = c;
+        }
+      }
+      if (cityDistrict) {
+        result.address = roadName ? `${cityDistrict} ${roadName}` : cityDistrict;
       }
       break;
     }
   }
 
-  // If no 도로명주소, use address from header
-  if (!result.address && result.fullAddress) {
-    const addrMatch = result.fullAddress.match(/([가-힣]+(?:시|도)\s+[가-힣]+[^\d]*\d+[^\s]*)/);
+  // If address is incomplete (no road/lot detail), use lot address from header
+  const hasFullAddress = result.address && result.address.match(/(?:로|길|동)\s+\d/);
+  if (!hasFullAddress && result.fullAddress) {
+    // Extract up to lot number, excluding building/unit details
+    const addrMatch = result.fullAddress.match(/(.*?\d+-?\d*)\s/);
     if (addrMatch) {
       result.address = addrMatch[1];
+    } else {
+      result.address = result.fullAddress;
     }
   }
 
@@ -288,6 +312,7 @@ function extractBasicInfo(cells: string[], fullText: string, result: ExcelDeungg
   }
 
   // Second pass: Look for area in 전유부분 context (unit building section)
+  // Use the LAST area found (most recent entry after 용도변경 etc.)
   if (result.area === 0) {
     let inJeonyuSection = false;
     for (const cell of cells) {
@@ -304,7 +329,7 @@ function extractBasicInfo(cells: string[], fullText: string, result: ExcelDeungg
           // Unit areas are typically 10-300㎡
           if (area > 10 && area < 300) {
             result.area = area;
-            break;
+            // Don't break - keep scanning for later entries (용도변경 updates)
           }
         }
       }
