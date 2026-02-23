@@ -60,7 +60,8 @@ const TIERED_CONFIG = {
     budget:   { max: 25 },   // < 25th percentile
     standard: { max: 50 },   // 25th ~ 50th percentile
     mid:      { max: 75 },   // 50th ~ 75th percentile
-    premium:  { max: 100 },  // > 75th percentile
+    premium:  { max: 90 },   // 75th ~ 90th percentile
+    top:      { max: 100 },  // > 90th percentile
   } as Record<QualityTier, { max: number }>,
 
   // Tier labels
@@ -68,7 +69,8 @@ const TIERED_CONFIG = {
     budget:   '하위 25% (Budget)',
     standard: '25-50% (Standard)',
     mid:      '50-75% (Mid)',
-    premium:  '상위 25% (Premium)',
+    premium:  '75-90% (Premium)',
+    top:      '상위 10% (Top)',
   } as Record<QualityTier, string>,
 
   // Annual depreciation rates by tier (derived from market analysis)
@@ -77,6 +79,7 @@ const TIERED_CONFIG = {
     standard: 0.015, // 1.5%/yr
     mid: 0.01,       // 1%/yr
     premium: 0.005,  // 0.5%/yr - premium buildings hold value better
+    top: 0.0025,     // 0.25%/yr - top-tier luxury properties hold value best
   } as Record<QualityTier, number>,
 
   // Recency half-life for tiered calculation (days)
@@ -84,6 +87,13 @@ const TIERED_CONFIG = {
 
   // Tier selection guidance for users (English)
   GUIDANCE: {
+    top: [
+      'Premium brand builder (래미안, 아이파크, 힐스테이트, etc.)',
+      'Excellent location (station < 3 min, park/river view)',
+      'New or near-new construction (< 5 years)',
+      'Premium finishes and amenities',
+      'High-floor unit with good orientation',
+    ],
     premium: [
       'Major brand builder (Daelim, Hyundai, Samsung, etc.)',
       'Near subway station (within 5 min walk)',
@@ -344,12 +354,13 @@ export class PropertyValuationEngine {
       const standardTier = tierEstimates.find(t => t.tier === 'standard');
       const midTier = tierEstimates.find(t => t.tier === 'mid');
       const premiumTier = tierEstimates.find(t => t.tier === 'premium');
+      const topTier = tierEstimates.find(t => t.tier === 'top');
 
-      // valueLow = Budget, valueMid = Mid, valueHigh = Premium
+      // valueLow = Budget, valueMid = Mid, valueHigh = Top (or Premium if no Top)
       // Use Standard as fallback for Mid if Mid tier is empty
       valueLow = budgetTier?.value || 0;
       valueMid = midTier?.value || standardTier?.value || 0;
-      valueHigh = premiumTier?.value || 0;
+      valueHigh = topTier?.value || premiumTier?.value || 0;
 
       // Base value for data sources display (use mid tier value)
       baseValue = valueMid;
@@ -360,6 +371,7 @@ export class PropertyValuationEngine {
       console.log(`   Standard: ${standardTier ? (standardTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${standardTier?.transactionCount || 0} txns)`);
       console.log(`   Mid:      ${midTier ? (midTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${midTier?.transactionCount || 0} txns)`);
       console.log(`   Premium:  ${premiumTier ? (premiumTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${premiumTier?.transactionCount || 0} txns)`);
+      console.log(`   Top:      ${topTier ? (topTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${topTier?.transactionCount || 0} txns)`);
 
     } else if (buildingType === 'officetel') {
       // ===== OFFICETEL: Hybrid approach =====
@@ -484,10 +496,11 @@ export class PropertyValuationEngine {
         const standardTier = tierEstimates.find(t => t.tier === 'standard');
         const midTier = tierEstimates.find(t => t.tier === 'mid');
         const premiumTier = tierEstimates.find(t => t.tier === 'premium');
+        const topTier = tierEstimates.find(t => t.tier === 'top');
 
         valueLow = budgetTier?.value || 0;
         valueMid = midTier?.value || standardTier?.value || 0;
-        valueHigh = premiumTier?.value || 0;
+        valueHigh = topTier?.value || premiumTier?.value || 0;
         baseValue = valueMid;
 
         console.log('\n📊 Final Officetel Tier Values (Dong-level Fallback):');
@@ -495,6 +508,7 @@ export class PropertyValuationEngine {
         console.log(`   Standard: ${standardTier ? (standardTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${standardTier?.transactionCount || 0} txns)`);
         console.log(`   Mid:      ${midTier ? (midTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${midTier?.transactionCount || 0} txns)`);
         console.log(`   Premium:  ${premiumTier ? (premiumTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${premiumTier?.transactionCount || 0} txns)`);
+        console.log(`   Top:      ${topTier ? (topTier.value / 100000000).toFixed(2) + '억' : 'N/A'} (${topTier?.transactionCount || 0} txns)`);
       }
 
     } else {
@@ -678,7 +692,8 @@ export class PropertyValuationEngine {
     if (unitPrice < thresholds.p25) return 'budget';
     if (unitPrice < thresholds.p50) return 'standard';
     if (unitPrice < thresholds.p75) return 'mid';
-    return 'premium';
+    if (unitPrice < thresholds.p90) return 'premium';
+    return 'top';
   }
 
   /**
@@ -695,6 +710,7 @@ export class PropertyValuationEngine {
       p25: calculatePercentile(unitPrices, 25),
       p50: calculatePercentile(unitPrices, 50),
       p75: calculatePercentile(unitPrices, 75),
+      p90: calculatePercentile(unitPrices, 90),
     };
   }
 
@@ -842,9 +858,10 @@ export class PropertyValuationEngine {
    * 1. Apply floor filter (remove floor ≤ 0)
    * 2. Apply age filter (±10 years with fallback)
    * 3. Calculate percentile thresholds from filtered data
-   * 4. Classify transactions into 4 tiers
+   * 4. Classify transactions into 5 tiers (budget/standard/mid/premium/top)
    * 5. Calculate tier values with recency weight + age adjustment
-   * 6. Return all 4 tier values as final output
+   * 6. Merge top tier into premium if < 3 transactions (graceful degradation)
+   * 7. Return all tier values as final output
    *
    * @param transactions - Raw transactions from MOLIT API
    * @param targetArea - Target property's exclusive area (㎡)
@@ -857,10 +874,10 @@ export class PropertyValuationEngine {
     targetBuildingYear: number | undefined,
     targetBuildingYearForAdjustment?: number | undefined
   ): { estimates: TierEstimate[]; thresholds: PercentileThresholds; filteredTransactions: MolitTransaction[] } {
-    if (transactions.length === 0) return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 }, filteredTransactions: [] };
+    if (transactions.length === 0) return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0, p90: 0 }, filteredTransactions: [] };
 
     const now = new Date();
-    const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium'];
+    const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium', 'top'];
 
     // Step 1 & 2: Apply floor and age filtering
     const { filtered, filterLog } = this.applyMultifamilyFilters(transactions, targetBuildingYear);
@@ -882,14 +899,14 @@ export class PropertyValuationEngine {
     // If still no transactions after filtering, return empty
     if (filtered.length === 0) {
       console.log('   ❌ No transactions remaining after filtering');
-      return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0 }, filteredTransactions: [] };
+      return { estimates: [], thresholds: { p25: 0, p50: 0, p75: 0, p90: 0 }, filteredTransactions: [] };
     }
 
     // Step 3: Calculate percentile thresholds from FILTERED transactions
     const thresholds = this.calculatePercentileThresholds(filtered);
 
     console.log(`   Percentile Thresholds (from ${filtered.length} filtered txns):`);
-    console.log(`     P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡`);
+    console.log(`     P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡, P90=${(thresholds.p90/10000).toFixed(0)}만/㎡`);
 
     // Step 4: Classify each transaction by quality tier
     const transactionsByTier: Record<QualityTier, Array<MolitTransaction & { unitPrice: number; daysAgo: number }>> = {
@@ -897,6 +914,7 @@ export class PropertyValuationEngine {
       standard: [],
       mid: [],
       premium: [],
+      top: [],
     };
 
     filtered.forEach(t => {
@@ -907,7 +925,14 @@ export class PropertyValuationEngine {
       transactionsByTier[tier].push({ ...t, unitPrice, daysAgo });
     });
 
-    console.log(`   Tier distribution: budget=${transactionsByTier.budget.length}, standard=${transactionsByTier.standard.length}, mid=${transactionsByTier.mid.length}, premium=${transactionsByTier.premium.length}`);
+    // Merge top tier into premium if insufficient transactions (< 3)
+    if (transactionsByTier.top.length > 0 && transactionsByTier.top.length < 3) {
+      console.log(`   ⚠️ Top tier has only ${transactionsByTier.top.length} transactions (< 3). Merging into Premium.`);
+      transactionsByTier.premium.push(...transactionsByTier.top);
+      transactionsByTier.top = [];
+    }
+
+    console.log(`   Tier distribution: budget=${transactionsByTier.budget.length}, standard=${transactionsByTier.standard.length}, mid=${transactionsByTier.mid.length}, premium=${transactionsByTier.premium.length}, top=${transactionsByTier.top.length}`);
 
     // Step 5 & 6: Calculate tier values
     const tierEstimates: TierEstimate[] = [];

@@ -39,7 +39,7 @@ export interface MolitTransaction {
 }
 
 // Quality Tier Types (for 연립다세대 tiered valuation)
-export type QualityTier = 'budget' | 'standard' | 'mid' | 'premium';
+export type QualityTier = 'budget' | 'standard' | 'mid' | 'premium' | 'top';
 
 export interface TierEstimate {
   tier: QualityTier;
@@ -53,6 +53,7 @@ export interface TierEstimate {
 }
 
 export interface TierGuidance {
+  top: string[];
   premium: string[];
   mid: string[];
   standard: string[];
@@ -63,6 +64,7 @@ export interface PercentileThresholds {
   p25: number;  // 25th percentile (won/㎡)
   p50: number;  // 50th percentile (won/㎡)
   p75: number;  // 75th percentile (won/㎡)
+  p90: number;  // 90th percentile (won/㎡)
 }
 
 // Valuation Types

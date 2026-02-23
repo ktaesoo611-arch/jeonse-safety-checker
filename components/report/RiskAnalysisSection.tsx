@@ -46,7 +46,7 @@ interface TierEstimate {
   unitPrice: number;
 }
 
-type TierKey = 'budget' | 'standard' | 'mid' | 'premium';
+type TierKey = 'budget' | 'standard' | 'mid' | 'premium' | 'top';
 
 interface RecalculatedScores {
   ltvScore: number;

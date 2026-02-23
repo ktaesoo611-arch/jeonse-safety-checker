@@ -18,7 +18,7 @@ const CONVERSION_RATE = 0.045; // 4.5% (BOK 2.5% + 2%)
 
 // Tiered expected rent for multifamily
 interface TieredExpectedRent {
-  tier: 'budget' | 'standard' | 'mid' | 'premium';
+  tier: 'budget' | 'standard' | 'mid' | 'premium' | 'top';
   label: string;
   expectedRent: number;
   impliedJeonse: number;
@@ -84,7 +84,7 @@ interface WolseMarketData {
 
 // Tiered expected jeonse for dong-tiered valuations
 interface TieredExpectedJeonse {
-  tier: 'budget' | 'standard' | 'mid' | 'premium';
+  tier: 'budget' | 'standard' | 'mid' | 'premium' | 'top';
   label: string;
   expectedJeonse: number;
   unitJeonse: number;
@@ -132,7 +132,7 @@ interface MarketPositionSectionProps {
   reportType: 'jeonse' | 'wolse';
   wolseData?: WolseMarketData;
   jeonseData?: JeonseMarketData;
-  selectedTier?: 'budget' | 'standard' | 'mid' | 'premium';
+  selectedTier?: 'budget' | 'standard' | 'mid' | 'premium' | 'top';
 }
 
 export default function MarketPositionSection({

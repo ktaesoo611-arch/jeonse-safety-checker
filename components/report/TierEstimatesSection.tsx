@@ -12,13 +12,14 @@ interface TierEstimate {
 }
 
 interface TierGuidance {
+  top: string[];
   budget: string[];
   standard: string[];
   mid: string[];
   premium: string[];
 }
 
-type TierKey = 'budget' | 'standard' | 'mid' | 'premium';
+type TierKey = 'budget' | 'standard' | 'mid' | 'premium' | 'top';
 
 interface TierEstimatesSectionProps {
   tierEstimates: TierEstimate[] | null;
@@ -51,6 +52,7 @@ export default function TierEstimatesSection({
   const standardTier = tierEstimates.find(t => t.tier === 'standard');
   const midTier = tierEstimates.find(t => t.tier === 'mid');
   const premiumTier = tierEstimates.find(t => t.tier === 'premium');
+  const topTier = tierEstimates.find(t => t.tier === 'top');
 
   // Display value based on selected tier
   const selectedTierData = tierEstimates.find(t => t.tier === selectedTier);
@@ -103,6 +105,17 @@ export default function TierEstimatesSection({
       textColor: 'text-purple-700',
       isSafetyTier: false,
     },
+    {
+      key: 'top',
+      data: topTier,
+      guidance: tierGuidance?.top || [],
+      icon: '👑',
+      color: 'rose',
+      bgColor: 'bg-rose-50',
+      borderColor: 'border-rose-200',
+      textColor: 'text-rose-700',
+      isSafetyTier: false,
+    },
   ];
 
   return (
@@ -125,9 +138,9 @@ export default function TierEstimatesSection({
               <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 ₩{formatAmount(displayValue)}
               </p>
-              {budgetTier && premiumTier && (
+              {budgetTier && (topTier || premiumTier) && (
                 <p className="text-sm text-gray-500 mt-1">
-                  Range: ₩{formatAmount(budgetTier.value)} ~ ₩{formatAmount(premiumTier.value)}
+                  Range: ₩{formatAmount(budgetTier.value)} ~ ₩{formatAmount((topTier || premiumTier)!.value)}
                 </p>
               )}
             </div>
@@ -179,7 +192,7 @@ export default function TierEstimatesSection({
                     onClick={() => onTierSelect(tier.key as TierKey)}
                     className={`w-full text-left rounded-xl border-2 p-4 sm:p-5 transition-all duration-200 hover:shadow-md ${
                       isSelected
-                        ? `${tier.borderColor} ${tier.bgColor} ring-2 ring-offset-2 ${tier.color === 'amber' ? 'ring-amber-500' : tier.color === 'blue' ? 'ring-blue-500' : tier.color === 'emerald' ? 'ring-emerald-500' : 'ring-purple-500'}`
+                        ? `${tier.borderColor} ${tier.bgColor} ring-2 ring-offset-2 ${tier.color === 'amber' ? 'ring-amber-500' : tier.color === 'blue' ? 'ring-blue-500' : tier.color === 'emerald' ? 'ring-emerald-500' : tier.color === 'rose' ? 'ring-rose-500' : 'ring-purple-500'}`
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
@@ -218,7 +231,7 @@ export default function TierEstimatesSection({
                         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                           {tier.guidance.map((item, idx) => (
                             <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tier.color === 'amber' ? '#f59e0b' : tier.color === 'blue' ? '#3b82f6' : tier.color === 'emerald' ? '#10b981' : '#8b5cf6' }} />
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tier.color === 'amber' ? '#f59e0b' : tier.color === 'blue' ? '#3b82f6' : tier.color === 'emerald' ? '#10b981' : tier.color === 'rose' ? '#f43f5e' : '#8b5cf6' }} />
                               {item}
                             </li>
                           ))}

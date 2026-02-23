@@ -52,11 +52,11 @@ export default function ReportPage() {
   const [isLoading, setIsLoading] = useState(!reportData);
   const [error, setError] = useState<string | null>(null);
   // Selected tier for LTV calculation - load from sessionStorage or default to 'mid'
-  const [selectedTier, setSelectedTier] = useState<'budget' | 'standard' | 'mid' | 'premium'>(() => {
+  const [selectedTier, setSelectedTier] = useState<'budget' | 'standard' | 'mid' | 'premium' | 'top'>(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem(`tier-${analysisId}`);
-      if (saved && ['budget', 'standard', 'mid', 'premium'].includes(saved)) {
-        return saved as 'budget' | 'standard' | 'mid' | 'premium';
+      if (saved && ['budget', 'standard', 'mid', 'premium', 'top'].includes(saved)) {
+        return saved as 'budget' | 'standard' | 'mid' | 'premium' | 'top';
       }
     }
     return 'mid';

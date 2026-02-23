@@ -37,7 +37,8 @@ const MULTIFAMILY_WOLSE_CONFIG = {
     budget: '하위 25% (Budget)',
     standard: '25-50% (Standard)',
     mid: '50-75% (Mid)',
-    premium: '상위 25% (Premium)',
+    premium: '75-90% (Premium)',
+    top: '상위 10% (Top)',
   } as Record<QualityTier, string>,
 
   // Annual depreciation rates by tier (applied to jeonse values)
@@ -46,6 +47,7 @@ const MULTIFAMILY_WOLSE_CONFIG = {
     standard: 0.015, // 1.5%/yr
     mid: 0.01,       // 1%/yr
     premium: 0.005,  // 0.5%/yr
+    top: 0.0025,     // 0.25%/yr - top-tier luxury properties hold value best
   } as Record<QualityTier, number>,
 };
 
@@ -928,7 +930,7 @@ export class WolsePriceAnalyzer {
     if (transactions.length === 0) return { tieredExpectedRent: [], filteredTransactions: [] };
 
     const now = new Date();
-    const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium'];
+    const tiers: QualityTier[] = ['budget', 'standard', 'mid', 'premium', 'top'];
 
     // Step 1: Filter transactions
     const { filtered, filterLog } = this.applyWolseFilters(transactions, targetBuildingYear);
@@ -967,7 +969,7 @@ export class WolsePriceAnalyzer {
     const thresholds = this.calculateJeonsePercentileThresholds(enriched);
 
     console.log(`\n   Percentile Thresholds (unit jeonse):`);
-    console.log(`     P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡`);
+    console.log(`     P25=${(thresholds.p25/10000).toFixed(0)}만/㎡, P50=${(thresholds.p50/10000).toFixed(0)}만/㎡, P75=${(thresholds.p75/10000).toFixed(0)}만/㎡, P90=${(thresholds.p90/10000).toFixed(0)}만/㎡`);
 
     // Classify each transaction by tier
     const transactionsByTier: Record<QualityTier, EnrichedTransaction[]> = {
@@ -975,6 +977,7 @@ export class WolsePriceAnalyzer {
       standard: [],
       mid: [],
       premium: [],
+      top: [],
     };
 
     enriched.forEach(t => {
@@ -982,7 +985,14 @@ export class WolsePriceAnalyzer {
       transactionsByTier[tier].push(t);
     });
 
-    console.log(`   Tier distribution: budget=${transactionsByTier.budget.length}, standard=${transactionsByTier.standard.length}, mid=${transactionsByTier.mid.length}, premium=${transactionsByTier.premium.length}`);
+    // Merge top tier into premium if insufficient transactions (< 3)
+    if (transactionsByTier.top.length > 0 && transactionsByTier.top.length < 3) {
+      console.log(`   ⚠️ Top tier has only ${transactionsByTier.top.length} wolse transactions (< 3). Merging into Premium.`);
+      transactionsByTier.premium.push(...transactionsByTier.top);
+      transactionsByTier.top = [];
+    }
+
+    console.log(`   Tier distribution: budget=${transactionsByTier.budget.length}, standard=${transactionsByTier.standard.length}, mid=${transactionsByTier.mid.length}, premium=${transactionsByTier.premium.length}, top=${transactionsByTier.top.length}`);
 
     // Step 4 & 5: Calculate tier values and expected rent
     const tieredExpectedRent: TieredExpectedRent[] = [];
@@ -1138,8 +1148,8 @@ export class WolsePriceAnalyzer {
    */
   private calculateJeonsePercentileThresholds(
     transactions: Array<{ unitJeonse: number }>
-  ): { p25: number; p50: number; p75: number } {
-    if (transactions.length === 0) return { p25: 0, p50: 0, p75: 0 };
+  ): { p25: number; p50: number; p75: number; p90: number } {
+    if (transactions.length === 0) return { p25: 0, p50: 0, p75: 0, p90: 0 };
 
     const sorted = [...transactions].sort((a, b) => a.unitJeonse - b.unitJeonse);
     const n = sorted.length;
@@ -1156,6 +1166,7 @@ export class WolsePriceAnalyzer {
       p25: getPercentile(25),
       p50: getPercentile(50),
       p75: getPercentile(75),
+      p90: getPercentile(90),
     };
   }
 
@@ -1164,11 +1175,12 @@ export class WolsePriceAnalyzer {
    */
   private classifyJeonseTier(
     unitJeonse: number,
-    thresholds: { p25: number; p50: number; p75: number }
+    thresholds: { p25: number; p50: number; p75: number; p90: number }
   ): QualityTier {
     if (unitJeonse < thresholds.p25) return 'budget';
     if (unitJeonse < thresholds.p50) return 'standard';
     if (unitJeonse < thresholds.p75) return 'mid';
-    return 'premium';
+    if (unitJeonse < thresholds.p90) return 'premium';
+    return 'top';
   }
 }
