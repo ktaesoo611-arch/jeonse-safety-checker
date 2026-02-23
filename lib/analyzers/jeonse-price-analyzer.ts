@@ -399,27 +399,28 @@ export class JeonsePriceAnalyzer {
     userArea?: number,
     targetBuildingYear?: number
   ): { tieredExpectedJeonse: TieredExpectedJeonse[]; percentileThresholds: { p25: number; p50: number; p75: number; p90: number } } | null {
-    // Step 1: Filter by area if provided
+    // Step 1: No area filter — input data contains all areas for the dong/district.
+    // Tiered analysis normalizes by unit jeonse (₩/㎡), so mixed areas are expected.
     let filtered = transactions;
-    if (userArea) {
-      filtered = this.filterByArea(transactions, userArea);
-    }
 
     // Filter out renewal contracts (갱신)
     const renewalResult = filterRenewalContracts(filtered);
     filtered = renewalResult.filtered;
 
-    // Remove outliers
-    const { clean } = removeOutliers(filtered);
+    // No removeOutliers here — it uses IQR on absolute transactionAmount, which
+    // incorrectly flags legitimate high-value transactions from larger units as outliers
+    // when the dataset contains mixed areas. Percentile-based tier classification
+    // on unit jeonse (₩/㎡) already handles variance naturally.
+    // (Consistent with sale-side tiered analysis which also skips outlier removal.)
 
-    if (clean.length < 4) {
-      console.log(`⚠️ Insufficient transactions for tiered jeonse analysis: ${clean.length}`);
+    if (filtered.length < 4) {
+      console.log(`⚠️ Insufficient transactions for tiered jeonse analysis: ${filtered.length}`);
       return null;
     }
 
     // Step 2: Calculate unit jeonse per transaction
     const now = new Date();
-    const enriched = clean.map(t => {
+    const enriched = filtered.map(t => {
       const unitJeonse = t.transactionAmount / t.exclusiveArea;
       const txDate = new Date(t.year, t.month - 1, t.day);
       const daysAgo = Math.floor((now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -479,8 +480,9 @@ export class JeonsePriceAnalyzer {
         tierTxns.map(t => ({ daysAgo: t.daysAgo, value: t.transactionAmount }))
       );
 
-      // Calculate recency-weighted unit jeonse with age adjustment
+      // Calculate recency- and area-proximity-weighted unit jeonse with age adjustment
       const HALFLIFE_DAYS = 90;
+      const AREA_HALFLIFE = 8; // ㎡ — transactions 8㎡ away get 37% weight, 20㎡ away get 8%
       const depreciation = JEONSE_TIERED_CONFIG.DEPRECIATION[tier];
 
       let totalWeightedUnitJeonse = 0;
@@ -489,6 +491,13 @@ export class JeonsePriceAnalyzer {
       tierTxns.forEach(t => {
         const recencyWeight = Math.exp(-t.daysAgo / HALFLIFE_DAYS);
 
+        // Area proximity weight: transactions with similar area get more weight
+        // Unit jeonse varies inversely with area (fixed costs spread over less sqm),
+        // so same-area comparables are more relevant for expected jeonse estimation
+        const areaWeight = userArea
+          ? Math.exp(-Math.abs(t.exclusiveArea - userArea) / AREA_HALFLIFE)
+          : 1.0;
+
         // Age adjustment: normalize comparable's jeonse to target building year
         let ageAdjustment = 1.0;
         if (targetBuildingYear && t.buildingYear) {
@@ -496,29 +505,40 @@ export class JeonsePriceAnalyzer {
           ageAdjustment = 1 + (yearDiff * depreciation);
         }
 
-        totalWeightedUnitJeonse += t.unitJeonse * ageAdjustment * recencyWeight;
-        totalWeight += recencyWeight;
+        const weight = recencyWeight * areaWeight;
+        totalWeightedUnitJeonse += t.unitJeonse * ageAdjustment * weight;
+        totalWeight += weight;
       });
 
       const weightedUnitJeonse = totalWeightedUnitJeonse / totalWeight;
 
-      // Calculate effective sample size
-      const weights = tierTxns.map(t => Math.exp(-t.daysAgo / HALFLIFE_DAYS));
+      // Calculate effective sample size (using combined weights)
+      const weights = tierTxns.map(t => {
+        const rw = Math.exp(-t.daysAgo / HALFLIFE_DAYS);
+        const aw = userArea ? Math.exp(-Math.abs(t.exclusiveArea - userArea) / AREA_HALFLIFE) : 1.0;
+        return rw * aw;
+      });
       const sumW = weights.reduce((a, b) => a + b, 0);
       const sumW2 = weights.reduce((a, b) => a + b * b, 0);
       const effectiveSampleSize = (sumW * sumW) / sumW2;
 
+      // Use unit jeonse × user area for expected jeonse (consistent with sale tiered analysis)
+      // Falls back to regression intercept if userArea is not provided
+      const expectedJeonse = userArea
+        ? Math.round(weightedUnitJeonse * userArea)
+        : Math.round(regression.intercept);
+
       tieredExpectedJeonse.push({
         tier,
         label: tierLabels[tier],
-        expectedJeonse: Math.round(regression.intercept),
+        expectedJeonse,
         unitJeonse: Math.round(weightedUnitJeonse),
         transactionCount: tierTxns.length,
         effectiveSampleSize: Math.round(effectiveSampleSize * 10) / 10,
         depreciationRate: depreciation,
       });
 
-      console.log(`   ${tierLabels[tier]}: expected=${formatWon(regression.intercept)}, unitJeonse=${(weightedUnitJeonse/10000).toFixed(0)}만/㎡, n=${tierTxns.length}, effN=${effectiveSampleSize.toFixed(1)}`);
+      console.log(`   ${tierLabels[tier]}: expected=${formatWon(expectedJeonse)}, unitJeonse=${(weightedUnitJeonse/10000).toFixed(0)}만/㎡, n=${tierTxns.length}, effN=${effectiveSampleSize.toFixed(1)}`);
     }
 
     if (tieredExpectedJeonse.length === 0) {

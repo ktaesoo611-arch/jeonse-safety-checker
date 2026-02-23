@@ -221,32 +221,44 @@ export class PropertyValuationEngine {
     // Moved BEFORE the sales check so we can still get jeonse data even if no sales
     let jeonseTransactions: MolitTransaction[] = [];
     try {
+      // Fetch jeonse WITHOUT area filter for dong-level tiered analysis
+      // (tiered analysis normalizes by unit jeonse ₩/㎡, so all areas are useful)
+      // analyze() has its own internal filterByArea() for non-tiered analysis
       jeonseTransactions = await this.molitAPI.getRecentJeonseTransactionsByType(
         buildingType,
         lawdCd,
         identifier,
-        property.exclusiveArea,
+        undefined, // No area filter — tiered analysis uses unit jeonse normalization
         12 // Last 12 months
       );
-      console.log(`📊 Jeonse transaction data: ${jeonseTransactions.length} txns`);
+      console.log(`📊 Jeonse transaction data: ${jeonseTransactions.length} txns (all areas)`);
 
-      // For multifamily: cascade to adjacent dongs → district if insufficient jeonse data
-      if (buildingType === 'multifamily' && jeonseTransactions.length < 4) {
-        const adjacentDongs = getAdjacentDongs(property.district, property.dong);
-        if (adjacentDongs.length > 0) {
-          console.log(`⚠️ Multifamily jeonse: Only ${jeonseTransactions.length} dong-level. Expanding to adjacent dongs: [${adjacentDongs.join(', ')}]`);
-          jeonseTransactions = await this.molitAPI.getRecentMultifamilyJeonseByDongs(
-            lawdCd, [property.dong, ...adjacentDongs], property.exclusiveArea, 12
-          );
-          console.log(`   → After adjacent dong expansion: ${jeonseTransactions.length} jeonse transactions`);
-        }
+      // For multifamily: cascade to adjacent dongs → district if insufficient area-specific jeonse
+      // Use area filter locally only for cascade threshold check
+      if (buildingType === 'multifamily') {
+        const areaFiltered = jeonseTransactions.filter(t =>
+          Math.abs(t.exclusiveArea - property.exclusiveArea) <= property.exclusiveArea * 0.15
+        );
+        if (areaFiltered.length < 4) {
+          const adjacentDongs = getAdjacentDongs(property.district, property.dong);
+          if (adjacentDongs.length > 0) {
+            console.log(`⚠️ Multifamily jeonse: Only ${areaFiltered.length} area-specific in dong. Expanding to adjacent dongs: [${adjacentDongs.join(', ')}]`);
+            jeonseTransactions = await this.molitAPI.getRecentMultifamilyJeonseByDongs(
+              lawdCd, [property.dong, ...adjacentDongs], undefined, 12
+            );
+            console.log(`   → After adjacent dong expansion: ${jeonseTransactions.length} jeonse transactions (all areas)`);
+          }
 
-        if (jeonseTransactions.length < 4) {
-          console.log(`⚠️ Multifamily jeonse: Still only ${jeonseTransactions.length}. Expanding to district-wide...`);
-          jeonseTransactions = await this.molitAPI.getRecentMultifamilyJeonseByDongs(
-            lawdCd, [], property.exclusiveArea, 12
+          const areaFilteredExpanded = jeonseTransactions.filter(t =>
+            Math.abs(t.exclusiveArea - property.exclusiveArea) <= property.exclusiveArea * 0.15
           );
-          console.log(`   → After district expansion: ${jeonseTransactions.length} jeonse transactions`);
+          if (areaFilteredExpanded.length < 4) {
+            console.log(`⚠️ Multifamily jeonse: Still only ${areaFilteredExpanded.length} area-specific. Expanding to district-wide...`);
+            jeonseTransactions = await this.molitAPI.getRecentMultifamilyJeonseByDongs(
+              lawdCd, [], undefined, 12
+            );
+            console.log(`   → After district expansion: ${jeonseTransactions.length} jeonse transactions (all areas)`);
+          }
         }
       }
     } catch (error) {
@@ -438,31 +450,37 @@ export class PropertyValuationEngine {
           );
           console.log(`   → After district expansion: ${dongTransactions.length} sale transactions`);
         }
-        // Fetch jeonse with cascading geographic expansion: dong → adjacent dongs → district
+        // Fetch jeonse WITHOUT area filter for dong-level tiered analysis
+        // (tiered analysis normalizes by unit jeonse ₩/㎡, so all areas are useful)
         let dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDongs(
-          lawdCd, [property.dong], property.exclusiveArea, 12
+          lawdCd, [property.dong], undefined, 12
         );
-        console.log(`📊 Officetel jeonse (dong-level): ${dongJeonseTransactions.length} transactions`);
+        console.log(`📊 Officetel jeonse (dong-level): ${dongJeonseTransactions.length} transactions (all areas)`);
 
-        // Level 2: Expand to adjacent dongs if insufficient
-        if (dongJeonseTransactions.length < 4) {
+        // Level 2: Expand to adjacent dongs if insufficient area-specific jeonse
+        const areaFilteredJeonse = dongJeonseTransactions.filter(t =>
+          Math.abs(t.exclusiveArea - property.exclusiveArea) <= property.exclusiveArea * 0.15
+        );
+        if (areaFilteredJeonse.length < 4) {
           const adjacentDongs = getAdjacentDongs(property.district, property.dong);
           if (adjacentDongs.length > 0) {
-            console.log(`⚠️ Officetel jeonse: Only ${dongJeonseTransactions.length} dong-level. Expanding to adjacent dongs: [${adjacentDongs.join(', ')}]`);
+            console.log(`⚠️ Officetel jeonse: Only ${areaFilteredJeonse.length} area-specific in dong. Expanding to adjacent dongs: [${adjacentDongs.join(', ')}]`);
             dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDongs(
-              lawdCd, [property.dong, ...adjacentDongs], property.exclusiveArea, 12
+              lawdCd, [property.dong, ...adjacentDongs], undefined, 12
             );
-            console.log(`   → After adjacent dong expansion: ${dongJeonseTransactions.length} jeonse transactions`);
+            console.log(`   → After adjacent dong expansion: ${dongJeonseTransactions.length} jeonse transactions (all areas)`);
           }
-        }
 
-        // Level 3: Expand to district-wide if still insufficient
-        if (dongJeonseTransactions.length < 4) {
-          console.log(`⚠️ Officetel jeonse: Still only ${dongJeonseTransactions.length}. Expanding to district-wide...`);
-          dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDongs(
-            lawdCd, [], property.exclusiveArea, 12
+          const areaFilteredExpanded = dongJeonseTransactions.filter(t =>
+            Math.abs(t.exclusiveArea - property.exclusiveArea) <= property.exclusiveArea * 0.15
           );
-          console.log(`   → After district expansion: ${dongJeonseTransactions.length} jeonse transactions`);
+          if (areaFilteredExpanded.length < 4) {
+            console.log(`⚠️ Officetel jeonse: Still only ${areaFilteredExpanded.length} area-specific. Expanding to district-wide...`);
+            dongJeonseTransactions = await this.molitAPI.getRecentOfficetelJeonseByDongs(
+              lawdCd, [], undefined, 12
+            );
+            console.log(`   → After district expansion: ${dongJeonseTransactions.length} jeonse transactions (all areas)`);
+          }
         }
 
         // Merge expanded jeonse data

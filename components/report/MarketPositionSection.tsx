@@ -765,7 +765,7 @@ export default function MarketPositionSection({
             <p className="text-sm text-gray-500 mb-4">
               Expected jeonse varies by property quality tier. Select your tier in the valuation section above.
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {jeonseData.tieredExpectedJeonse.map((tier) => {
                 const isSelected = selectedTier === tier.tier;
                 return (

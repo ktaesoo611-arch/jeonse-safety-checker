@@ -4,6 +4,7 @@
  * Verifies that the new Top tier (P90+) properly captures high-value properties
  * that were previously undervalued by the broad Premium tier (P75+).
  *
+ * Property area: 46.4㎡ (confirmed from 등기부등본)
  * Known reference: ₩85,300만 transaction on 2026-01-05 (same area, 6F)
  *
  * Run with: npx tsx scripts/test/test-magok-767-4.ts
@@ -48,11 +49,10 @@ async function main() {
   }
 
   // Step 2: Set up property details
-  // Note: area needs to match what the actual report used
-  // We'll try multiple areas to find the one that matches the ₩6.16억 Est. Value
-  const areas = [59.96, 59.98, 59.91, 84.96, 84.99, 74.98];
+  // Confirmed area: 46.4㎡ (from 등기부등본 document)
+  const testArea = 46.4;
 
-  for (const testArea of areas) {
+  {
     console.log('\n' + '─'.repeat(80));
     console.log(`🏠 Testing with area: ${testArea}㎡, type: ${detectedBuildingType}`);
     console.log('─'.repeat(80));
@@ -126,7 +126,7 @@ async function main() {
           testArea
         );
         if (jeonseResult) {
-          console.log(`   Expected Jeonse (regression): ₩${(jeonseResult.expectedJeonse / 100000000).toFixed(2)}억`);
+          console.log(`\n   Expected Jeonse (regression): ₩${(jeonseResult.expectedJeonse / 100000000).toFixed(2)}억`);
           console.log(`   Contract count: ${jeonseResult.contractCount}`);
         }
 
@@ -165,9 +165,7 @@ async function main() {
         console.log(`   Top tier: Not available (merged into Premium — < 3 transactions)`);
       }
 
-      // Only test the first area that returns results to avoid excessive API calls
       console.log('\n' + '═'.repeat(80));
-      break;
 
     } catch (error) {
       console.error(`   ❌ Valuation failed for area ${testArea}:`, error);
