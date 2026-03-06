@@ -279,7 +279,7 @@ export default function LandingPage() {
                 {/* Glow effect */}
                 <span className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 blur-lg opacity-50 group-hover:opacity-75 transition-opacity animate-hero-glow" />
                 <span className="relative flex items-center gap-3">
-                  Check My Property Free →
+                  Check My Property Free
                   <svg className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
@@ -336,7 +336,7 @@ export default function LandingPage() {
           <div className={`text-center transition-all duration-700 ${howItWorksSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '450ms' }}>
             <Link href="/check">
               <button className="group px-10 py-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl hover:shadow-xl hover:shadow-amber-200/50 transition-all hover:-translate-y-1 inline-flex items-center gap-3">
-                Check My Property Free →
+                Check My Property Free
                 <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
@@ -435,7 +435,7 @@ export default function LandingPage() {
           <div className={`transition-all duration-700 ${ctaSection.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} style={{ transitionDelay: '150ms' }}>
             <Link href="/check">
               <button className="group px-10 py-5 bg-white text-amber-600 font-bold text-lg rounded-2xl hover:shadow-2xl transition-all hover:-translate-y-1 inline-flex items-center gap-3">
-                Check My Property Free →
+                Check My Property Free
                 <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
