@@ -102,7 +102,7 @@ export class ApickAPI {
             'CL_AUTH_KEY': this.apiKey,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          timeout: 120000, // 120 second timeout (Apick can take 60-90s)
+          timeout: 60000, // 60 second timeout — must be shorter than Vercel's 120s limit
           // Apick API returns 401 even for valid responses when no results found
           validateStatus: (status) => status >= 200 && status < 500,
         }
@@ -177,7 +177,7 @@ export class ApickAPI {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           responseType: 'arraybuffer',
-          timeout: 120000, // 2 minute timeout for download
+          timeout: 30000, // 30 second timeout for download
         }
       );
 
