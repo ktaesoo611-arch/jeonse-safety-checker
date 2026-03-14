@@ -393,7 +393,7 @@ export class BuildingRegistryAPI {
         return { success: true, data: titleResult };
       }
 
-      console.log(`[BuildingRegistry] No building found for ${sigunguCd}-${bjdongCd}-${bun}-${ji}`);
+      console.log(`[BuildingRegistry] No building found for ${sigunguCd}-${registryDongCode}-${formattedBun}-${formattedJi}`);
       return { success: false, error: 'Building not found' };
     } catch (error: any) {
       console.error('[BuildingRegistry] API Error:', error.message);
